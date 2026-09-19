@@ -58,8 +58,8 @@ export function Hero({ isSignedIn = false }: { isSignedIn?: boolean }) {
           </p>
         </div>
 
-        {/* preset marquee */}
-        <div className="relative mt-16 sm:mt-20">
+        {/* preset marquee — target of the "Presets" link in the site header */}
+        <div id="presets" className="relative mt-16 scroll-mt-24 sm:mt-20">
           <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-background to-transparent" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-background to-transparent" />
 

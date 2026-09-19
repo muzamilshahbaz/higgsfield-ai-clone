@@ -10,9 +10,16 @@ export const ASPECT_RATIOS = [
 
 export type AspectRatio = (typeof ASPECT_RATIOS)[number]['value']
 
+/**
+ * Every duration any registered model can produce. The picker intersects this
+ * with the selected model's `supports.durations`, so a value that no model
+ * offers is dead UI and a supported value missing here has no label.
+ * Kept in sync with lib/ai/registry.ts by tests/registry.test.ts, which fails
+ * in both directions if the two lists drift apart.
+ */
 export const VIDEO_DURATIONS = [
   { value: 5, label: '5s' },
-  { value: 8, label: '8s' },
+  { value: 6, label: '6s' },
   { value: 10, label: '10s' },
 ] as const
 
