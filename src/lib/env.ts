@@ -8,8 +8,17 @@
 
 const PLACEHOLDER_HINTS = ['your-project-ref', 'your-anon-key', 'your-service-role-key']
 
-function read(name: string): string | undefined {
-  const value = process.env[name]
+/**
+ * Every `process.env.X` below is written out in full, never `process.env[name]`.
+ *
+ * Next.js inlines `NEXT_PUBLIC_*` into the browser bundle by substituting the
+ * literal text at build time. A computed key is not text it can match, so a
+ * lookup helper leaves the browser with `undefined` and the client Supabase
+ * client silently reports "not configured" — which is exactly what happened
+ * before this comment existed. Non-public names stay undefined in the browser
+ * by the same mechanism, which is what we want.
+ */
+function clean(value: string | undefined): string | undefined {
   if (!value) return undefined
   const trimmed = value.trim()
   if (!trimmed) return undefined
@@ -18,14 +27,14 @@ function read(name: string): string | undefined {
 }
 
 export const env = {
-  supabaseUrl: read('NEXT_PUBLIC_SUPABASE_URL'),
-  supabaseAnonKey: read('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-  supabaseServiceRoleKey: read('SUPABASE_SERVICE_ROLE_KEY'),
-  siteUrl: read('NEXT_PUBLIC_SITE_URL') ?? 'http://localhost:3000',
-  aiProvider: (read('AI_PROVIDER') ?? 'mock') as 'mock' | 'fal' | 'replicate',
-  falKey: read('FAL_KEY'),
-  replicateToken: read('REPLICATE_API_TOKEN'),
-  cronSecret: read('CRON_SECRET'),
+  supabaseUrl: clean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  supabaseAnonKey: clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+  supabaseServiceRoleKey: clean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  siteUrl: clean(process.env.NEXT_PUBLIC_SITE_URL) ?? 'http://localhost:3000',
+  aiProvider: (clean(process.env.AI_PROVIDER) ?? 'mock') as 'mock' | 'fal' | 'replicate',
+  falKey: clean(process.env.FAL_KEY),
+  replicateToken: clean(process.env.REPLICATE_API_TOKEN),
+  cronSecret: clean(process.env.CRON_SECRET),
 } as const
 
 /** True when the public Supabase config is present and looks real. */

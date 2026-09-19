@@ -1,13 +1,16 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { Clapperboard, Coins, FolderOpen, Images, Sparkles } from 'lucide-react'
+import { Coins, FolderOpen, Images, Sparkles } from 'lucide-react'
 
-import { EmptyState } from '@/components/studio/empty-state'
+import { JobFeed } from '@/components/gallery/job-feed'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { GenerationFeedProvider } from '@/hooks/use-generation-feed'
 import { SIGNUP_CREDIT_GRANT } from '@/lib/constants'
-import { countMyProjects } from '@/services/project.service'
+import { getCurrentUser } from '@/lib/supabase/server'
+import { countMyGenerations, listMyGenerations } from '@/services/generation.service'
 import { getMyProfile } from '@/services/profile.service'
+import { countMyProjects } from '@/services/project.service'
 
 export const metadata: Metadata = {
   title: 'Dashboard',
@@ -17,12 +20,19 @@ export const metadata: Metadata = {
 /**
  * Studio home.
  *
- * Generation counts land in Phase 2 when the generations service exists; the
- * tiles read zero until then rather than being absent, so the layout does not
- * shift when the real numbers arrive.
+ * The recent strip is the same live feed the composer writes into, so a job
+ * started on /create and finishing while the user is here updates in place
+ * rather than waiting for a reload.
  */
 export default async function DashboardPage() {
-  const [profile, projectCount] = await Promise.all([getMyProfile(), countMyProjects()])
+  const user = await getCurrentUser()
+
+  const [profile, projectCount, generationCount, generations] = await Promise.all([
+    getMyProfile(),
+    countMyProjects(),
+    countMyGenerations(),
+    listMyGenerations({ limit: 6 }),
+  ])
 
   const firstName = profile?.display_name?.split(' ')[0] ?? profile?.handle ?? 'there'
   const credits = profile?.credits ?? 0
@@ -30,7 +40,7 @@ export default async function DashboardPage() {
   const stats = [
     { label: 'Credits', value: credits.toLocaleString(), icon: Coins, href: '/settings' },
     { label: 'Projects', value: String(projectCount), icon: FolderOpen, href: '/projects' },
-    { label: 'Generations', value: '0', icon: Images, href: '/library' },
+    { label: 'Generations', value: String(generationCount), icon: Images, href: '/library' },
   ]
 
   return (
@@ -76,18 +86,23 @@ export default async function DashboardPage() {
       </div>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-medium text-muted-foreground">Recent generations</h2>
-
-        <EmptyState
-          icon={Clapperboard}
-          title="No generations yet"
-          description="Pick a camera move, drop in an image, and your first shot will appear here."
-          action={
-            <Button asChild>
-              <Link href="/create">Open the composer</Link>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-muted-foreground">Recent generations</h2>
+          {generationCount > generations.length && (
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/library">See all</Link>
             </Button>
-          }
-        />
+          )}
+        </div>
+
+        {user ? (
+          <GenerationFeedProvider userId={user.id} initialGenerations={generations}>
+            <JobFeed
+              showCount={false}
+              emptyHint="Pick a camera move, drop in an image, and your first shot will appear here."
+            />
+          </GenerationFeedProvider>
+        ) : null}
       </section>
     </div>
   )
