@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Toaster } from 'sonner'
 
+import { RouteProgress } from '@/components/route-progress'
 import { siteConfig } from '@/config/site'
 
 import './globals.css'
@@ -45,6 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-dvh bg-background text-foreground antialiased">
+        <RouteProgress />
         {children}
         <Toaster
           position="bottom-right"
