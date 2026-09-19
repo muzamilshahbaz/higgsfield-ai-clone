@@ -34,7 +34,7 @@ Project-scoped **lifecycle hooks** registered in `.claude/settings.json`. The Cl
 | `Stop` | Capture the final response once the turn completes |
 | `SessionEnd` | Final rebuild when the session terminates |
 
-All four events run the same script, `.claude/hooks/capture.js`.
+All four events run the same script, `.claude/hooks/capture.cjs`.
 
 **Strategy: full deterministic rebuild, not append.** Every run reconstructs each log file from the session transcript(s) in `~/.claude/projects/C--claude-code-higgsfield-ai-clone/`. This makes the hook idempotent, self-healing (a missed or interrupted event is repaired by the next run), and able to backfill sessions that predate the install. Section 6 shows this repairing a real miss.
 
@@ -49,7 +49,7 @@ Hooks are declared with the schema's `args` exec form (`"command": "node"`, `"ar
 | Path | Status | Role |
 |---|---|---|
 | `.claude/settings.json` | created | Registers the four lifecycle hooks |
-| `.claude/hooks/capture.js` | created | The capture script (Node, dependency-free) |
+| `.claude/hooks/capture.cjs` | created | The capture script (Node, dependency-free, CommonJS) |
 | `.agent-logs/` | created | Output directory |
 | `CAPTURE-TEST.md` | created | This verification record |
 
@@ -150,7 +150,7 @@ This **is** a genuine new session this time — session `0bc5dde2-2a02-48d6-9c88
 | Transcript store | **Two** transcripts: `559f8dd0-….jsonl` and `0bc5dde2-….jsonl` (84 records) — so two real sessions, one log. |
 | Project trust | `~/.claude.json` → `hasTrustDialogAccepted: true` for `C:\claude-code\higgsfield-ai-clone`. Not a trust block. |
 | Settings that could suppress hooks | No user-level `~/.claude/settings.json`, no `settings.local.json`, no policy file. Project [.claude/settings.json](.claude/settings.json) is intact with all four hooks. |
-| Script health | Copied [capture.js](.claude/hooks/capture.js) into a sandbox outside the repo and piped it this session's exact `UserPromptSubmit` payload. Exit 0; it correctly produced `2026-09-19-0bc5dde2-….md` with this canary as `PROMPT num=1`. **The script is not the fault.** Sandbox deleted; the repo's `.agent-logs/` is untouched. |
+| Script health | Copied [capture.cjs](.claude/hooks/capture.cjs) into a sandbox outside the repo and piped it this session's exact `UserPromptSubmit` payload. Exit 0; it correctly produced `2026-09-19-0bc5dde2-….md` with this canary as `PROMPT num=1`. **The script is not the fault.** Sandbox deleted; the repo's `.agent-logs/` is untouched. |
 | Hook-execution evidence, session 1 | 4 system records with `"command":"Capturing response"`, `durationMs` 470–618, `hookErrors: []`. Hooks demonstrably ran there. |
 | Hook-execution evidence, session 2 | **Zero** hook records of any kind so far. |
 
@@ -236,3 +236,23 @@ Before the canaries, the script was piped hand-built `Stop` and `UserPromptSubmi
 | Captures only prompt, response, UTC timestamp, model | Yes — structural filtering |
 
 Capture is verified. Product development was not started, per the assignment.
+
+---
+
+## 8. Incident: hook silently broken by the app scaffold (2026-09-19)
+
+**Symptom.** The session log stopped updating partway through the build session. New turns were not captured.
+
+**Cause.** Scaffolding the Next.js app added a root `package.json` containing `"type": "module"`. Node resolves the nearest `package.json` when deciding a file's module system, and for `.claude/hooks/capture.js` that is the repo root. The script is CommonJS (`require`, `__dirname`), so every invocation aborted immediately:
+
+```
+ReferenceError: require is not defined in ES module scope
+```
+
+The hook exited 1 in ~280 ms and wrote nothing. Claude Code's own transcript was unaffected throughout.
+
+**Fix.** Renamed the script to `.claude/hooks/capture.cjs` and updated the `args` in `.claude/settings.json`. The `.cjs` extension pins the module system at the file level, so no future root configuration can flip it again. Adding `.claude/hooks/package.json` with `{"type":"commonjs"}` would also have worked, but the explicit extension is self-documenting.
+
+**Recovery.** None required. Because the script performs a full deterministic rebuild from the transcript rather than appending, the first run after the fix backfilled every missed turn (log grew 15,140 to 30,808 bytes, exit 0 in 628 ms against a 20,000 ms timeout). This is the self-healing property described in section 6, exercised against a real failure rather than a simulated one.
+
+**Lesson.** A capture mechanism that lives inside the repository it observes shares that repository's toolchain configuration. Project-scoped hooks written in the host language of the project are exposed to changes in project config; pinning the extension, or keeping hooks dependency- and resolution-independent, avoids it.

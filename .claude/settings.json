@@ -7,7 +7,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.js"],
+            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.cjs"],
             "timeout": 20,
             "statusMessage": "Capturing session log"
           }
@@ -20,7 +20,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.js"],
+            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.cjs"],
             "timeout": 20,
             "statusMessage": "Capturing prompt"
           }
@@ -33,7 +33,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.js"],
+            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.cjs"],
             "timeout": 20,
             "statusMessage": "Capturing response"
           }
@@ -46,7 +46,7 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.js"],
+            "args": ["C:/claude-code/higgsfield-ai-clone/.claude/hooks/capture.cjs"],
             "timeout": 20,
             "statusMessage": "Finalizing session log"
           }
