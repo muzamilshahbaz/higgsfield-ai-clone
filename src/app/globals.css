@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+
+/*
+  Kinetic Studio — dark cinematic theme.
+  The product is dark-only by design: a light theme would halve the time we can
+  spend on the surfaces that actually sell the demo.
+*/
+
+@theme {
+  /* surfaces */
+  --color-background: oklch(0.145 0.012 280);
+  --color-foreground: oklch(0.97 0.004 280);
+
+  --color-surface: oklch(0.185 0.014 280);
+  --color-surface-2: oklch(0.225 0.016 280);
+
+  --color-card: oklch(0.185 0.014 280);
+  --color-card-foreground: oklch(0.97 0.004 280);
+
+  --color-popover: oklch(0.175 0.016 280);
+  --color-popover-foreground: oklch(0.97 0.004 280);
+
+  --color-muted: oklch(0.245 0.014 280);
+  --color-muted-foreground: oklch(0.68 0.012 280);
+
+  /* brand */
+  --color-primary: oklch(0.63 0.205 293);
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-primary-soft: oklch(0.42 0.14 293);
+
+  --color-accent: oklch(0.78 0.145 196);
+  --color-accent-foreground: oklch(0.16 0.02 280);
+
+  --color-secondary: oklch(0.26 0.02 280);
+  --color-secondary-foreground: oklch(0.95 0.004 280);
+
+  --color-credit: oklch(0.82 0.15 85);
+
+  --color-destructive: oklch(0.62 0.21 25);
+  --color-destructive-foreground: oklch(0.99 0 0);
+
+  --color-success: oklch(0.74 0.17 155);
+  --color-warning: oklch(0.82 0.15 85);
+
+  /* lines */
+  --color-border: oklch(0.28 0.016 280);
+  --color-input: oklch(0.3 0.018 280);
+  --color-ring: oklch(0.63 0.205 293);
+
+  /* shape */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+
+  /* type */
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
+
+  /* motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-primary) 40%, transparent);
+  }
+
+  /* focus ring, consistent everywhere */
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-surface-2);
+    border-radius: 999px;
+    border: 3px solid var(--color-background);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+  }
+}
+
+@layer utilities {
+  /* headline treatment used across marketing and empty states */
+  .text-gradient {
+    background-image: linear-gradient(
+      100deg,
+      oklch(0.99 0 0) 0%,
+      oklch(0.85 0.06 293) 45%,
+      oklch(0.72 0.14 250) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* subtle glass panel */
+  .glass {
+    background: color-mix(in oklch, var(--color-surface) 70%, transparent);
+    backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  /* ambient light behind hero and composer */
+  .aurora {
+    position: absolute;
+    inset: -40% -20% auto -20%;
+    height: 70vh;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        40% 50% at 20% 30%,
+        color-mix(in oklch, var(--color-primary) 35%, transparent) 0%,
+        transparent 70%
+      ),
+      radial-gradient(
+        35% 45% at 75% 25%,
+        color-mix(in oklch, var(--color-accent) 22%, transparent) 0%,
+        transparent 70%
+      );
+    filter: blur(60px);
+  }
+
+  .grid-lines {
+    background-image:
+      linear-gradient(to right, color-mix(in oklch, var(--color-border) 55%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklch, var(--color-border) 55%, transparent) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in oklch, var(--color-foreground) 8%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
