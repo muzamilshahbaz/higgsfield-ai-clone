@@ -3,6 +3,12 @@
  *
  * Hand-maintained to mirror supabase/migrations/0001_schema.sql so the app is
  * fully typed without requiring the Supabase CLI during the sprint.
+ *
+ * These are type ALIASES, not interfaces, and must stay that way. The Supabase
+ * client constrains each table to Record<string, unknown>; TypeScript gives an
+ * implicit index signature to object type aliases but never to interfaces, so
+ * declaring these as interfaces silently degrades every query builder to
+ * `never` with no error pointing here.
  * Regenerate later with:  npm run db:types
  */
 
@@ -22,7 +28,7 @@ export type CreditReason =
   | 'admin_adjust'
   | 'promo'
 
-export interface ProfileRow {
+export type ProfileRow = {
   id: string
   email: string | null
   handle: string
@@ -34,7 +40,7 @@ export interface ProfileRow {
   updated_at: string
 }
 
-export interface ProjectRow {
+export type ProjectRow = {
   id: string
   user_id: string
   title: string
@@ -46,7 +52,7 @@ export interface ProjectRow {
   deleted_at: string | null
 }
 
-export interface PresetRow {
+export type PresetRow = {
   id: string
   slug: string
   title: string
@@ -67,7 +73,7 @@ export interface PresetRow {
   created_at: string
 }
 
-export interface GenerationRow {
+export type GenerationRow = {
   id: string
   user_id: string
   project_id: string | null
@@ -106,7 +112,7 @@ export interface GenerationRow {
   deleted_at: string | null
 }
 
-export interface AssetRow {
+export type AssetRow = {
   id: string
   generation_id: string
   user_id: string
@@ -122,7 +128,7 @@ export interface AssetRow {
   created_at: string
 }
 
-export interface CreditLedgerRow {
+export type CreditLedgerRow = {
   id: string
   user_id: string
   delta: number
@@ -133,27 +139,36 @@ export interface CreditLedgerRow {
   created_at: string
 }
 
-export interface LikeRow {
+export type LikeRow = {
   user_id: string
   generation_id: string
   created_at: string
 }
 
+/**
+ * `Relationships` is required by the client's GenericTable constraint. It is
+ * left empty here because we query tables explicitly rather than through
+ * PostgREST embedded resources; `npm run db:types` emits the real foreign-key
+ * entries once the Supabase CLI has a full-access token.
+ */
+
 /** Insert shape: everything optional except the columns the caller must supply. */
 type InsertOf<T, R extends keyof T> = Omit<Partial<T>, R> & Pick<T, R>
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       profiles: {
         Row: ProfileRow
         Insert: InsertOf<ProfileRow, 'id' | 'handle'>
         Update: Partial<ProfileRow>
+        Relationships: []
       }
       projects: {
         Row: ProjectRow
         Insert: InsertOf<ProjectRow, 'user_id' | 'title'>
         Update: Partial<ProjectRow>
+        Relationships: []
       }
       presets: {
         Row: PresetRow
@@ -162,6 +177,7 @@ export interface Database {
           'slug' | 'title' | 'kind' | 'category' | 'prompt_fragment' | 'model_id'
         >
         Update: Partial<PresetRow>
+        Relationships: []
       }
       generations: {
         Row: GenerationRow
@@ -170,24 +186,32 @@ export interface Database {
           'user_id' | 'task' | 'model_id' | 'idempotency_key'
         >
         Update: Partial<GenerationRow>
+        Relationships: []
       }
       assets: {
         Row: AssetRow
         Insert: InsertOf<AssetRow, 'generation_id' | 'user_id' | 'kind' | 'url'>
         Update: Partial<AssetRow>
+        Relationships: []
       }
       credit_ledger: {
         Row: CreditLedgerRow
         Insert: InsertOf<CreditLedgerRow, 'user_id' | 'delta' | 'reason' | 'balance_after'>
         Update: Partial<CreditLedgerRow>
+        Relationships: []
       }
       likes: {
         Row: LikeRow
         Insert: InsertOf<LikeRow, 'user_id' | 'generation_id'>
         Update: Partial<LikeRow>
+        Relationships: []
       }
     }
-    Views: Record<never, never>
+    // `{ [_ in never]: never }` is the shape the Supabase codegen emits for an
+    // empty group. `Record<never, never>` resolves to `{}`, which has no string
+    // index signature and so fails the client's GenericSchema constraint —
+    // silently degrading every query builder to `never`.
+    Views: { [_ in never]: never }
     Functions: {
       spend_credits: {
         Args: {
@@ -226,7 +250,7 @@ export interface Database {
       asset_kind: AssetKind
       credit_reason: CreditReason
     }
-    CompositeTypes: Record<never, never>
+    CompositeTypes: { [_ in never]: never }
   }
 }
 
