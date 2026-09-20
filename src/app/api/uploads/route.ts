@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { LIMITS } from '@/lib/constants'
+import { LIMITS, RATE_LIMITS } from '@/lib/constants'
+import { clientKey, rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { fieldErrors, uploadSchema } from '@/lib/validation/generation'
 import { uploadStartFrame } from '@/services/asset.service'
 import { getCurrentUser } from '@/lib/supabase/server'
@@ -18,6 +19,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: { code: 'UNAUTHENTICATED', message: 'You need to be signed in.' } },
       { status: 401 },
+    )
+  }
+
+  // Storage writes cost us something per call, so this is limited per user
+  // rather than per IP — the account is the thing worth following.
+  const limit = rateLimit(clientKey(request, user.id), RATE_LIMITS.uploads)
+  if (!limit.ok) {
+    return tooManyRequests(
+      limit,
+      `That is a lot of uploads at once. Try again in ${limit.retryAfterSec}s.`,
     )
   }
 

@@ -47,6 +47,26 @@ export const LIMITS = {
   maxUploadBytes: 10 * 1024 * 1024,
 } as const
 
+/**
+ * Per-endpoint rate limits.
+ *
+ * Deliberately generous: these are brakes on runaway clients and casual
+ * scraping, not a pricing tier. The rules that actually protect spend —
+ * `maxConcurrentJobs`, `maxGenerationsPerHour`, and the credit functions
+ * themselves — are enforced above and in Postgres, where an in-memory counter
+ * cannot be forgotten by a cold start.
+ */
+export const RATE_LIMITS = {
+  /** Uploads write to storage, so they cost us something per call. */
+  uploads: { limit: 30, windowMs: 10 * 60 * 1000 },
+  /** The one endpoint an unauthenticated visitor can hammer. */
+  explore: { limit: 120, windowMs: 60 * 1000 },
+  /** Cheap per call, but a held-down key should not write 500 rows. */
+  likes: { limit: 60, windowMs: 60 * 1000 },
+  /** Well under MAX_PROJECTS, which is the real ceiling. */
+  projects: { limit: 20, windowMs: 10 * 60 * 1000 },
+} as const
+
 export const SIGNUP_CREDIT_GRANT = 200
 
 export const STORAGE_BUCKETS = {

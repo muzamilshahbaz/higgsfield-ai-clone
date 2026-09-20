@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 
+import { RATE_LIMITS } from '@/lib/constants'
 import { isExploreSort } from '@/lib/explore'
+import { clientKey, rateLimit, tooManyRequests } from '@/lib/rate-limit'
+import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
 
 /**
@@ -12,6 +15,15 @@ import { listPublicGenerations } from '@/services/explore.service'
  * an anonymous request simply gets `false` everywhere.
  */
 export async function GET(request: Request) {
+  // The one endpoint a visitor can reach without an account, so it is keyed
+  // by IP. A signed-in caller is keyed by id instead, which survives them
+  // switching networks mid-scroll.
+  const user = await getCurrentUser()
+  const quota = rateLimit(clientKey(request, user?.id), RATE_LIMITS.explore)
+  if (!quota.ok) {
+    return tooManyRequests(quota, 'Slow down a moment — the feed is rate limited.')
+  }
+
   const url = new URL(request.url)
 
   const limitParam = Number(url.searchParams.get('limit'))

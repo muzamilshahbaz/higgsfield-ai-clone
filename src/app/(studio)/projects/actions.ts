@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { RATE_LIMITS } from '@/lib/constants'
+import { actionKey, rateLimit } from '@/lib/rate-limit'
 import { createProjectSchema, updateProjectSchema } from '@/lib/validation/project'
 import { getGeneration } from '@/services/generation.service'
 import {
@@ -43,6 +45,11 @@ export async function createProjectAction(input: {
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
     return { ok: false, error: issue?.message ?? 'Check the form.', field: String(issue?.path[0] ?? '') }
+  }
+
+  const quota = rateLimit(await actionKey(), RATE_LIMITS.projects)
+  if (!quota.ok) {
+    return { ok: false, error: `That is a lot of projects at once. Try again in ${quota.retryAfterSec}s.` }
   }
 
   const result = await createProject(parsed.data)

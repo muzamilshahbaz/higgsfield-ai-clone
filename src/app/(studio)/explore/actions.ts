@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { RATE_LIMITS } from '@/lib/constants'
+import { actionKey, rateLimit } from '@/lib/rate-limit'
 import { toggleLike } from '@/services/explore.service'
 import { setGenerationVisibility } from '@/services/generation.service'
 import type { ActionResult } from '@/app/(studio)/projects/actions'
@@ -17,6 +19,13 @@ import type { GenerationVisibility } from '@/types/database'
 export async function toggleLikeAction(
   generationId: string,
 ): Promise<ActionResult<{ liked: boolean; likeCount: number }>> {
+  // A like is one row and one counter, but a held-down key should not write
+  // hundreds of them. The message says when, not just no.
+  const quota = rateLimit(await actionKey(), RATE_LIMITS.likes)
+  if (!quota.ok) {
+    return { ok: false, error: `Easy — try again in ${quota.retryAfterSec}s.` }
+  }
+
   const result = await toggleLike(generationId)
   if (!result.ok) return { ok: false, error: result.error }
 

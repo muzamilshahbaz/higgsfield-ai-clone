@@ -70,6 +70,7 @@ Or paste each file in `supabase/migrations/` into the Supabase SQL editor, in or
 | `0003_rls.sql` | Row level security policies |
 | `0004_storage.sql` | Storage buckets and object policies |
 | `0005_realtime.sql` | Publishes `generations` to Realtime |
+| `0006_hardening.sql` | Restricts `toggle_like` to published work; adds the Explore sort index |
 
 ### 5. Seed the preset catalog
 
@@ -82,6 +83,30 @@ npm run seed
 ```bash
 npm run dev
 ```
+
+### 7. Optional: demo content
+
+Explore is empty until somebody publishes something. After signing up:
+
+```bash
+npm run seed:demo -- --email you@example.com
+```
+
+Six finished, published shots attributed to that account. They cost zero
+credits and write no ledger rows, so the balance still reconciles.
+
+## Deploying
+
+[`DEPLOYMENT.md`](DEPLOYMENT.md) is the checklist: the Supabase console steps
+that cannot be scripted, the Vercel environment variables, and the
+walkthrough that counts as acceptance.
+
+Two health checks worth knowing:
+
+- `GET /api/health` — 200 when Supabase is configured, reachable and seeded;
+  503 naming the failing check otherwise. Booleans only, no values.
+- `GET /robots.txt`, `GET /sitemap.xml` — the public surface, with every
+  signed-in route disallowed.
 
 ## Architecture rules
 
@@ -99,7 +124,11 @@ Three conventions keep the codebase coherent:
    `loading.tsx` on purpose: a Suspense boundary lets Next flush the shell — and a
    200 — before the page decides to call `notFound()`, which turns every dead
    permalink into a soft 404 that crawlers read as a live page.
-5. **Soft deletes go through the service-role client.** The `*_select_own` policies in
+5. **Rate limits never guard money.** `src/lib/rate-limit.ts` is in-memory and
+   per-instance — a brake on runaway clients, not a guarantee. Anything that
+   must hold (credit spend, two concurrent jobs, storage scoping) is enforced
+   in Postgres and RLS, where a cold start cannot forget it.
+6. **Soft deletes go through the service-role client.** The `*_select_own` policies in
    `0003_rls.sql` all require `deleted_at is null`, and PostgREST wraps every UPDATE in
    a RETURNING clause — so Postgres checks those SELECT policies against the *new* row
    and rejects the statement the moment `deleted_at` is set. Deleting a project or a
@@ -114,6 +143,7 @@ Three conventions keep the codebase coherent:
 | `npm run build` | Production build |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run test` | Vitest (validation schemas, provider adapter, registry, helpers) |
-| `npm run seed` | Seed presets and demo data |
+| `npm run seed` | Seed the preset catalogue |
+| `npm run seed:demo` | Publish sample shots for one account (`-- --email you@…`) |
 | `npm run db:push` | Apply migrations via the Supabase CLI |
 | `npm run db:types` | Regenerate `src/types/database.ts` from the live schema |
