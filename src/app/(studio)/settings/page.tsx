@@ -1,38 +1,61 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { Coins } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Coins } from 'lucide-react'
 
+import { ProfileForm } from '@/components/settings/profile-form'
+import { LedgerTable } from '@/components/settings/ledger-table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { formatRelativeTime } from '@/lib/utils'
+import { getMyCreditSummary, listMyLedgerPage } from '@/services/credits.service'
 import { getMyProfile, initialsFor } from '@/services/profile.service'
 
 export const metadata: Metadata = {
   title: 'Settings',
-  description: 'Your profile and credit balance.',
+  description: 'Your profile and your credit ledger.',
 }
 
-export default async function SettingsPage() {
-  const profile = await getMyProfile()
+const LEDGER_PAGE = 50
+const LEDGER_MAX = 500
+
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ledger?: string }>
+}) {
+  const { ledger } = await searchParams
+
+  // Clamped, because this number comes straight from the URL and drives a
+  // range query: a hand-typed `?ledger=999999` should not become one.
+  const requested = Number(ledger)
+  const shown =
+    Number.isFinite(requested) && requested > LEDGER_PAGE
+      ? Math.min(Math.floor(requested), LEDGER_MAX)
+      : LEDGER_PAGE
+
+  const [profile, ledgerPage, summary] = await Promise.all([
+    getMyProfile(),
+    listMyLedgerPage(shown),
+    getMyCreditSummary(),
+  ])
 
   // Middleware already guards this route; this is the belt-and-braces case
   // where the session expires between the middleware check and the render.
   if (!profile) redirect('/sign-in?next=/settings')
 
-  const fields = [
-    { label: 'Name', value: profile.display_name ?? '—' },
-    { label: 'Handle', value: `@${profile.handle}` },
-    { label: 'Email', value: profile.email ?? '—' },
-    { label: 'Member since', value: formatRelativeTime(profile.created_at) },
+  const stats = [
+    { label: 'Available', value: profile.credits, icon: Coins, tone: 'text-credit' },
+    { label: 'Spent', value: summary.spent, icon: ArrowUpRight, tone: 'text-muted-foreground' },
+    { label: 'Refunded', value: summary.refunded, icon: ArrowDownLeft, tone: 'text-success' },
   ]
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your profile and credit balance.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Your profile and your credit ledger.</p>
       </div>
 
       <Card className="p-6">
@@ -43,10 +66,11 @@ export default async function SettingsPage() {
           </Avatar>
 
           <div className="min-w-0">
-            <p className="truncate text-lg font-medium">
-              {profile.display_name ?? profile.handle}
+            <p className="truncate text-lg font-medium">{profile.display_name ?? profile.handle}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {profile.email ?? `@${profile.handle}`} · joined{' '}
+              {formatRelativeTime(profile.created_at)}
             </p>
-            <p className="truncate text-sm text-muted-foreground">@{profile.handle}</p>
           </div>
 
           {profile.role === 'admin' && (
@@ -58,37 +82,47 @@ export default async function SettingsPage() {
 
         <Separator className="my-6" />
 
-        <dl className="grid gap-4 sm:grid-cols-2">
-          {fields.map((field) => (
-            <div key={field.label}>
-              <dt className="text-xs text-muted-foreground">{field.label}</dt>
-              <dd className="mt-0.5 truncate text-sm">{field.value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <p className="mt-6 text-xs text-muted-foreground">
-          Editing your profile arrives with the settings surface in Phase 4.
-        </p>
+        <ProfileForm profile={profile} />
       </Card>
 
-      <Card className="p-6">
-        <div className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface">
-            <Coins className="size-4 text-credit" aria-hidden />
-          </span>
-          <div>
-            <p className="text-xl font-semibold tabular-nums">
-              {profile.credits.toLocaleString()}
-            </p>
-            <p className="text-xs text-muted-foreground">credits available</p>
-          </div>
+      <Card className="p-6" id="ledger">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {stats.map((stat) => {
+            const Icon = stat.icon
+            return (
+              <div key={stat.label} className="flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface">
+                  <Icon className={`size-4 ${stat.tone}`} aria-hidden />
+                </span>
+                <span>
+                  <span className="block text-xl font-semibold tabular-nums">
+                    {stat.value.toLocaleString()}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">{stat.label}</span>
+                </span>
+              </div>
+            )
+          })}
         </div>
 
-        <p className="mt-6 text-xs text-muted-foreground">
-          Every debit and refund is written to an append-only ledger. The full history appears
-          here in Phase 4.
-        </p>
+        <Separator className="my-6" />
+
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-sm font-medium">Credit ledger</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Append-only. Every debit is written when a job is submitted and every refund when
+              one fails, so this always adds up to your balance.
+            </p>
+          </div>
+
+          <LedgerTable
+            entries={ledgerPage.entries}
+            total={ledgerPage.total}
+            shown={shown}
+            step={LEDGER_PAGE}
+          />
+        </div>
       </Card>
     </div>
   )

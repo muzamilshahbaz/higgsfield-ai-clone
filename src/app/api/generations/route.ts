@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { createGenerationSchema, fieldErrors } from '@/lib/validation/generation'
 import { createGeneration, listMyGenerations } from '@/services/generation.service'
-import type { GenerationStatus } from '@/types/database'
+import type { GenerationStatus, GenerationTask } from '@/types/database'
 
 /**
  * POST /api/generations — start a job.
@@ -64,6 +64,16 @@ export async function POST(request: Request) {
 }
 
 const STATUSES: GenerationStatus[] = ['queued', 'running', 'succeeded', 'failed', 'canceled']
+const TASKS: GenerationTask[] = ['text_to_image', 'text_to_video', 'image_to_video']
+
+/** Reads a repeatable, optionally comma-joined query param into known values. */
+function enumParam<T extends string>(url: URL, key: string, allowed: T[]): T[] {
+  return url.searchParams
+    .getAll(key)
+    .flatMap((value) => value.split(','))
+    .map((value) => value.trim())
+    .filter((value): value is T => allowed.includes(value as T))
+}
 
 export async function GET(request: Request) {
   // An empty list and "you are signed out" are different answers, and a caller
@@ -82,16 +92,20 @@ export async function GET(request: Request) {
   const limitParam = Number(url.searchParams.get('limit'))
   const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.min(limitParam, 60) : 24
 
-  const status = url.searchParams
-    .getAll('status')
-    .flatMap((value) => value.split(','))
-    .filter((value): value is GenerationStatus => STATUSES.includes(value as GenerationStatus))
+  const offsetParam = Number(url.searchParams.get('offset'))
+  const offset = Number.isFinite(offsetParam) && offsetParam > 0 ? Math.floor(offsetParam) : 0
 
   const generations = await listMyGenerations({
     limit,
+    offset,
     projectId: url.searchParams.get('projectId'),
-    status,
+    status: enumParam(url, 'status', STATUSES),
+    task: enumParam(url, 'task', TASKS),
+    search: url.searchParams.get('q'),
   })
 
-  return NextResponse.json({ generations })
+  // `hasMore` is derived from the page being full rather than from a second
+  // count query: one extra round trip per scroll is not worth knowing the
+  // exact total on a surface that only ever asks for the next window.
+  return NextResponse.json({ generations, hasMore: generations.length === limit })
 }

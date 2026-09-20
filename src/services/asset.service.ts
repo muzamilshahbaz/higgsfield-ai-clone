@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto'
 
 import type { RawAsset } from '@/lib/ai/types'
 import { STORAGE_BUCKETS } from '@/lib/constants'
-import { env } from '@/lib/env'
+import { env, isServiceRoleConfigured } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, getCurrentUser } from '@/lib/supabase/server'
 import type { AssetKind, AssetRow, GenerationRow } from '@/types/database'
@@ -273,4 +273,65 @@ function absolute(url: string): string {
   if (/^https?:\/\//i.test(url)) return url
   const base = env.supabaseUrl ?? env.siteUrl
   return `${base.replace(/\/$/, '')}/${url.replace(/^\//, '')}`
+}
+
+/**
+ * Removes a generation's media: the storage objects first, then the rows.
+ *
+ * The `generations` bucket deliberately grants no delete policy to end users
+ * (0004_storage.sql), because everything in it is written by the server after
+ * a provider job finishes. So the object removal is the one part of this that
+ * needs the admin client, and it is scoped to paths we just read back through
+ * RLS as belonging to the caller.
+ *
+ * A missing service-role key degrades to orphaned bytes in the bucket rather
+ * than a failed delete: the user asked for the asset to be gone from their
+ * library, and that part always succeeds.
+ */
+export async function deleteGenerationMedia(generationId: string): Promise<number> {
+  const supabase = await createClient()
+
+  const { data: assets, error } = await supabase
+    .from('assets')
+    .select('id, storage_path')
+    .eq('generation_id', generationId)
+
+  if (error) {
+    console.error('[asset.service] could not read assets for deletion:', error.message)
+    return 0
+  }
+  if (!assets || assets.length === 0) return 0
+
+  const paths = assets
+    .map((asset) => asset.storage_path)
+    .filter((path): path is string => Boolean(path))
+
+  if (paths.length > 0) {
+    if (isServiceRoleConfigured) {
+      const admin = createAdminClient()
+      const { error: removeError } = await admin.storage
+        .from(STORAGE_BUCKETS.generations)
+        .remove(paths)
+
+      if (removeError) {
+        console.error('[asset.service] storage cleanup failed:', removeError.message)
+      }
+    } else {
+      console.warn(
+        '[asset.service] SUPABASE_SERVICE_ROLE_KEY is not set; leaving stored media in place.',
+      )
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('assets')
+    .delete()
+    .eq('generation_id', generationId)
+
+  if (deleteError) {
+    console.error('[asset.service] could not delete asset rows:', deleteError.message)
+    return 0
+  }
+
+  return assets.length
 }

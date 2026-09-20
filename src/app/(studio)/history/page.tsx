@@ -1,20 +1,50 @@
 import type { Metadata } from 'next'
-import { History } from 'lucide-react'
 
-import { ComingSoon } from '@/components/studio/coming-soon'
+import type { DrawerProject } from '@/components/gallery/generation-drawer'
+import { HistoryTable } from '@/components/gallery/history-table'
+import { listMyGenerations } from '@/services/generation.service'
+import { listMyProjects } from '@/services/project.service'
 
 export const metadata: Metadata = {
   title: 'History',
   description: 'Every job you have run, including the ones that failed.',
 }
 
-export default function Page() {
+const PAGE_SIZE = 30
+
+/**
+ * The job log.
+ *
+ * Unlike the library, nothing is filtered out by default: a failed job and its
+ * refund are part of the record, and hiding them is how a user ends up unable
+ * to explain their own balance.
+ */
+export default async function HistoryPage() {
+  const [generations, projects] = await Promise.all([
+    listMyGenerations({ limit: PAGE_SIZE }),
+    listMyProjects(),
+  ])
+
+  const drawerProjects: DrawerProject[] = projects.map((project) => ({
+    id: project.id,
+    title: project.title,
+    isDefault: project.is_default,
+  }))
+
   return (
-    <ComingSoon
-      icon={History}
-      title="History"
-      description="Every job you have run, including the ones that failed."
-      phase="Phase 4"
-    />
+    <div className="mx-auto max-w-5xl space-y-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">History</h1>
+        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+          Every job you have run, newest first — what it used, what it cost, and what came back.
+        </p>
+      </div>
+
+      <HistoryTable
+        initialGenerations={generations}
+        projects={drawerProjects}
+        pageSize={PAGE_SIZE}
+      />
+    </div>
   )
 }

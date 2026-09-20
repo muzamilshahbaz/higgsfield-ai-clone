@@ -11,7 +11,7 @@ import { getCurrentUser } from '@/lib/supabase/server'
 import { listMyGenerations } from '@/services/generation.service'
 import { getPresetBySlug } from '@/services/preset.service'
 import { getMyProfile } from '@/services/profile.service'
-import { ensureDefaultProject } from '@/services/project.service'
+import { ensureDefaultProject, listMyProjects } from '@/services/project.service'
 
 export const metadata: Metadata = {
   title: 'Create',
@@ -24,26 +24,44 @@ export const metadata: Metadata = {
  * The initial rows are server-rendered so the feed is never empty for a frame
  * on reload; everything after that arrives over Realtime and the ticker.
  *
- * `?preset=<slug>` is how the gallery hands a preset over. An unknown or
- * retired slug resolves to null and the composer simply opens with no preset —
- * a stale bookmark should not be an error page.
+ * Three deep links land here, and every one of them degrades to a plain
+ * composer rather than an error page, because each is something a user can
+ * bookmark and come back to weeks later:
+ *   `?preset=<slug>`   the gallery's "Use preset"
+ *   `?project=<uuid>`  a project's "Add to this project"
+ *   `?image=<url>`     the library's "Use as start frame"
  */
 export default async function CreatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ preset?: string }>
+  searchParams: Promise<{ preset?: string; project?: string; image?: string }>
 }) {
   const user = await getCurrentUser()
   if (!user) return <NotSignedIn />
 
-  const { preset: presetSlug } = await searchParams
+  const { preset: presetSlug, project: projectParam, image: imageParam } = await searchParams
 
-  const [profile, projectId, generations, preset] = await Promise.all([
+  const [profile, defaultProjectId, projects, generations, preset] = await Promise.all([
     getMyProfile(),
     ensureDefaultProject(),
+    listMyProjects(),
     listMyGenerations({ limit: 24 }),
     presetSlug ? getPresetBySlug(presetSlug) : Promise.resolve(null),
   ])
+
+  // Checked against the user's own projects rather than trusted: a stale or
+  // borrowed id silently falls back to the default project.
+  const requestedProject = projectParam
+    ? projects.find((project) => project.id === projectParam)
+    : undefined
+  const projectId = requestedProject?.id ?? defaultProjectId
+
+  // Only http(s) and same-origin paths, so `?image=javascript:…` cannot reach
+  // an `src`. The same rule the generation schema enforces on the way in.
+  const startFrame =
+    imageParam && (imageParam.startsWith('/') || /^https?:\/\//i.test(imageParam))
+      ? imageParam
+      : null
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
@@ -62,7 +80,13 @@ export default async function CreatePage({
             <Composer
               credits={profile?.credits ?? 0}
               projectId={projectId}
+              projects={projects.map((project) => ({
+                id: project.id,
+                title: project.title,
+                isDefault: project.is_default,
+              }))}
               initialPreset={preset}
+              initialImageUrl={startFrame}
             />
           </div>
 

@@ -120,3 +120,69 @@ export async function listMyLedger(limit = 50): Promise<CreditLedgerRow[]> {
   }
   return data ?? []
 }
+
+export interface LedgerPage {
+  entries: CreditLedgerRow[]
+  /** Exact number of ledger rows, so the page can say "showing 50 of 214". */
+  total: number
+}
+
+/** One page of the signed-in user's ledger, newest first, with the true total. */
+export async function listMyLedgerPage(limit = 50, offset = 0): Promise<LedgerPage> {
+  const user = await getCurrentUser()
+  if (!user) return { entries: [], total: 0 }
+
+  const supabase = await createClient()
+  const { data, count, error } = await supabase
+    .from('credit_ledger')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (error) {
+    console.error('[credits.service] listMyLedgerPage failed:', error.message)
+    return { entries: [], total: 0 }
+  }
+  return { entries: data ?? [], total: count ?? 0 }
+}
+
+export interface CreditSummary {
+  earned: number
+  spent: number
+  refunded: number
+}
+
+/**
+ * Lifetime totals across the ledger.
+ *
+ * PostgREST has no SUM without a dedicated function, so this reads the two
+ * columns it needs and adds them up here. The 5,000-row ceiling is well past
+ * anything a single account generates at 20 jobs an hour; if it is ever hit,
+ * the number shown would understate history, so the cap is deliberately far
+ * above the rate limit rather than a round-looking guess.
+ */
+export async function getMyCreditSummary(): Promise<CreditSummary> {
+  const user = await getCurrentUser()
+  if (!user) return { earned: 0, spent: 0, refunded: 0 }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('credit_ledger')
+    .select('delta, reason')
+    .limit(5000)
+
+  if (error) {
+    console.error('[credits.service] getMyCreditSummary failed:', error.message)
+    return { earned: 0, spent: 0, refunded: 0 }
+  }
+
+  const summary: CreditSummary = { earned: 0, spent: 0, refunded: 0 }
+
+  for (const row of data ?? []) {
+    if (row.reason === 'generation_refund') summary.refunded += Math.abs(row.delta)
+    else if (row.delta < 0) summary.spent += Math.abs(row.delta)
+    else summary.earned += row.delta
+  }
+
+  return summary
+}

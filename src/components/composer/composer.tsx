@@ -11,6 +11,13 @@ import { PresetPicker } from '@/components/composer/preset-picker'
 import { Segmented, type SegmentedOption } from '@/components/composer/segmented'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useGenerationFeed } from '@/hooks/use-generation-feed'
 import { creditCostFor, defaultModelForTask, getModel, type ModelEntry } from '@/lib/ai/registry'
@@ -88,25 +95,50 @@ function withModel(current: ComposerState, model: ModelEntry): ComposerState {
   }
 }
 
+export interface ComposerProject {
+  id: string
+  title: string
+  isDefault: boolean
+}
+
 export function Composer({
   credits,
   projectId,
+  projects = [],
   initialPreset = null,
+  initialImageUrl = null,
 }: {
   credits: number
+  /** Where a new generation is filed unless the user picks another project. */
   projectId?: string | null
+  projects?: ComposerProject[]
   /** From `/create?preset=<slug>` — the gallery's "Use preset" link. */
   initialPreset?: PresetSummary | null
+  /** From `/create?image=<url>` — the library's "Use as start frame". */
+  initialImageUrl?: string | null
 }) {
   const router = useRouter()
   const { upsert } = useGenerationFeed()
 
+  // Kept beside the form rather than inside it: a project is not a model
+  // capability, so `withModel` has no business resetting it.
+  const [targetProjectId, setTargetProjectId] = React.useState<string | null>(projectId ?? null)
+
   const [state, setState] = React.useState<ComposerState>(() => {
     const presetModel = initialPreset ? getModel(initialPreset.modelId) : undefined
-    if (initialPreset && presetModel) {
-      return { ...withModel(initialStateFor(presetModel.task), presetModel), preset: initialPreset }
+
+    const base =
+      initialPreset && presetModel
+        ? { ...withModel(initialStateFor(presetModel.task), presetModel), preset: initialPreset }
+        : initialStateFor('image_to_video')
+
+    // `withModel` has already dropped the image if the chosen model cannot
+    // take one, so this only ever sets a frame the model actually accepts.
+    const model = getModel(base.modelId)
+    if (initialImageUrl && model?.supports.imageInput) {
+      return { ...base, imageUrl: initialImageUrl }
     }
-    return initialStateFor('image_to_video')
+    return base
   })
 
   const [errors, setErrors] = React.useState<Record<string, string>>({})
@@ -188,7 +220,7 @@ export function Composer({
       task: state.task,
       modelId: state.modelId,
       presetId: state.preset?.id ?? undefined,
-      projectId: projectId ?? undefined,
+      projectId: targetProjectId ?? undefined,
       prompt: state.prompt,
       negativePrompt: state.negativePrompt.trim() || undefined,
       imageUrl: state.imageUrl ?? undefined,
@@ -429,6 +461,31 @@ export function Composer({
           </div>
         )}
       </div>
+
+      {projects.length > 0 && (
+        <div className="space-y-1.5">
+          <label htmlFor="composer-project" className="text-xs font-medium text-muted-foreground">
+            Project
+          </label>
+          <Select
+            value={targetProjectId ?? undefined}
+            onValueChange={setTargetProjectId}
+            disabled={submitting}
+          >
+            <SelectTrigger id="composer-project">
+              <SelectValue placeholder="Choose a project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.title}
+                  {project.isDefault ? ' · default' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-2 border-t border-border/60 pt-4">
         <div className="flex items-center justify-between text-sm">

@@ -19,13 +19,18 @@ import {
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, getCurrentUser } from '@/lib/supabase/server'
 import type { CreateGenerationInput } from '@/lib/validation/generation'
-import { assetsByGeneration, persistProviderAssets } from '@/services/asset.service'
+import {
+  assetsByGeneration,
+  deleteGenerationMedia,
+  persistProviderAssets,
+} from '@/services/asset.service'
 import { refundCredits, spendCredits } from '@/services/credits.service'
 import { getPreset } from '@/services/preset.service'
 import {
   isTerminal,
   type GenerationRow,
   type GenerationStatus,
+  type GenerationTask,
   type GenerationWithAssets,
   type Json,
 } from '@/types/database'
@@ -441,8 +446,13 @@ export async function sweepStaleJobs(limit = 100): Promise<{ scanned: number; ad
 
 export interface ListGenerationsOptions {
   limit?: number
+  /** Rows to skip — the library and history pages page through with this. */
+  offset?: number
   projectId?: string | null
   status?: GenerationStatus[]
+  task?: GenerationTask[]
+  /** Free text over what the user typed and what the preset resolved to. */
+  search?: string | null
 }
 
 /** The signed-in user's generations, newest first, each with its media. */
@@ -452,16 +462,30 @@ export async function listMyGenerations(
   const user = await getCurrentUser()
   if (!user) return []
 
+  const limit = options.limit ?? 24
+  const offset = Math.max(0, options.offset ?? 0)
+
   const supabase = await createClient()
   let query = supabase
     .from('generations')
     .select('*')
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
-    .limit(options.limit ?? 24)
+    // `range` rather than `limit`, so "load more" asks for the next window
+    // instead of refetching a bigger first page every time.
+    .range(offset, offset + limit - 1)
 
   if (options.projectId) query = query.eq('project_id', options.projectId)
   if (options.status?.length) query = query.in('status', options.status)
+  if (options.task?.length) query = query.in('task', options.task)
+
+  const search = options.search?.trim()
+  if (search) {
+    // Escaped because a stray comma would split the PostgREST filter list and
+    // a stray % would turn a literal search into a wildcard.
+    const term = search.replace(/[%,()]/g, ' ')
+    query = query.or(`prompt.ilike.%${term}%,resolved_prompt.ilike.%${term}%`)
+  }
 
   const { data, error } = await query
 
@@ -505,6 +529,160 @@ export async function countMyGenerations(): Promise<number> {
     return 0
   }
   return count ?? 0
+}
+
+export async function countMyGenerationsWhere(
+  options: Pick<ListGenerationsOptions, 'projectId' | 'status' | 'task'> = {},
+): Promise<number> {
+  const user = await getCurrentUser()
+  if (!user) return 0
+
+  const supabase = await createClient()
+  let query = supabase
+    .from('generations')
+    .select('id', { count: 'exact', head: true })
+    .is('deleted_at', null)
+
+  if (options.projectId) query = query.eq('project_id', options.projectId)
+  if (options.status?.length) query = query.in('status', options.status)
+  if (options.task?.length) query = query.in('task', options.task)
+
+  const { count, error } = await query
+
+  if (error) {
+    console.error('[generation.service] countMyGenerationsWhere failed:', error.message)
+    return 0
+  }
+  return count ?? 0
+}
+
+// ---------------------------------------------------------------------------
+// Library management
+// ---------------------------------------------------------------------------
+
+/**
+ * Organisational edits the user makes to their own work.
+ *
+ * These go through the user's client, not the admin one. The distinction the
+ * file header draws is about *provider* fields — status, progress, job ids —
+ * which only the server may write. `project_id` and `deleted_at` are the
+ * user's to set, so RLS scopes them and there is no `user_id` filter to omit.
+ */
+
+export type GenerationMutation<T> = { ok: true; data: T } | { ok: false; error: string }
+
+/** Files a generation under a different project, or none at all. */
+export async function moveGenerationToProject(
+  generationId: string,
+  projectId: string | null,
+): Promise<GenerationMutation<GenerationRow>> {
+  const user = await getCurrentUser()
+  if (!user) return { ok: false, error: 'You need to be signed in.' }
+
+  const supabase = await createClient()
+
+  // Checked rather than trusted: the id comes from a form, and pointing a row
+  // at someone else's project would be invisible to the generations policy.
+  if (projectId) {
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (projectError) {
+      console.error('[generation.service] project check failed:', projectError.message)
+      return { ok: false, error: 'Could not move that generation. Try again.' }
+    }
+    if (!project) return { ok: false, error: 'That project is gone.' }
+  }
+
+  const { data, error } = await supabase
+    .from('generations')
+    .update({ project_id: projectId })
+    .eq('id', generationId)
+    .is('deleted_at', null)
+    .select('*')
+    .maybeSingle()
+
+  if (error) {
+    console.error('[generation.service] moveGenerationToProject failed:', error.message)
+    return { ok: false, error: 'Could not move that generation. Try again.' }
+  }
+  if (!data) return { ok: false, error: 'That generation is gone.' }
+
+  return { ok: true, data }
+}
+
+/**
+ * Deletes a generation from the library.
+ *
+ * The row is soft-deleted so the credit ledger keeps pointing at something,
+ * but the media is removed for real — "delete" on a library card has to mean
+ * the file is gone, not hidden.
+ */
+export async function deleteGeneration(
+  generationId: string,
+): Promise<GenerationMutation<{ id: string; assetsRemoved: number }>> {
+  const user = await getCurrentUser()
+  if (!user) return { ok: false, error: 'You need to be signed in.' }
+
+  // Same key generation itself needs, so this is never the first place a
+  // misconfigured deployment discovers the problem.
+  if (!isServiceRoleConfigured) {
+    return { ok: false, error: 'Deleting is unavailable: SUPABASE_SERVICE_ROLE_KEY is not set.' }
+  }
+
+  const supabase = await createClient()
+
+  const { data: existing, error: readError } = await supabase
+    .from('generations')
+    .select('id, status')
+    .eq('id', generationId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  if (readError) {
+    console.error('[generation.service] delete lookup failed:', readError.message)
+    return { ok: false, error: 'Could not delete that generation. Try again.' }
+  }
+  if (!existing) return { ok: false, error: 'That generation is already gone.' }
+
+  if (!isTerminal(existing.status)) {
+    return {
+      ok: false,
+      error: 'That job is still running. Wait for it to finish before deleting it.',
+    }
+  }
+
+  const assetsRemoved = await deleteGenerationMedia(generationId)
+
+  // The one write in this function that cannot go through the user's client.
+  //
+  // PostgREST wraps every UPDATE in a RETURNING clause, and Postgres then
+  // checks the SELECT policies against the *new* row. `generations_select_own`
+  // requires `deleted_at is null`, so the moment the update sets it the row
+  // becomes invisible to its own owner and Postgres rejects the statement
+  // outright — "new row violates row-level security policy". A soft delete is
+  // therefore impossible under that policy from a user-scoped client.
+  //
+  // The admin client bypasses RLS, so the `user_id` filter below is doing the
+  // scoping that a policy would otherwise do. It is not redundant.
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('generations')
+    .update({ deleted_at: new Date().toISOString(), visibility: 'private' })
+    .eq('id', generationId)
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+
+  if (error) {
+    console.error('[generation.service] deleteGeneration failed:', error.message)
+    return { ok: false, error: 'Could not delete that generation. Try again.' }
+  }
+
+  return { ok: true, data: { id: generationId, assetsRemoved } }
 }
 
 // ---------------------------------------------------------------------------

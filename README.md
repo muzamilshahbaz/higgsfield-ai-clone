@@ -95,6 +95,12 @@ Three conventions keep the codebase coherent:
 3. **Providers are plugged in, never hard-coded.** Presets reference a model by
    registry id in `src/lib/ai/registry.ts`. Adding a real provider is one driver file
    plus a key — no changes to presets, services or the schema.
+4. **Soft deletes go through the service-role client.** The `*_select_own` policies in
+   `0003_rls.sql` all require `deleted_at is null`, and PostgREST wraps every UPDATE in
+   a RETURNING clause — so Postgres checks those SELECT policies against the *new* row
+   and rejects the statement the moment `deleted_at` is set. Deleting a project or a
+   generation therefore uses the admin client with an explicit `user_id` filter, which
+   is doing the scoping a policy would otherwise do.
 
 ## Scripts
 
@@ -103,7 +109,7 @@ Three conventions keep the codebase coherent:
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm run typecheck` | TypeScript, no emit |
-| `npm run test` | Vitest (credits math, provider adapter, registry) |
+| `npm run test` | Vitest (validation schemas, provider adapter, registry, helpers) |
 | `npm run seed` | Seed presets and demo data |
 | `npm run db:push` | Apply migrations via the Supabase CLI |
 | `npm run db:types` | Regenerate `src/types/database.ts` from the live schema |
