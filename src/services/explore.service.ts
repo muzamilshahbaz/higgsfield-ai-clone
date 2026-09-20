@@ -1,7 +1,7 @@
 import 'server-only'
 
-import type { ExploreItem, ExploreSort } from '@/lib/explore'
-import { createClient, getCurrentUser } from '@/lib/supabase/server'
+import { EXPLORE_PRIVATE_FIELDS, type ExploreItem, type ExploreSort } from '@/lib/explore'
+import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import { assetsByGeneration } from '@/services/asset.service'
 import type { GenerationRow } from '@/types/database'
 
@@ -32,7 +32,8 @@ export async function listPublicGenerations(
 ): Promise<ExploreItem[]> {
   const { sort = 'new', limit = 24, offset = 0, excludeId } = options
 
-  const supabase = await createClient()
+  const supabase = await tryCreateClient()
+  if (!supabase) return []
 
   let query = supabase
     .from('generations')
@@ -67,7 +68,8 @@ export async function listPublicGenerations(
  * 404s for everyone else is worse than one that is simply not live yet.
  */
 export async function getPublicGeneration(id: string): Promise<ExploreItem | null> {
-  const supabase = await createClient()
+  const supabase = await tryCreateClient()
+  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('generations')
@@ -88,18 +90,31 @@ export async function getPublicGeneration(id: string): Promise<ExploreItem | nul
   return item ?? null
 }
 
-/** Attaches media and the viewer's own like state to a set of rows. */
+/**
+ * Attaches media and the viewer's own like state, and drops the fields that
+ * are not the public's business.
+ *
+ * The strip happens here rather than in the `select` because every caller of
+ * this module is a public surface, and one projection that cannot be bypassed
+ * beats a column list each query has to remember. `select('*')` also keeps the
+ * queries readable while the row type stays generated.
+ */
 async function decorate(rows: GenerationRow[]): Promise<ExploreItem[]> {
   if (rows.length === 0) return []
 
   const ids = rows.map((row) => row.id)
   const [assets, liked] = await Promise.all([assetsByGeneration(ids), likedIds(ids)])
 
-  return rows.map((row) => ({
-    ...row,
-    assets: assets.get(row.id) ?? [],
-    liked: liked.has(row.id),
-  }))
+  return rows.map((row) => {
+    const publicRow = { ...row } as Record<string, unknown>
+    for (const field of EXPLORE_PRIVATE_FIELDS) delete publicRow[field]
+
+    return {
+      ...(publicRow as Omit<GenerationRow, (typeof EXPLORE_PRIVATE_FIELDS)[number]>),
+      assets: assets.get(row.id) ?? [],
+      liked: liked.has(row.id),
+    }
+  })
 }
 
 /**

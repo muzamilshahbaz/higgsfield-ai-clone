@@ -146,6 +146,7 @@ export async function listMyProjectSummaries(): Promise<ProjectSummary[]> {
         const { count, error } = await supabase
           .from('generations')
           .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
           .eq('project_id', project.id)
           .is('deleted_at', null)
 
@@ -156,7 +157,7 @@ export async function listMyProjectSummaries(): Promise<ProjectSummary[]> {
         return count ?? 0
       }),
     ),
-    newestMediaByProject(),
+    newestMediaByProject(user.id),
   ])
 
   return projects.map((project, index) => {
@@ -174,13 +175,17 @@ export async function listMyProjectSummaries(): Promise<ProjectSummary[]> {
 }
 
 /** First finished asset per project, drawn from the user's newest work. */
-async function newestMediaByProject(): Promise<Map<string, ProjectPreview>> {
+async function newestMediaByProject(userId: string): Promise<Map<string, ProjectPreview>> {
   const found = new Map<string, ProjectPreview>()
   const supabase = await createClient()
 
+  // Owner-scoped for the same reason as the reads in generation.service: the
+  // public select policy would otherwise spend this 80-row window on other
+  // people's Explore posts and starve the user's own projects of a cover.
   const { data, error } = await supabase
     .from('generations')
     .select('id, project_id, created_at')
+    .eq('user_id', userId)
     .eq('status', 'succeeded')
     .is('deleted_at', null)
     .not('project_id', 'is', null)

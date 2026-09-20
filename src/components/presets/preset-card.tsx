@@ -87,7 +87,7 @@ export function PresetCard({
         {preset.creditCost > 0 && (
           <span
             className="inline-flex shrink-0 items-center gap-1 text-xs tabular-nums text-credit"
-            title={`${preset.creditCost} credits on top of the model price`}
+            title={`${preset.creditCost} ${preset.creditCost === 1 ? 'credit' : 'credits'} on top of the model price`}
           >
             <Coins className="size-3" aria-hidden />+{preset.creditCost}
           </span>

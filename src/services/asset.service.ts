@@ -6,7 +6,7 @@ import type { RawAsset } from '@/lib/ai/types'
 import { STORAGE_BUCKETS } from '@/lib/constants'
 import { env, isServiceRoleConfigured } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient, getCurrentUser } from '@/lib/supabase/server'
+import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import type { AssetKind, AssetRow, GenerationRow } from '@/types/database'
 
 /**
@@ -199,7 +199,9 @@ export async function assetsByGeneration(generationIds: string[]): Promise<Map<s
   const grouped = new Map<string, AssetRow[]>()
   if (generationIds.length === 0) return grouped
 
-  const supabase = await createClient()
+  const supabase = await tryCreateClient()
+  if (!supabase) return grouped
+
   const { data, error } = await supabase
     .from('assets')
     .select('*')

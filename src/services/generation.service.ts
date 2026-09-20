@@ -15,7 +15,7 @@ import {
   resolvePrompt,
 } from '@/lib/presets'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient, getCurrentUser } from '@/lib/supabase/server'
+import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import type { CreateGenerationInput } from '@/lib/validation/generation'
 import {
   assetsByGeneration,
@@ -454,6 +454,14 @@ export async function sweepStaleJobs(limit = 100): Promise<{ scanned: number; ad
 
 // ---------------------------------------------------------------------------
 // Reads
+//
+// Every "my ..." read below filters on `user_id` explicitly, and that is not
+// redundant with RLS. `generations` carries two PERMISSIVE select policies —
+// `generations_select_own` and `generations_select_public` — and Postgres ORs
+// permissive policies together. A select with no owner predicate therefore
+// returns the caller's rows *plus every published row in the database*, which
+// put other people's Explore posts in the library, the history and the counts.
+// RLS is the floor here, not the filter.
 // ---------------------------------------------------------------------------
 
 export interface ListGenerationsOptions {
@@ -481,6 +489,7 @@ export async function listMyGenerations(
   let query = supabase
     .from('generations')
     .select('*')
+    .eq('user_id', user.id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     // `range` rather than `limit`, so "load more" asks for the next window
@@ -509,7 +518,10 @@ export async function listMyGenerations(
 }
 
 export async function getGeneration(id: string): Promise<GenerationWithAssets | null> {
-  const supabase = await createClient()
+  // No session required — this also serves published rows — so it cannot rely
+  // on `getCurrentUser` to stop first when Supabase is unconfigured.
+  const supabase = await tryCreateClient()
+  if (!supabase) return null
   const { data, error } = await supabase
     .from('generations')
     .select('*')
@@ -534,6 +546,7 @@ export async function countMyGenerations(): Promise<number> {
   const { count, error } = await supabase
     .from('generations')
     .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
     .is('deleted_at', null)
 
   if (error) {
@@ -553,6 +566,7 @@ export async function countMyGenerationsWhere(
   let query = supabase
     .from('generations')
     .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
     .is('deleted_at', null)
 
   if (options.projectId) query = query.eq('project_id', options.projectId)

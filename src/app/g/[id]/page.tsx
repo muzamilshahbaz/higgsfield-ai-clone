@@ -131,9 +131,15 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
 
-            {label && (
-              <p className="text-pretty text-lg leading-relaxed text-foreground/90">{label}</p>
-            )}
+            {/*
+              The prompt is what this page is about — it is what the <title>
+              and the OG tags say, so it is the h1 as well. A shared permalink
+              is a public landing surface; one with no h1 reads as headingless
+              to a screen reader and to a crawler.
+            */}
+            <h1 className="text-pretty text-lg font-normal leading-relaxed text-foreground/90">
+              {label || 'Untitled shot'}
+            </h1>
 
             <div className="flex flex-wrap items-center gap-2">
               {preset && (
@@ -149,7 +155,7 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
               ) : null}
               <span className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
                 <Coins className="size-3" aria-hidden />
-                {generation.credit_cost} credits
+                {generation.credit_cost} {generation.credit_cost === 1 ? 'credit' : 'credits'}
               </span>
             </div>
 

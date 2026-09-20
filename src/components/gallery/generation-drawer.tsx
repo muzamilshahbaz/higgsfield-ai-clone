@@ -241,7 +241,8 @@ export function GenerationDrawer({
                     {generation.error_message}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Your {generation.credit_cost} credits were returned.
+                    Your {generation.credit_cost}{' '}
+                    {generation.credit_cost === 1 ? 'credit was' : 'credits were'} returned.
                   </p>
                 </div>
               </div>
