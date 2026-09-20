@@ -7,6 +7,7 @@ import {
   normaliseCardNumber,
   passesLuhn,
 } from '@/lib/payments/card'
+import { isCountryCode } from '@/lib/countries'
 import { isPlanId } from '@/lib/plans'
 
 /**
@@ -24,25 +25,6 @@ import { isPlanId } from '@/lib/plans'
  * digits" rather than "Luhn validation failed".
  */
 
-export const COUNTRIES = [
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'IE', name: 'Ireland' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'SE', name: 'Sweden' },
-  { code: 'NZ', name: 'New Zealand' },
-  { code: 'IN', name: 'India' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'SG', name: 'Singapore' },
-] as const
-
-const COUNTRY_CODES = COUNTRIES.map((c) => c.code) as readonly string[]
 
 export const planIdSchema = z
   .string()
@@ -86,10 +68,15 @@ export const cardSchema = z.object({
 
   cvv: z.string().trim().regex(/^\d{3,4}$/, 'The security code is 3 or 4 digits.'),
 
+  /**
+   * ISO 3166-1 alpha-2, checked against the full list rather than a handful
+   * someone typed out. Stored uppercase so `gb` and `GB` are one country.
+   */
   billingCountry: z
     .string()
     .trim()
-    .refine((v) => COUNTRY_CODES.includes(v), { message: 'Choose a billing country.' }),
+    .toUpperCase()
+    .refine(isCountryCode, { message: 'Choose a billing country.' }),
 })
 
 /**

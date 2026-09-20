@@ -193,6 +193,7 @@ async function recordTransaction(entry: {
   description: string
   cardBrand?: string | null
   cardLast4?: string | null
+  billingCountry?: string | null
   reference?: string | null
   failureCode?: string | null
 }): Promise<void> {
@@ -205,6 +206,7 @@ async function recordTransaction(entry: {
     description: entry.description,
     card_brand: entry.cardBrand ?? null,
     card_last4: entry.cardLast4 ?? null,
+    billing_country: entry.billingCountry ?? null,
     reference: entry.reference ?? null,
     failure_code: entry.failureCode ?? null,
   })
@@ -254,6 +256,7 @@ export async function subscribeToPlan(
       description: `${plan.name} — payment declined`,
       cardBrand: charge.brandLabel ?? null,
       cardLast4: charge.last4 ?? null,
+      billingCountry: card.billingCountry,
       failureCode: charge.code,
     })
     return { ok: false, error: charge.message, code: charge.code }
@@ -302,6 +305,7 @@ export async function subscribeToPlan(
     description: `Kinetic ${plan.name} — one month`,
     cardBrand: charge.brandLabel,
     cardLast4: charge.last4,
+    billingCountry: card.billingCountry,
     reference: charge.reference,
   })
 

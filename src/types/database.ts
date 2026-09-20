@@ -223,6 +223,8 @@ export type PaymentTransactionRow = {
   description: string
   card_brand: string | null
   card_last4: string | null
+  /** ISO 3166-1 alpha-2. Name and flag are derived in the app. */
+  billing_country: string | null
   reference: string | null
   failure_code: string | null
   created_at: string

@@ -2,6 +2,7 @@ import { CheckCircle2, Receipt, XCircle } from 'lucide-react'
 
 import { EmptyState } from '@/components/studio/empty-state'
 import { Badge } from '@/components/ui/badge'
+import { CountryLabel } from '@/components/ui/country-select'
 import { RelativeTime } from '@/components/ui/relative-time'
 import type { PaymentTransactionRow } from '@/types/database'
 
@@ -85,6 +86,13 @@ export function TransactionHistory({ transactions }: { transactions: PaymentTran
                     </span>
                   ) : (
                     <span className="text-muted-foreground/60">—</span>
+                  )}
+                  {/* The stored ISO code, rendered as a flag and a name. */}
+                  {tx.billing_country && (
+                    <CountryLabel
+                      code={tx.billing_country}
+                      className="mt-0.5 block text-[11px] text-muted-foreground/80"
+                    />
                   )}
                 </td>
 

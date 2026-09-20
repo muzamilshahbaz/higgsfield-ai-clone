@@ -15,13 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { CountrySelect } from '@/components/ui/country-select'
 import {
   BRAND_LABELS,
   detectBrand,
@@ -30,7 +24,7 @@ import {
   formatExpiry,
 } from '@/lib/payments/card'
 import type { Plan } from '@/lib/plans'
-import { cardSchema, COUNTRIES } from '@/lib/validation/billing'
+import { cardSchema } from '@/lib/validation/billing'
 import { cn } from '@/lib/utils'
 
 /**
@@ -286,21 +280,13 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
             </div>
 
             <Field id="billingCountry" label="Billing country" error={errors.billingCountry}>
-              <Select
+              <CountrySelect
+                id="billingCountry"
                 value={values.billingCountry}
-                onValueChange={(v) => set('billingCountry', v)}
-              >
-                <SelectTrigger id="billingCountry" className="w-full">
-                  <SelectValue placeholder="Choose a country" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(code) => set('billingCountry', code)}
+                invalid={Boolean(errors.billingCountry)}
+                aria-describedby={errors.billingCountry ? 'billingCountry-error' : undefined}
+              />
             </Field>
 
             {/* The total, restated beside the button that charges it. */}
