@@ -31,6 +31,7 @@ import {
   type GenerationRow,
   type GenerationStatus,
   type GenerationTask,
+  type GenerationVisibility,
   type GenerationWithAssets,
   type Json,
 } from '@/types/database'
@@ -202,6 +203,10 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
       .eq('id', generationId)
       .select('*')
       .single()
+
+    // Lineage is recorded after the job is accepted, so a submission the
+    // provider rejected does not inflate the parent's remix count.
+    if (input.parentId) await noteRemix(input.parentId)
 
     return {
       ok: true,
@@ -616,6 +621,44 @@ export async function moveGenerationToProject(
 }
 
 /**
+ * Publishes a finished shot to Explore, or takes it back down.
+ *
+ * Through the user's client: `visibility` is theirs to set, and the database
+ * carries the one rule that matters — `generations_public_requires_success`
+ * makes publishing a failed or in-flight job impossible, so this cannot be
+ * talked into listing something that has no media.
+ */
+export async function setGenerationVisibility(
+  generationId: string,
+  visibility: GenerationVisibility,
+): Promise<GenerationMutation<{ id: string; visibility: GenerationVisibility }>> {
+  const user = await getCurrentUser()
+  if (!user) return { ok: false, error: 'You need to be signed in.' }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('generations')
+    .update({ visibility })
+    .eq('id', generationId)
+    .is('deleted_at', null)
+    .select('id, visibility')
+    .maybeSingle()
+
+  if (error) {
+    // 23514 = check_violation, which on this table only ever means the row was
+    // not a succeeded one.
+    if (error.code === '23514') {
+      return { ok: false, error: 'Only a finished shot can be published.' }
+    }
+    console.error('[generation.service] setGenerationVisibility failed:', error.message)
+    return { ok: false, error: 'Could not change that. Try again.' }
+  }
+  if (!data) return { ok: false, error: 'That generation is gone.' }
+
+  return { ok: true, data: { id: data.id, visibility: data.visibility } }
+}
+
+/**
  * Deletes a generation from the library.
  *
  * The row is soft-deleted so the credit ledger keeps pointing at something,
@@ -776,6 +819,39 @@ async function ensureProjectId(userId: string): Promise<string | null> {
     return null
   }
   return data
+}
+
+/**
+ * Bumps the parent's remix counter.
+ *
+ * Read-then-write, and deliberately so: PostgREST cannot express
+ * `remix_count = remix_count + 1`, and this is a vanity number on someone
+ * else's row — worth an admin-client write, not worth a migration and a
+ * `SECURITY DEFINER` function. Two remixes in the same millisecond can cost
+ * one increment; nothing else depends on the value.
+ */
+async function noteRemix(parentId: string): Promise<void> {
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from('generations')
+    .select('remix_count')
+    .eq('id', parentId)
+    .maybeSingle()
+
+  if (error || !data) {
+    if (error) console.error('[generation.service] remix lookup failed:', error.message)
+    return
+  }
+
+  const { error: writeError } = await admin
+    .from('generations')
+    .update({ remix_count: data.remix_count + 1 })
+    .eq('id', parentId)
+
+  if (writeError) {
+    console.error('[generation.service] remix count update failed:', writeError.message)
+  }
 }
 
 async function readAuthor(userId: string) {

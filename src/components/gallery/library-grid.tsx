@@ -320,6 +320,7 @@ export function LibraryGrid({
         projects={projects}
         coverProjectId={projectId}
         onDeleted={remove}
+        onVisibilityChanged={(id, visibility) => patch(id, { visibility })}
         onMoved={(id, nextProjectId) => {
           // Moved out of the project being viewed: it no longer belongs here.
           if (projectId && nextProjectId !== projectId) remove(id)

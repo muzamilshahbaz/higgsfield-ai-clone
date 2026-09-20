@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  aspectStyle,
   cn,
   formatBytes,
   formatDuration,
@@ -154,5 +155,19 @@ describe('isTerminal', () => {
     const all: GenerationStatus[] = ['queued', 'running', 'succeeded', 'failed', 'canceled']
     const terminal = all.filter(isTerminal)
     expect(terminal.sort()).toEqual([...TERMINAL_STATUSES].sort())
+  })
+})
+
+describe('aspectStyle', () => {
+  it('turns a ratio string into a CSS aspect-ratio', () => {
+    expect(aspectStyle('16:9')).toEqual({ aspectRatio: '16 / 9' })
+    expect(aspectStyle('9:16')).toEqual({ aspectRatio: '9 / 16' })
+    expect(aspectStyle('1:1')).toEqual({ aspectRatio: '1 / 1' })
+  })
+
+  it('falls back rather than emitting an invalid rule', () => {
+    expect(aspectStyle('')).toEqual({ aspectRatio: '16 / 9' })
+    expect(aspectStyle('wide')).toEqual({ aspectRatio: '16 / 9' })
+    expect(aspectStyle('16:0')).toEqual({ aspectRatio: '16 / 9' })
   })
 })

@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { GenerationFeedProvider } from '@/hooks/use-generation-feed'
 import { isServiceRoleConfigured } from '@/lib/env'
 import { getCurrentUser } from '@/lib/supabase/server'
-import { listMyGenerations } from '@/services/generation.service'
-import { getPresetBySlug } from '@/services/preset.service'
+import { buildRemixDraft } from '@/lib/remix'
+import { getGeneration, listMyGenerations } from '@/services/generation.service'
+import { getPresetById, getPresetBySlug } from '@/services/preset.service'
 import { getMyProfile } from '@/services/profile.service'
 import { ensureDefaultProject, listMyProjects } from '@/services/project.service'
 
@@ -30,24 +31,47 @@ export const metadata: Metadata = {
  *   `?preset=<slug>`   the gallery's "Use preset"
  *   `?project=<uuid>`  a project's "Add to this project"
  *   `?image=<url>`     the library's "Use as start frame"
+ *   `?remix=<uuid>`    Explore's "Remix this"
  */
 export default async function CreatePage({
   searchParams,
 }: {
-  searchParams: Promise<{ preset?: string; project?: string; image?: string }>
+  searchParams: Promise<{ preset?: string; project?: string; image?: string; remix?: string }>
 }) {
   const user = await getCurrentUser()
   if (!user) return <NotSignedIn />
 
-  const { preset: presetSlug, project: projectParam, image: imageParam } = await searchParams
+  const {
+    preset: presetSlug,
+    project: projectParam,
+    image: imageParam,
+    remix: remixParam,
+  } = await searchParams
 
-  const [profile, defaultProjectId, projects, generations, preset] = await Promise.all([
-    getMyProfile(),
-    ensureDefaultProject(),
-    listMyProjects(),
-    listMyGenerations({ limit: 24 }),
-    presetSlug ? getPresetBySlug(presetSlug) : Promise.resolve(null),
-  ])
+  const [profile, defaultProjectId, projects, generations, presetFromSlug, remixSource] =
+    await Promise.all([
+      getMyProfile(),
+      ensureDefaultProject(),
+      listMyProjects(),
+      listMyGenerations({ limit: 24 }),
+      presetSlug ? getPresetBySlug(presetSlug) : Promise.resolve(null),
+      // Read through RLS, which resolves to the caller's own rows plus anything
+      // published — exactly what a remix is allowed to start from. A private
+      // shot belonging to someone else comes back null and the composer simply
+      // opens empty.
+      remixParam ? getGeneration(remixParam) : Promise.resolve(null),
+    ])
+
+  const remix = remixSource
+    ? buildRemixDraft(remixSource, { isOwn: remixSource.user_id === user.id })
+    : null
+
+  // A remix brings its own preset; a `?preset=` slug only wins when there is
+  // no remix to contradict it.
+  const remixPreset = remix?.presetId
+    ? (await getPresetById(remix.presetId))
+    : null
+  const preset = remix ? remixPreset : presetFromSlug
 
   // Checked against the user's own projects rather than trusted: a stale or
   // borrowed id silently falls back to the default project.
@@ -87,6 +111,7 @@ export default async function CreatePage({
               }))}
               initialPreset={preset}
               initialImageUrl={startFrame}
+              initialRemix={remix}
             />
           </div>
 

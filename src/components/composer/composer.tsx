@@ -1,9 +1,10 @@
 'use client'
 
 import * as React from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Coins, Loader2, Sparkles } from 'lucide-react'
+import { Coins, Loader2, Repeat2, Sparkles } from 'lucide-react'
 
 import { ImageDrop } from '@/components/composer/image-drop'
 import { ModelSelector } from '@/components/composer/model-selector'
@@ -23,6 +24,7 @@ import { useGenerationFeed } from '@/hooks/use-generation-feed'
 import { creditCostFor, defaultModelForTask, getModel, type ModelEntry } from '@/lib/ai/registry'
 import { ASPECT_RATIOS, LIMITS, TASK_LABELS, VIDEO_DURATIONS } from '@/lib/constants'
 import { resolveCreditCost, type PresetSummary } from '@/lib/presets'
+import type { RemixDraft } from '@/lib/remix'
 import { cn, newIdempotencyKey } from '@/lib/utils'
 import { createGenerationSchema, fieldErrors } from '@/lib/validation/generation'
 import type { GenerationTask, GenerationWithAssets } from '@/types/database'
@@ -107,6 +109,7 @@ export function Composer({
   projects = [],
   initialPreset = null,
   initialImageUrl = null,
+  initialRemix = null,
 }: {
   credits: number
   /** Where a new generation is filed unless the user picks another project. */
@@ -116,6 +119,8 @@ export function Composer({
   initialPreset?: PresetSummary | null
   /** From `/create?image=<url>` — the library's "Use as start frame". */
   initialImageUrl?: string | null
+  /** From `/create?remix=<id>` — Explore's "Remix this". */
+  initialRemix?: RemixDraft | null
 }) {
   const router = useRouter()
   const { upsert } = useGenerationFeed()
@@ -125,6 +130,22 @@ export function Composer({
   const [targetProjectId, setTargetProjectId] = React.useState<string | null>(projectId ?? null)
 
   const [state, setState] = React.useState<ComposerState>(() => {
+    // A remix carries the whole form, so it is resolved first and the preset
+    // rides along with it — `buildRemixDraft` has already reconciled the model,
+    // the aspect ratio and the duration with the registry.
+    if (initialRemix) {
+      const model = getModel(initialRemix.modelId) ?? defaultModelForTask(initialRemix.task)
+      return {
+        ...withModel(initialStateFor(model.task), model),
+        preset: initialPreset,
+        prompt: initialRemix.prompt,
+        negativePrompt: initialRemix.negativePrompt,
+        aspectRatio: initialRemix.aspectRatio,
+        durationSec: initialRemix.durationSec,
+        imageUrl: model.supports.imageInput ? initialRemix.imageUrl : null,
+      }
+    }
+
     const presetModel = initialPreset ? getModel(initialPreset.modelId) : undefined
 
     const base =
@@ -221,6 +242,7 @@ export function Composer({
       modelId: state.modelId,
       presetId: state.preset?.id ?? undefined,
       projectId: targetProjectId ?? undefined,
+      parentId: initialRemix?.parentId ?? undefined,
       prompt: state.prompt,
       negativePrompt: state.negativePrompt.trim() || undefined,
       imageUrl: state.imageUrl ?? undefined,
@@ -283,6 +305,24 @@ export function Composer({
       onSubmit={submit}
       className="space-y-5 rounded-xl border border-border bg-card p-4 sm:p-5"
     >
+      {initialRemix && (
+        // Lineage is invisible otherwise: the form just looks pre-filled, and
+        // the user has no way to tell they are about to credit someone else's
+        // shot as the parent of theirs.
+        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-surface/50 p-2.5 text-xs">
+          <Repeat2 className="size-3.5 shrink-0 text-brand" aria-hidden />
+          <span className="min-w-0 flex-1 text-muted-foreground">
+            Remixing an existing shot. Swap anything you like.
+          </span>
+          <Link
+            href={`/g/${initialRemix.parentId}`}
+            className="shrink-0 font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            View original
+          </Link>
+        </div>
+      )}
+
       <Segmented
         name="What to make"
         value={state.task}

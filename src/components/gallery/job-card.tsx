@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { AlertTriangle, Check, Coins, Loader2, RotateCw, Wand2 } from 'lucide-react'
 
-import { aspectStyle, GenerationMedia } from '@/components/gallery/generation-media'
+import { GenerationMedia } from '@/components/gallery/generation-media'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -11,7 +11,7 @@ import { RelativeTime } from '@/components/ui/relative-time'
 import { usePresetCatalogue } from '@/hooks/use-preset-catalogue'
 import { getModel } from '@/lib/ai/registry'
 import { STATUS_LABELS } from '@/lib/constants'
-import { truncate } from '@/lib/utils'
+import { aspectStyle, truncate } from '@/lib/utils'
 import { isTerminal, type GenerationWithAssets } from '@/types/database'
 
 /**

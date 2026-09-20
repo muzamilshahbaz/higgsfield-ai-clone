@@ -100,10 +100,3 @@ export function GenerationMedia({
     />
   )
 }
-
-/** CSS aspect-ratio from a "16:9" style string, with a sane fallback. */
-export function aspectStyle(aspectRatio: string): React.CSSProperties {
-  const [width, height] = aspectRatio.split(':').map(Number)
-  if (!width || !height) return { aspectRatio: '16 / 9' }
-  return { aspectRatio: `${width} / ${height}` }
-}

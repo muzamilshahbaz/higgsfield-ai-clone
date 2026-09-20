@@ -1,8 +1,8 @@
 # Kinetic Studio
 
 A cinematic AI creative studio — camera-move and film-style presets wrapped around
-image and video generation models, with a live job feed, projects, an asset library
-and a credits system.
+image and video generation models, with a live job feed, projects, an asset library,
+a credits system, and a public feed you can publish to, like and remix from.
 
 Built as a 24-hour MVP sprint. Inspired by the interaction model of preset-driven AI
 video tools; not affiliated with any commercial service, and it ships none of their
@@ -95,7 +95,11 @@ Three conventions keep the codebase coherent:
 3. **Providers are plugged in, never hard-coded.** Presets reference a model by
    registry id in `src/lib/ai/registry.ts`. Adding a real provider is one driver file
    plus a key — no changes to presets, services or the schema.
-4. **Soft deletes go through the service-role client.** The `*_select_own` policies in
+4. **A public page must not stream before it can 404.** `app/g/[id]` has no
+   `loading.tsx` on purpose: a Suspense boundary lets Next flush the shell — and a
+   200 — before the page decides to call `notFound()`, which turns every dead
+   permalink into a soft 404 that crawlers read as a live page.
+5. **Soft deletes go through the service-role client.** The `*_select_own` policies in
    `0003_rls.sql` all require `deleted_at is null`, and PostgREST wraps every UPDATE in
    a RETURNING clause — so Postgres checks those SELECT policies against the *new* row
    and rejects the statement the moment `deleted_at` is set. Deleting a project or a

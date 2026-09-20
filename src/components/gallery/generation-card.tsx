@@ -3,10 +3,10 @@
 import * as React from 'react'
 import { AlertTriangle, Check, Clapperboard, Image as ImageIcon, Loader2 } from 'lucide-react'
 
-import { aspectStyle, GenerationMedia, useHoverPlayback } from '@/components/gallery/generation-media'
+import { GenerationMedia, useHoverPlayback } from '@/components/gallery/generation-media'
 import { Badge } from '@/components/ui/badge'
 import { STATUS_LABELS } from '@/lib/constants'
-import { cn, truncate } from '@/lib/utils'
+import { aspectStyle, cn, truncate } from '@/lib/utils'
 import { isTerminal, type GenerationWithAssets } from '@/types/database'
 
 /**

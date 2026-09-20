@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -53,4 +55,18 @@ export function newIdempotencyKey(): string {
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/**
+ * CSS aspect-ratio from a "16:9" style string, with a sane fallback.
+ *
+ * Lives here rather than beside `GenerationMedia` because that module is
+ * `'use client'`, and a Server Component may render a client component but may
+ * not *call* a function exported from one — the permalink and the landing
+ * showcase both need this while staying on the server.
+ */
+export function aspectStyle(aspectRatio: string): CSSProperties {
+  const [width, height] = aspectRatio.split(':').map(Number)
+  if (!width || !height) return { aspectRatio: '16 / 9' }
+  return { aspectRatio: `${width} / ${height}` }
 }

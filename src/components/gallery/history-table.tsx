@@ -238,6 +238,7 @@ export function HistoryTable({
         onOpenChange={(next) => !next && setOpenId(null)}
         projects={projects}
         onDeleted={remove}
+        onVisibilityChanged={(id, visibility) => patch(id, { visibility })}
         onMoved={(id, projectId) => patch(id, { project_id: projectId })}
       />
     </div>

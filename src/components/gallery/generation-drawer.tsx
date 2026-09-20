@@ -8,7 +8,9 @@ import {
   Check,
   Download,
   FolderOpen,
+  Globe,
   ImageIcon,
+  Lock,
   Loader2,
   Sparkles,
   Trash2,
@@ -16,8 +18,10 @@ import {
 } from 'lucide-react'
 
 import { deleteGenerationAction, moveGenerationAction } from '@/app/(studio)/library/actions'
+import { setVisibilityAction } from '@/app/(studio)/explore/actions'
+import { ShareButton } from '@/components/explore/share-button'
 import { setProjectCoverAction } from '@/app/(studio)/projects/actions'
-import { aspectStyle, GenerationMedia } from '@/components/gallery/generation-media'
+import { GenerationMedia } from '@/components/gallery/generation-media'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,8 +38,14 @@ import { getModel } from '@/lib/ai/registry'
 import { STATUS_LABELS, TASK_LABELS } from '@/lib/constants'
 import { downloadMedia, filenameFor } from '@/lib/download'
 import { isRecord } from '@/lib/presets'
-import { cn, formatBytes, formatDuration, formatRelativeTime } from '@/lib/utils'
-import type { GenerationWithAssets } from '@/types/database'
+import {
+  aspectStyle,
+  cn,
+  formatBytes,
+  formatDuration,
+  formatRelativeTime,
+} from '@/lib/utils'
+import type { GenerationVisibility, GenerationWithAssets } from '@/types/database'
 
 /**
  * The detail view behind every library tile.
@@ -63,6 +73,7 @@ export function GenerationDrawer({
   coverProjectId = null,
   onDeleted,
   onMoved,
+  onVisibilityChanged,
 }: {
   generation: GenerationWithAssets | null
   open: boolean
@@ -72,9 +83,12 @@ export function GenerationDrawer({
   coverProjectId?: string | null
   onDeleted?: (id: string) => void
   onMoved?: (id: string, projectId: string | null) => void
+  onVisibilityChanged?: (id: string, visibility: GenerationVisibility) => void
 }) {
   const { byId } = usePresetCatalogue()
-  const [busy, setBusy] = React.useState<null | 'download' | 'move' | 'cover' | 'delete'>(null)
+  const [busy, setBusy] = React.useState<
+    null | 'download' | 'move' | 'cover' | 'delete' | 'publish'
+  >(null)
   const [confirmingDelete, setConfirmingDelete] = React.useState(false)
 
   // Reset the destructive confirmation whenever a different shot is opened.
@@ -90,6 +104,7 @@ export function GenerationDrawer({
   const failed = generation.status === 'failed' || generation.status === 'canceled'
   const label = generation.prompt.trim() || 'Preset-only shot'
   const params = isRecord(generation.params) ? Object.entries(generation.params) : []
+  const isPublic = generation.visibility === 'public'
 
   async function download() {
     if (!media || !generation) return
@@ -132,6 +147,24 @@ export function GenerationDrawer({
       return
     }
     toast.success('Project cover updated')
+  }
+
+  async function setVisibility(next: 'public' | 'private') {
+    if (!generation) return
+    setBusy('publish')
+    const result = await setVisibilityAction(generation.id, next)
+    setBusy(null)
+
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+
+    onVisibilityChanged?.(generation.id, result.data.visibility)
+    toast.success(next === 'public' ? 'Published to Explore' : 'Taken down from Explore', {
+      description:
+        next === 'public' ? 'Anyone with the link can see it now.' : 'Only you can see it again.',
+    })
   }
 
   async function remove() {
@@ -271,6 +304,60 @@ export function GenerationDrawer({
                     </React.Fragment>
                   ))}
                 </dl>
+              </Section>
+            )}
+
+            {generation.status === 'succeeded' && (
+              <Section title="Visibility">
+                <div className="space-y-2.5 rounded-lg border border-border/60 bg-surface/50 p-3">
+                  <div className="flex items-start gap-2.5">
+                    {isPublic ? (
+                      <Globe className="mt-0.5 size-4 shrink-0 text-success" aria-hidden />
+                    ) : (
+                      <Lock className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium">
+                        {isPublic ? 'Published to Explore' : 'Private to you'}
+                      </p>
+                      <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                        {isPublic
+                          ? 'It appears in the public feed, and anyone with the link can open it.'
+                          : 'Publishing adds it to Explore and gives it a link you can share.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant={isPublic ? 'outline' : 'default'}
+                      size="sm"
+                      onClick={() => void setVisibility(isPublic ? 'private' : 'public')}
+                      disabled={busy === 'publish'}
+                    >
+                      {busy === 'publish' ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : isPublic ? (
+                        <Lock className="size-3.5" />
+                      ) : (
+                        <Globe className="size-3.5" />
+                      )}
+                      {isPublic ? 'Unpublish' : 'Publish'}
+                    </Button>
+
+                    {isPublic && (
+                      <>
+                        <ShareButton generationId={generation.id} variant="ghost" />
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {generation.like_count} {generation.like_count === 1 ? 'like' : 'likes'}
+                          {generation.remix_count > 0
+                            ? ` · ${generation.remix_count} ${generation.remix_count === 1 ? 'remix' : 'remixes'}`
+                            : ''}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
               </Section>
             )}
 

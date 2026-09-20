@@ -82,3 +82,16 @@ export async function getPresetBySlug(slug: string): Promise<PresetSummary | nul
   }
   return data ? toPresetSummary(data) : null
 }
+
+/**
+ * A single preset by id, shaped for the browser.
+ *
+ * `getPreset` above returns the raw row because the create path works in
+ * database shape; this is the same lookup for a surface that has an id in hand
+ * and needs to hand a preset to a Client Component — the remix loader, which
+ * starts from a generation's `preset_id`.
+ */
+export async function getPresetById(id: string): Promise<PresetSummary | null> {
+  const row = await getPreset(id)
+  return row ? toPresetSummary(row) : null
+}
