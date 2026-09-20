@@ -8,7 +8,10 @@ Built as a 24-hour MVP sprint. Inspired by the interaction model of preset-drive
 video tools; not affiliated with any commercial service, and it ships none of their
 assets or branding.
 
-**Live demo — [kineticstudioai.vercel.app](https://kineticstudioai.vercel.app)**
+[![Kinetic Studio — the landing page, with the model showcase and the signup call to action](docs/assets/landing.png)](https://kineticstudioai.vercel.app)
+
+**Live demo — [kineticstudioai.vercel.app](https://kineticstudioai.vercel.app)** — the
+screenshot above links to it.
 
 Signing up grants 200 credits, no card. The deployment runs `AI_PROVIDER=mock`, so
 renders return bundled sample media and nothing is billed at any vendor — the credit
