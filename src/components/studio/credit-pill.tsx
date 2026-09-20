@@ -23,7 +23,7 @@ export function CreditPill({ credits, className }: { credits: number; className?
       title={
         credits <= 0
           ? 'You are out of credits'
-          : `${credits.toLocaleString()} credits remaining`
+          : `${credits.toLocaleString()} ${credits === 1 ? 'credit' : 'credits'} remaining`
       }
       className={cn(
         'inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium tabular-nums transition-colors',

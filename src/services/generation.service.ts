@@ -454,6 +454,14 @@ export async function sweepStaleJobs(limit = 100): Promise<{ scanned: number; ad
 
 // ---------------------------------------------------------------------------
 // Reads
+//
+// Every "my ..." read below filters on `user_id` explicitly, and that is not
+// redundant with RLS. `generations` carries two PERMISSIVE select policies —
+// `generations_select_own` and `generations_select_public` — and Postgres ORs
+// permissive policies together. A select with no owner predicate therefore
+// returns the caller's rows *plus every published row in the database*, which
+// put other people's Explore posts in the library, the history and the counts.
+// RLS is the floor here, not the filter.
 // ---------------------------------------------------------------------------
 
 export interface ListGenerationsOptions {
@@ -481,6 +489,7 @@ export async function listMyGenerations(
   let query = supabase
     .from('generations')
     .select('*')
+    .eq('user_id', user.id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     // `range` rather than `limit`, so "load more" asks for the next window
@@ -534,6 +543,7 @@ export async function countMyGenerations(): Promise<number> {
   const { count, error } = await supabase
     .from('generations')
     .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
     .is('deleted_at', null)
 
   if (error) {
@@ -553,6 +563,7 @@ export async function countMyGenerationsWhere(
   let query = supabase
     .from('generations')
     .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
     .is('deleted_at', null)
 
   if (options.projectId) query = query.eq('project_id', options.projectId)

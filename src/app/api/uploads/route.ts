@@ -7,6 +7,29 @@ import { uploadStartFrame } from '@/services/asset.service'
 import { getCurrentUser } from '@/lib/supabase/server'
 
 /**
+ * The multipart envelope costs a little more than the file it carries, so the
+ * body cap sits above the file cap. A body under this can still be refused by
+ * `uploadSchema` on the file's own size — this only catches the requests that
+ * never get far enough to be validated properly.
+ */
+const MAX_UPLOAD_BODY_BYTES = LIMITS.maxUploadBytes + 256 * 1024
+
+const MAX_UPLOAD_MB = Math.round(LIMITS.maxUploadBytes / 1024 / 1024)
+
+function oversizeResponse() {
+  return NextResponse.json(
+    {
+      error: {
+        code: 'VALIDATION',
+        message: `Images must be ${MAX_UPLOAD_MB}MB or smaller.`,
+        fields: { sizeBytes: `Images must be ${MAX_UPLOAD_MB}MB or smaller.` },
+      },
+    },
+    { status: 413 },
+  )
+}
+
+/**
  * POST /api/uploads — store a start frame for image-to-video.
  *
  * Validated here as well as on the bucket: the bucket's mime and size limits
@@ -32,10 +55,24 @@ export async function POST(request: Request) {
     )
   }
 
+  // Anything much over the cap never reaches `formData()` — the platform
+  // refuses the body first and the parse throws, which used to surface as
+  // "Expected a multipart upload." at someone who had simply picked a large
+  // photo. Checking the declared length first means the size limit is stated
+  // as the size limit, whichever guard actually stops the request.
+  const declaredLength = Number(request.headers.get('content-length') ?? '')
+  const tooLarge = Number.isFinite(declaredLength) && declaredLength > MAX_UPLOAD_BODY_BYTES
+
+  if (tooLarge) return oversizeResponse()
+
   let form: FormData
   try {
     form = await request.formData()
   } catch {
+    // No usable content-length (a chunked upload), so the body itself is the
+    // only evidence — and an unparseable one at this size is the cap again.
+    if (!Number.isFinite(declaredLength)) return oversizeResponse()
+
     return NextResponse.json(
       { error: { code: 'BAD_REQUEST', message: 'Expected a multipart upload.' } },
       { status: 400 },
@@ -64,7 +101,7 @@ export async function POST(request: Request) {
           code: 'VALIDATION',
           message:
             Object.values(fields)[0] ??
-            `Use a PNG, JPEG or WebP under ${Math.round(LIMITS.maxUploadBytes / 1024 / 1024)}MB.`,
+            `Use a PNG, JPEG or WebP under ${MAX_UPLOAD_MB}MB.`,
           fields,
         },
       },

@@ -22,8 +22,30 @@ export function isExploreSort(value: string | null | undefined): value is Explor
   return typeof value === 'string' && EXPLORE_SORTS.includes(value as ExploreSort)
 }
 
-/** A feed row: the generation, its media, and whether the viewer liked it. */
-export interface ExploreItem extends GenerationWithAssets {
+/**
+ * Fields a published row keeps to itself.
+ *
+ * Explore is served to anyone, signed in or not, so its rows are a *public
+ * projection* rather than the stored row. These five are operational plumbing
+ * or commercial data that a visitor has no use for: what a render cost us,
+ * which job the vendor gave it, the key that deduplicated the submit, which
+ * of the author's projects it was filed under, and how a failure read.
+ *
+ * Declared as a type, not just stripped at runtime, so `tsc` is what stops a
+ * component reaching for one of them again.
+ */
+export const EXPLORE_PRIVATE_FIELDS = [
+  'provider_cost_usd',
+  'provider_job_id',
+  'idempotency_key',
+  'project_id',
+  'error_message',
+] as const
+
+export type ExplorePrivateField = (typeof EXPLORE_PRIVATE_FIELDS)[number]
+
+/** A feed row: the public part of the generation, its media, and the viewer's like. */
+export type ExploreItem = Omit<GenerationWithAssets, ExplorePrivateField> & {
   liked: boolean
 }
 

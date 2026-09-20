@@ -291,7 +291,7 @@ export function Composer({
       if (data.generation.status === 'failed') {
         toast.error(data.generation.error_message ?? 'The provider rejected that job.')
       } else {
-        toast.success(`Queued · ${cost} credits`)
+        toast.success(`Queued · ${cost} ${cost === 1 ? 'credit' : 'credits'}`)
       }
     } catch {
       toast.error('Could not reach the server. Check your connection.')
