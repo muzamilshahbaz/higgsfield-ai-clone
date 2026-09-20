@@ -47,7 +47,16 @@ Work top to bottom. The walkthrough at the end is the acceptance test.
 
       `FAL_KEY` and `REPLICATE_API_TOKEN` are only needed if `AI_PROVIDER` is
       changed. The app falls back to `mock` when the selected provider's key is
-      missing, so a wrong value degrades rather than breaks.
+      missing, so a wrong value degrades rather than breaks. (Today it falls
+      back to `mock` regardless — see [Known gaps](#known-gaps).)
+
+- [ ] **Set them before the first build, and redeploy after any change.**
+      The three `NEXT_PUBLIC_*` values are substituted into the browser bundle
+      as literal text when `next build` runs, not read at request time. Saving
+      a corrected value in the dashboard does nothing to the bundle that is
+      already live — it takes a new deployment. A build with them missing
+      still *succeeds*, which is the trap: the failure surfaces later as a
+      signed-out app that cannot reach Supabase, not as a red build.
 
 - [ ] **Deploy.**
 
@@ -104,5 +113,15 @@ No console errors at any step.
 - **Vercel Hobby caps cron at once a day**, so `/api/cron/sweep` is a backstop,
   not a heartbeat. The client ticker and the page-load sweep are what actually
   advance jobs. On Pro, change the schedule in `vercel.json` to `* * * * *`.
-- **`AI_PROVIDER=mock` returns bundled sample media.** Switching to a real
-  provider needs only the key; no preset, service or schema changes.
+- **`AI_PROVIDER=mock` returns bundled sample media, and it is the only driver
+  that exists.** `src/lib/ai/providers/` contains `mock.ts` and nothing else;
+  the `fal` and `replicate` branches of `resolveProvider()` are written but
+  their `new FalProvider(...)` / `new ReplicateProvider(...)` lines are still
+  commented out, so both fall through to the mock and log a warning. Setting
+  `AI_PROVIDER=fal` and a valid `FAL_KEY` in Vercel therefore changes nothing
+  observable — the deployment still renders sample media.
+
+  Real generation needs a driver implemented against the `AIProvider`
+  interface in `src/lib/ai/types.ts` and wired into the matching `case` in
+  `src/lib/ai/index.ts`. That is the only code change required: presets,
+  services and schema already route through the registry.
