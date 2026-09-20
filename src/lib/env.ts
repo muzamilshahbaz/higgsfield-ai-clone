@@ -6,6 +6,8 @@
  * the whole app with a module-level exception.
  */
 
+import type { ProviderName } from '@/types/database'
+
 const PLACEHOLDER_HINTS = ['your-project-ref', 'your-anon-key', 'your-service-role-key']
 
 /**
@@ -35,7 +37,60 @@ export const env = {
   falKey: clean(process.env.FAL_KEY),
   replicateToken: clean(process.env.REPLICATE_API_TOKEN),
   cronSecret: clean(process.env.CRON_SECRET),
+  /** Seals the provider keys users store. Without it, the vault is read-only. */
+  aiKeySecret: clean(process.env.AI_KEY_ENCRYPTION_SECRET),
 } as const
+
+/**
+ * The shared fallback key for a vendor, when the operator has configured one.
+ *
+ * This is the third and last step of the routing chain in
+ * services/ai/ai-router.ts: a user's own key wins, this is what covers
+ * everyone else, and the mock driver catches the rest.
+ *
+ * A full switch rather than `process.env[`${NAME}_API_KEY`]` for the reason
+ * at the top of this file — and because an exhaustive switch means adding a
+ * vendor without wiring its env var is a TypeScript error rather than a
+ * silent undefined at runtime.
+ */
+export function serverProviderKey(provider: ProviderName): string | undefined {
+  switch (provider) {
+    case 'fal':
+      return clean(process.env.FAL_KEY)
+    case 'replicate':
+      return clean(process.env.REPLICATE_API_TOKEN)
+    case 'flux':
+      return clean(process.env.BFL_API_KEY)
+    case 'stability':
+      return clean(process.env.STABILITY_API_KEY)
+    case 'openai':
+      return clean(process.env.OPENAI_API_KEY)
+    case 'google':
+      return clean(process.env.GOOGLE_AI_API_KEY)
+    case 'kling':
+      return clean(process.env.KLING_API_KEY)
+    case 'runway':
+      return clean(process.env.RUNWAY_API_KEY)
+    case 'luma':
+      return clean(process.env.LUMA_API_KEY)
+    case 'pika':
+      return clean(process.env.PIKA_API_KEY)
+    case 'mock':
+      return undefined
+  }
+}
+
+/**
+ * True when users can store their own provider keys.
+ *
+ * Sealing requires AI_KEY_ENCRYPTION_SECRET and the vault table lives behind
+ * the service role, so both have to be present. When this is false the
+ * settings tab still renders — it explains what is missing instead of
+ * offering an input that would throw on submit.
+ */
+export const isKeyVaultConfigured = Boolean(
+  env.aiKeySecret && env.supabaseUrl && env.supabaseServiceRoleKey,
+)
 
 /** True when the public Supabase config is present and looks real. */
 export const isSupabaseConfigured = Boolean(env.supabaseUrl && env.supabaseAnonKey)

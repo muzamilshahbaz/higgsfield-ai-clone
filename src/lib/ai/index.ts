@@ -5,20 +5,29 @@ import type { ProviderName } from '@/types/database'
 
 export * from '@/lib/ai/types'
 export * from '@/lib/ai/registry'
+export * from '@/lib/ai/catalogue'
 
 const mock = new MockProvider()
 
 /**
- * Picks the active driver from AI_PROVIDER.
+ * Picks the active AGGREGATOR driver from AI_PROVIDER.
+ *
+ * This is the build-wide default, and it answers a different question from
+ * services/ai/ai-router.ts. The router decides per job, using the model the
+ * user picked and the key that user connected; this decides what an operator
+ * configured for everyone. Generation goes through the router. What is left
+ * here is the health endpoint and the aggregator fallback the router reports.
  *
  * Falls back to the mock driver whenever the selected provider has no key, so a
  * fresh clone with an empty .env.local still runs the entire product instead of
  * failing at the first Generate click.
  *
- * Adding a real provider is two steps:
+ * Adding a real aggregator driver is two steps:
  *   1. implement AIProvider in lib/ai/providers/<name>.ts
  *   2. add its case below
- * No preset, service, component or database row changes.
+ * Adding a DIRECT vendor is a different path: an entry in lib/ai/catalogue.ts
+ * and a module in services/ai/providers/. Neither touches a preset, a
+ * component or a database row.
  */
 export function resolveProvider(): AIProvider {
   switch (env.aiProvider) {

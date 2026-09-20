@@ -7,6 +7,8 @@ export default function SettingsLoading() {
     <div className="mx-auto max-w-3xl space-y-8">
       <HeaderSkeleton title="Settings" />
 
+      <Skeleton className="h-10 w-full rounded-lg" />
+
       <Card className="p-6">
         <div className="flex items-center gap-4">
           <Skeleton className="size-14 rounded-full" />

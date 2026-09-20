@@ -173,6 +173,55 @@
     mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
   }
 
+  /*
+    Infinite marquee. The track holds the list twice and translates exactly
+    -50%, so the second copy sits where the first started at the moment the
+    loop restarts — no seam, and no JavaScript measuring anything.
+
+    Paused on hover so a reader can actually look at a card, and stopped
+    entirely under reduced motion: the global reduce rule below collapses the
+    duration, which would snap the track to its end state, so the animation is
+    removed rather than shortened.
+  */
+  .marquee {
+    width: max-content;
+    animation: marquee 42s linear infinite;
+  }
+
+  .marquee:hover {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .marquee {
+      animation: none;
+    }
+  }
+
+  /* A soft vignette for full-bleed showcase sections. */
+  .spotlight {
+    background:
+      radial-gradient(
+        60% 60% at 50% 0%,
+        color-mix(in oklch, var(--color-primary) 18%, transparent) 0%,
+        transparent 70%
+      );
+  }
+
+  /* Horizontal rails: snap each card, hide the bar, keep the keyboard flow. */
+  .rail {
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail > * {
+    scroll-snap-align: start;
+  }
+
   .shimmer {
     background: linear-gradient(
       90deg,
@@ -232,6 +281,15 @@
   to {
     opacity: 1;
     scale: 1;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
   }
 }
 

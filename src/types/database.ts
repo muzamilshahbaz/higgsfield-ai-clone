@@ -16,7 +16,29 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type UserRole = 'user' | 'admin'
 export type PresetKind = 'motion' | 'style'
-export type ProviderName = 'mock' | 'fal' | 'replicate'
+/**
+ * Every vendor the app can name on a generation row.
+ *
+ * `mock`, `fal` and `replicate` are aggregators selected by AI_PROVIDER. The
+ * rest are direct vendor accounts a user connects with their own key in
+ * Settings -> AI model keys; see lib/ai/catalogue.ts for what each one is.
+ * Keep this list in step with the `provider_name` enum in migration 0007.
+ */
+export type ProviderName =
+  | 'mock'
+  | 'fal'
+  | 'replicate'
+  | 'flux'
+  | 'stability'
+  | 'openai'
+  | 'google'
+  | 'kling'
+  | 'runway'
+  | 'luma'
+  | 'pika'
+
+/** Outcome of the last time we asked a vendor whether a stored key works. */
+export type ProviderKeyStatus = 'unverified' | 'valid' | 'invalid' | 'unreachable'
 export type GenerationTask = 'text_to_image' | 'text_to_video' | 'image_to_video'
 export type GenerationStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled'
 export type GenerationVisibility = 'private' | 'public'
@@ -146,6 +168,29 @@ export type LikeRow = {
 }
 
 /**
+ * A user's sealed provider credential.
+ *
+ * `ciphertext` is base64(iv || auth tag || sealed bytes) and never leaves the
+ * server. `key_prefix` and `last4` are the only parts the UI is given, so the
+ * masked display costs no decryption. See migration 0007 for why this table
+ * has RLS enabled with no policies at all.
+ */
+export type UserProviderKeyRow = {
+  id: string
+  user_id: string
+  provider: ProviderName
+  label: string | null
+  ciphertext: string
+  key_prefix: string
+  last4: string
+  status: ProviderKeyStatus
+  last_verified_at: string | null
+  last_error: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
  * `Relationships` is required by the client's GenericTable constraint. It is
  * left empty here because we query tables explicitly rather than through
  * PostgREST embedded resources; `npm run db:types` emits the real foreign-key
@@ -206,6 +251,12 @@ export type Database = {
         Update: Partial<LikeRow>
         Relationships: []
       }
+      user_provider_keys: {
+        Row: UserProviderKeyRow
+        Insert: InsertOf<UserProviderKeyRow, 'user_id' | 'provider' | 'ciphertext'>
+        Update: Partial<UserProviderKeyRow>
+        Relationships: []
+      }
     }
     // `{ [_ in never]: never }` is the shape the Supabase codegen emits for an
     // empty group. `Record<never, never>` resolves to `{}`, which has no string
@@ -244,6 +295,7 @@ export type Database = {
       user_role: UserRole
       preset_kind: PresetKind
       provider_name: ProviderName
+      provider_key_status: ProviderKeyStatus
       generation_task: GenerationTask
       generation_status: GenerationStatus
       generation_visibility: GenerationVisibility

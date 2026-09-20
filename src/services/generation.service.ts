@@ -1,11 +1,9 @@
 import 'server-only'
 
-import {
-  activeProviderName,
-  getModel,
-  resolveProvider,
-  type GenerationRequest,
-} from '@/lib/ai'
+import { getModel, type GenerationRequest } from '@/lib/ai'
+import { MockProvider } from '@/lib/ai/providers/mock'
+import { routeGeneration, type RouteDecision } from '@/services/ai/ai-router'
+import { getUserProviderKey } from '@/services/ai-keys.service'
 import { LIMITS } from '@/lib/constants'
 import { isServiceRoleConfigured } from '@/lib/env'
 import {
@@ -116,6 +114,17 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
 
   const generationId = crypto.randomUUID()
 
+  // Route before the row is written, so `provider` records who actually ran
+  // the job rather than who we hoped would. The user's own key is preferred,
+  // then the operator's shared one, then the mock driver — see
+  // services/ai/ai-router.ts.
+  const route = await routeForUser(user.id, model.id)
+  if (route.fallbackReason && route.intendedProvider !== 'mock') {
+    console.info(
+      `[generation.service] ${model.id} routed to ${route.providerName}: ${route.fallbackReason}`,
+    )
+  }
+
   const { data: inserted, error: insertError } = await admin
     .from('generations')
     .insert({
@@ -135,7 +144,7 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
       negative_prompt: negativePrompt,
       input_image_url: input.imageUrl ?? null,
       model_id: model.id,
-      provider: activeProviderName(),
+      provider: route.providerName,
       params: params as Json,
       seed: input.seed ?? null,
       duration_sec: input.durationSec ?? null,
@@ -188,10 +197,8 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
 
   // 6. Submit. A throw here refunds and leaves a visible failed card rather
   //    than a silent charge.
-  const provider = resolveProvider()
-
   try {
-    const { providerJobId } = await provider.submit(toProviderRequest(inserted))
+    const { providerJobId } = await route.driver.submit(toProviderRequest(inserted))
 
     const { data: running } = await admin
       .from('generations')
@@ -285,7 +292,7 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
 
   let poll
   try {
-    poll = await resolveProvider().poll(row.provider_job_id, toProviderRequest(row))
+    poll = await (await driverForRow(row)).poll(row.provider_job_id, toProviderRequest(row))
   } catch (cause) {
     console.error(
       '[generation.service] poll failed:',
@@ -738,6 +745,54 @@ function clamp01(value: number): number {
 }
 
 /** Rebuilds the provider's view of a job from the stored row. */
+const mockDriver = new MockProvider()
+
+/**
+ * Routes one job, fetching the user's own key for the model's vendor first.
+ *
+ * Split out from routeGeneration() so the router itself stays free of
+ * Supabase and remains a pure function the unit tests can drive.
+ */
+async function routeForUser(userId: string, modelId: string): Promise<RouteDecision> {
+  const model = getModel(modelId)
+
+  // Only ask the vault for a key the router could actually use. A lookup for
+  // a vendor this build cannot generate with is a decrypt and a query spent
+  // on an answer that is thrown away.
+  const userKey =
+    model && canUseUserKey(model.provider)
+      ? await getUserProviderKey(userId, model.provider)
+      : null
+
+  return routeGeneration({ modelId, userKey })
+}
+
+function canUseUserKey(provider: GenerationRow['provider']): boolean {
+  return provider !== 'mock'
+}
+
+/**
+ * The driver that can answer for a job already in flight.
+ *
+ * Keyed off the provider recorded on the row, not off current configuration:
+ * a job submitted to the mock driver holds a mock job id, and flipping
+ * AI_ENABLE_DIRECT_PROVIDERS while it is queued must not send that id to a
+ * real vendor. Re-routing here also means a user who removed their key
+ * mid-job still gets the job polled, because the row remembers the vendor.
+ */
+async function driverForRow(row: GenerationRow) {
+  if (row.provider === 'mock') return mockDriver
+
+  const userKey = await getUserProviderKey(row.user_id, row.provider)
+  const route = routeGeneration({ modelId: row.model_id, userKey })
+
+  // If routing has since collapsed back to mock, the recorded job id is not a
+  // mock id and polling it would fail every tick until the timeout. Failing
+  // fast through the mock driver's malformed-id path is the same outcome,
+  // sooner, and it refunds.
+  return route.driver
+}
+
 function toProviderRequest(row: GenerationRow): GenerationRequest {
   return {
     generationId: row.id,

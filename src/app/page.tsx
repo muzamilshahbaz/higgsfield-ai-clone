@@ -1,13 +1,15 @@
-import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-
+import { CreatorShowcase } from '@/components/marketing/creator-showcase'
 import { Features } from '@/components/marketing/features'
+import { FinalCta } from '@/components/marketing/final-cta'
 import { Hero } from '@/components/marketing/hero'
-import { MadeWith } from '@/components/marketing/made-with'
-import { Reveal } from '@/components/marketing/reveal'
+import { HowItWorks } from '@/components/marketing/how-it-works'
+import { ModelLibrary } from '@/components/marketing/model-library'
+import { Pricing } from '@/components/marketing/pricing'
 import { SiteFooter } from '@/components/marketing/site-footer'
 import { SiteHeader } from '@/components/marketing/site-header'
-import { Button } from '@/components/ui/button'
+import { SocialProof } from '@/components/marketing/social-proof'
+import { TrendingModels } from '@/components/marketing/trending-models'
+import { Workflow } from '@/components/marketing/workflow'
 import { isSupabaseConfigured } from '@/lib/env'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
@@ -17,9 +19,16 @@ const SHOWCASE_COUNT = 8
 /**
  * The landing page.
  *
- * The showcase strip reads the real public feed, so the page is never lying
- * about what the product has made — and because that read can fail on a fresh
- * or unreachable database, it degrades to simply not rendering the section.
+ * The rhythm is deliberate rather than a stack of equal bands: hero (split),
+ * trending (full-bleed rail), how it works (flow), features (bento), library
+ * (tinted, dense grid), workflow (sticky offset), showcase (masonry, tinted),
+ * pricing (cards), proof (stats + quotes), CTA (full-bleed). No two adjacent
+ * sections share a layout or a background.
+ *
+ * The showcase reads the real public feed, so the page is never lying about
+ * what the product has made. That read can fail on a fresh or unreachable
+ * database, which is why it is caught here and the section falls back to the
+ * bundled sample frames — labelled as samples — instead of the page 500ing.
  */
 export default async function LandingPage() {
   const user = isSupabaseConfigured ? await getCurrentUser() : null
@@ -35,28 +44,15 @@ export default async function LandingPage() {
 
       <main>
         <Hero isSignedIn={isSignedIn} />
-        <MadeWith items={showcase} />
+        <TrendingModels />
+        <HowItWorks />
         <Features />
-
-        <section className="relative overflow-hidden border-t border-border/60 py-24">
-          <div className="aurora opacity-60" aria-hidden />
-          <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6 lg:px-8">
-            <Reveal>
-              <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                Your first shot is 200 credits away
-              </h2>
-              <p className="mx-auto mt-4 max-w-lg text-pretty text-muted-foreground">
-                Sign up, pick a camera move, and watch a still frame start moving.
-              </p>
-              <Button asChild size="lg" className="mt-8">
-                <Link href={isSignedIn ? '/create' : '/sign-up'}>
-                  {isSignedIn ? 'Open the composer' : 'Create your account'}
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-            </Reveal>
-          </div>
-        </section>
+        <ModelLibrary />
+        <Workflow />
+        <CreatorShowcase items={showcase} />
+        <Pricing />
+        <SocialProof />
+        <FinalCta isSignedIn={isSignedIn} />
       </main>
 
       <SiteFooter />
