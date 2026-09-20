@@ -8,6 +8,12 @@ Built as a 24-hour MVP sprint. Inspired by the interaction model of preset-drive
 video tools; not affiliated with any commercial service, and it ships none of their
 assets or branding.
 
+**Live demo — [kineticstudioai.vercel.app](https://kineticstudioai.vercel.app)**
+
+Signing up grants 200 credits, no card. The deployment runs `AI_PROVIDER=mock`, so
+renders return bundled sample media and nothing is billed at any vendor — the credit
+system, the job feed, the library and the public feed are all real.
+
 > Full product analysis, architecture, schema and roadmap: [`docs/PLAN.md`](docs/PLAN.md)
 
 ## Stack
@@ -71,6 +77,7 @@ Or paste each file in `supabase/migrations/` into the Supabase SQL editor, in or
 | `0004_storage.sql` | Storage buckets and object policies |
 | `0005_realtime.sql` | Publishes `generations` to Realtime |
 | `0006_hardening.sql` | Restricts `toggle_like` to published work; adds the Explore sort index |
+| `0007_provider_keys.sql` | The bring-your-own-key vault behind **Settings → AI model keys** |
 
 ### 5. Seed the preset catalog
 
