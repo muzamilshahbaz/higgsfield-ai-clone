@@ -49,7 +49,7 @@ Browse preset gallery  ->  Pick a motion/style card  ->  Drop in a start image (
 | Timeline video editor | ★★☆☆☆ | High | Out |
 | Product-placement ad templates | ★★☆☆☆ | Med | Out (stretch: one preset category) |
 | Upscale / frame interpolation | ★★☆☆☆ | Low | Stretch |
-| Stripe billing | ★☆☆☆☆ | Med | Out (credits are seeded; checkout is a stub) |
+| Subscriptions + billing | ★★☆☆☆ | Med | **In** — simulated checkout, no payment provider |
 
 ---
 
@@ -81,8 +81,12 @@ Browse preset gallery  ->  Pick a motion/style card  ->  Drop in a start image (
 
 ### Explicitly out of scope
 
-Lipsync/avatars · video editing · model training · teams/orgs · real payments · upscaling ·
+Lipsync/avatars · video editing · model training · teams/orgs · **real** payments · upscaling ·
 comments/follows · admin dashboard · i18n · native apps.
+
+Billing is in scope as a *simulation*: three plans, an in-app checkout, subscription
+management and a billing history, all backed by real database records. No payment
+provider is integrated and no money moves — see `src/lib/payments/`.
 
 ### Definition of done
 

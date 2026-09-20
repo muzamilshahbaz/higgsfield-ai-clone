@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { KeyRound, UserRound } from 'lucide-react'
+import { CreditCard, KeyRound, UserRound } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils'
 const TABS = [
   { href: '/settings', label: 'Profile & credits', icon: UserRound },
   { href: '/settings/keys', label: 'AI model keys', icon: KeyRound },
+  { href: '/settings/billing', label: 'Plan & billing', icon: CreditCard },
 ] as const
 
 export function SettingsTabs() {

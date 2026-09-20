@@ -21,5 +21,16 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     restoreMocks: true,
+    /**
+     * Above vitest's 5s default.
+     *
+     * Nothing here is slow on purpose — these are pure unit tests. But a few
+     * files reach a service through a dynamic `import()`, and the first one to
+     * do so compiles a large module graph while the rest of the suite is
+     * running in parallel. That has taken over 2.5s on a loaded machine and
+     * produced exactly one unreproducible failure in this suite; a timeout
+     * that trips on scheduling noise reports a bug that is not there.
+     */
+    testTimeout: 15_000,
   },
 })
