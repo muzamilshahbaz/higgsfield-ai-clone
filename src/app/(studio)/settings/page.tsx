@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { ArrowDownLeft, ArrowUpRight, Coins } from 'lucide-react'
 
 import { ProfileForm } from '@/components/settings/profile-form'
+import { SettingsTabs } from '@/components/settings/settings-tabs'
 import { LedgerTable } from '@/components/settings/ledger-table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -57,6 +58,8 @@ export default async function SettingsPage({
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">Your profile and your credit ledger.</p>
       </div>
+
+      <SettingsTabs />
 
       <Card className="p-6">
         <div className="flex items-center gap-4">

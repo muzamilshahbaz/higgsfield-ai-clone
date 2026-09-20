@@ -54,8 +54,16 @@ export const studioFooterNav: NavItem[] = [
   { title: 'Settings', href: '/settings', icon: Settings },
 ]
 
+/**
+ * Landing-page nav.
+ *
+ * Every href is an id that a section on / actually renders. Adding an entry
+ * without the matching `id` gives a link that scrolls nowhere, which is worse
+ * than not linking to the section at all.
+ */
 export const marketingNav = [
+  { title: 'Models', href: '#models' },
   { title: 'Features', href: '#features' },
-  { title: 'Presets', href: '#presets' },
   { title: 'How it works', href: '#how-it-works' },
+  { title: 'Pricing', href: '#pricing' },
 ] as const

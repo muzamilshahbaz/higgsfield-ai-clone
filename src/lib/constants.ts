@@ -20,6 +20,9 @@ export type AspectRatio = (typeof ASPECT_RATIOS)[number]['value']
 export const VIDEO_DURATIONS = [
   { value: 5, label: '5s' },
   { value: 6, label: '6s' },
+  // Veo 3's only length. It produces exactly eight seconds and nothing else,
+  // so this is a real option rather than a rounding of "about ten".
+  { value: 8, label: '8s' },
   { value: 10, label: '10s' },
 ] as const
 
