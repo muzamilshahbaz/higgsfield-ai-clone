@@ -2,13 +2,20 @@ import 'server-only'
 
 import {
   activeProviderName,
-  creditCostFor,
   getModel,
   resolveProvider,
   type GenerationRequest,
 } from '@/lib/ai'
 import { LIMITS } from '@/lib/constants'
 import { isServiceRoleConfigured } from '@/lib/env'
+import {
+  isRecord,
+  presetLikeFromRow,
+  resolveCreditCost,
+  resolveNegativePrompt,
+  resolveParams,
+  resolvePrompt,
+} from '@/lib/presets'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient, getCurrentUser } from '@/lib/supabase/server'
 import type { CreateGenerationInput } from '@/lib/validation/generation'
@@ -86,22 +93,15 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
   // 3. Resolve the preset into prompt, params and cost. The model stays the
   //    one the client asked for — the composer sets it from the preset when a
   //    preset is chosen, and an explicit choice there should win.
-  const preset = input.presetId ? await getPreset(input.presetId) : null
+  const presetRow = input.presetId ? await getPreset(input.presetId) : null
+  const preset = presetRow ? presetLikeFromRow(presetRow) : null
 
-  const resolvedPrompt = [input.prompt.trim(), preset?.prompt_fragment?.trim()]
-    .filter((part): part is string => Boolean(part))
-    .join(', ')
-
-  const negativePrompt = model.supports.negativePrompt
-    ? (input.negativePrompt?.trim() || preset?.negative_prompt || null)
-    : null
-
-  const params = {
-    ...(model.defaults ?? {}),
-    ...(isRecord(preset?.params) ? preset!.params : {}),
-  }
-
-  const creditCost = creditCostFor(model, input.durationSec) + (preset?.credit_cost ?? 0)
+  // Every one of these four is computed by the same pure helpers the composer
+  // used to quote the job, so the price shown and the price charged agree.
+  const resolvedPrompt = resolvePrompt(input.prompt, preset)
+  const negativePrompt = resolveNegativePrompt(model, input.negativePrompt, preset)
+  const params = resolveParams(model, preset)
+  const creditCost = resolveCreditCost(model, input.durationSec, preset)
 
   // 4. Everything lands in a project, so the library is never a flat dump.
   const projectId = input.projectId ?? (await ensureProjectId(user.id))
@@ -116,7 +116,7 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
       id: generationId,
       user_id: user.id,
       project_id: projectId,
-      preset_id: preset?.id ?? null,
+      preset_id: presetRow?.id ?? null,
       parent_id: input.parentId ?? null,
       author_handle: author?.handle ?? null,
       author_name: author?.display_name ?? null,
@@ -514,10 +514,6 @@ export async function countMyGenerations(): Promise<number> {
 function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0
   return Math.min(1, Math.max(0, value))
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /** Rebuilds the provider's view of a job from the stored row. */

@@ -1,6 +1,10 @@
 import Link from 'next/link'
 import { ArrowRight, Play, Sparkles } from 'lucide-react'
 
+// The catalogue file, not the database: this is a server-rendered marketing
+// line, and it should not depend on Supabase being reachable to be honest.
+import presetCatalogue from '../../../data/presets.json'
+
 import { Button } from '@/components/ui/button'
 
 const HERO_PRESETS = [
@@ -82,6 +86,17 @@ export function Hero({ isSignedIn = false }: { isSignedIn?: boolean }) {
               </div>
             ))}
           </div>
+
+          <p className="mt-5 text-center text-sm text-muted-foreground">
+            {presetCatalogue.length} presets in the catalogue.{' '}
+            <Link
+              href="/presets"
+              className="font-medium text-foreground underline-offset-4 hover:underline"
+            >
+              Browse them all
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </section>

@@ -50,8 +50,12 @@ export async function updateSession(request: NextRequest) {
 
   if (!user && PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
     const url = request.nextUrl.clone()
+    // The query survives the round trip: /create?preset=orbit must come back
+    // with its preset still chosen, not as a bare composer.
+    const target = `${pathname}${request.nextUrl.search}`
     url.pathname = '/sign-in'
-    url.searchParams.set('next', pathname)
+    url.search = ''
+    url.searchParams.set('next', target)
     return NextResponse.redirect(url)
   }
 

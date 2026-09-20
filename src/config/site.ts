@@ -7,6 +7,7 @@ import {
   Compass,
   History,
   Settings,
+  Wand2,
 } from 'lucide-react'
 
 export const siteConfig = {
@@ -36,6 +37,12 @@ export const studioNav: NavItem[] = [
     href: '/create',
     icon: Clapperboard,
     description: 'Compose a new generation',
+  },
+  {
+    title: 'Presets',
+    href: '/presets',
+    icon: Wand2,
+    description: 'Camera moves and film styles',
   },
   { title: 'Projects', href: '/projects', icon: FolderOpen, description: 'Organise your work' },
   { title: 'Library', href: '/library', icon: Images, description: 'Every asset you own' },

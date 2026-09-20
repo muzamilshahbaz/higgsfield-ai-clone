@@ -128,4 +128,52 @@ describe('preset catalogue', () => {
       expect(preset.params, preset.slug).not.toBeNull()
     }
   })
+
+  /**
+   * Preset params are merged over the model's registry defaults and sent
+   * straight to the provider, so a key the model does not read is either
+   * ignored silently or rejected by the API — both are bugs found in
+   * production rather than here.
+   */
+  it('only sets params the target model actually reads', () => {
+    const KNOBS: Record<string, string[]> = {
+      'lumen-flash': ['num_inference_steps'],
+      'lumen-pro': ['num_inference_steps', 'guidance_scale'],
+      'lumen-portrait': ['num_inference_steps', 'guidance_scale'],
+      'motion-turbo': ['cfg_scale'],
+      'motion-cine': ['cfg_scale'],
+      'motion-scene': ['cfg_scale'],
+    }
+
+    const offenders: string[] = []
+    for (const preset of presets) {
+      const allowed = KNOBS[preset.modelId] ?? []
+      for (const key of Object.keys(preset.params)) {
+        if (!allowed.includes(key)) offenders.push(`${preset.slug}.${key} (${preset.modelId})`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps every param value a finite number the provider can take', () => {
+    for (const preset of presets) {
+      for (const [key, value] of Object.entries(preset.params as Record<string, unknown>)) {
+        expect(Number.isFinite(value), `${preset.slug}.${key}`).toBe(true)
+      }
+    }
+  })
+
+  it('exercises the params merge and the surcharge somewhere in the catalogue', () => {
+    // Both are optional per preset, but a catalogue where neither is ever set
+    // means the merge in lib/presets.ts is dead code in practice.
+    expect(presets.some((preset) => Object.keys(preset.params).length > 0)).toBe(true)
+    expect(presets.some((preset) => preset.creditCost > 0)).toBe(true)
+  })
+
+  it('keeps every surcharge small next to the model price it is added to', () => {
+    for (const preset of presets) {
+      const model = getModel(preset.modelId)!
+      expect(preset.creditCost, preset.slug).toBeLessThanOrEqual(Math.ceil(model.credits / 2))
+    }
+  })
 })

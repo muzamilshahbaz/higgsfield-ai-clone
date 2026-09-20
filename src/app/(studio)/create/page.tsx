@@ -9,6 +9,7 @@ import { GenerationFeedProvider } from '@/hooks/use-generation-feed'
 import { isServiceRoleConfigured } from '@/lib/env'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listMyGenerations } from '@/services/generation.service'
+import { getPresetBySlug } from '@/services/preset.service'
 import { getMyProfile } from '@/services/profile.service'
 import { ensureDefaultProject } from '@/services/project.service'
 
@@ -22,15 +23,26 @@ export const metadata: Metadata = {
  *
  * The initial rows are server-rendered so the feed is never empty for a frame
  * on reload; everything after that arrives over Realtime and the ticker.
+ *
+ * `?preset=<slug>` is how the gallery hands a preset over. An unknown or
+ * retired slug resolves to null and the composer simply opens with no preset —
+ * a stale bookmark should not be an error page.
  */
-export default async function CreatePage() {
+export default async function CreatePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ preset?: string }>
+}) {
   const user = await getCurrentUser()
   if (!user) return <NotSignedIn />
 
-  const [profile, projectId, generations] = await Promise.all([
+  const { preset: presetSlug } = await searchParams
+
+  const [profile, projectId, generations, preset] = await Promise.all([
     getMyProfile(),
     ensureDefaultProject(),
     listMyGenerations({ limit: 24 }),
+    presetSlug ? getPresetBySlug(presetSlug) : Promise.resolve(null),
   ])
 
   return (
@@ -47,7 +59,11 @@ export default async function CreatePage() {
       <GenerationFeedProvider userId={user.id} initialGenerations={generations}>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
           <div className="lg:sticky lg:top-6">
-            <Composer credits={profile?.credits ?? 0} projectId={projectId} />
+            <Composer
+              credits={profile?.credits ?? 0}
+              projectId={projectId}
+              initialPreset={preset}
+            />
           </div>
 
           <JobFeed />

@@ -1,17 +1,23 @@
 import 'server-only'
 
+import { toPresetSummary, type PresetSummary } from '@/lib/presets'
 import { createClient } from '@/lib/supabase/server'
 import type { PresetKind, PresetRow } from '@/types/database'
 
 /**
  * Preset reads.
  *
- * Phase 2 needs only `getPreset`, which the composer's create path uses to
- * resolve a preset into a prompt fragment, params and any extra credit cost.
- * The picker UI and the gallery land in Phase 3 on top of `listPresets`.
- *
  * Presets are a public catalogue (`presets_select_all` covers anon), so the
- * user-scoped client is the right one even for signed-out callers.
+ * user-scoped client is the right one even for signed-out callers — browsing
+ * the gallery never needs the service-role key.
+ *
+ * `getPreset` returns the raw row because the create path works in database
+ * shape. Everything the UI touches comes back as `PresetSummary`: camelCase,
+ * `params` narrowed from `Json` to an object, and safe to hand straight to a
+ * Client Component.
+ *
+ * Every read fails soft. An unreachable database should leave the composer
+ * usable without a preset, not 500 the page.
  */
 
 export type Preset = PresetRow
@@ -32,18 +38,47 @@ export async function getPreset(id: string): Promise<Preset | null> {
   return data
 }
 
-export async function listPresets(kind?: PresetKind): Promise<Preset[]> {
+/**
+ * The whole catalogue, shaped for the browser.
+ *
+ * One query serves the studio layout, which puts the result in context for the
+ * composer's picker, the gallery and the job cards — so browsing presets costs
+ * no extra round trip and a card can name the preset that produced it.
+ *
+ * `kind` then `sort_order` is the curated order: motion before style, and
+ * within each kind the order the catalogue file declares. `title` only breaks
+ * ties so the list can never reorder itself between renders.
+ */
+export async function listPresetCatalogue(kind?: PresetKind): Promise<PresetSummary[]> {
   const supabase = await createClient()
   let query = supabase.from('presets').select('*').eq('is_active', true)
   if (kind) query = query.eq('kind', kind)
 
   const { data, error } = await query
+    .order('kind', { ascending: true })
     .order('sort_order', { ascending: true })
     .order('title', { ascending: true })
 
   if (error) {
-    console.error('[preset.service] listPresets failed:', error.message)
+    console.error('[preset.service] listPresetCatalogue failed:', error.message)
     return []
   }
-  return data ?? []
+  return (data ?? []).map(toPresetSummary)
+}
+
+/** A single preset by its stable slug — what a `?preset=` deep link carries. */
+export async function getPresetBySlug(slug: string): Promise<PresetSummary | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('presets')
+    .select('*')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[preset.service] getPresetBySlug failed:', error.message)
+    return null
+  }
+  return data ? toPresetSummary(data) : null
 }

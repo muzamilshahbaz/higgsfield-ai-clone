@@ -202,6 +202,39 @@
   }
 }
 
+/* Dialog enter animations, same reasoning as `menu-pop` above. */
+.overlay-fade[data-state='open'] {
+  animation: overlay-fade 140ms var(--ease-out-expo);
+}
+
+.dialog-pop[data-state='open'] {
+  animation: dialog-pop 180ms var(--ease-out-expo);
+}
+
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* `scale`, not `transform`: the panel is centred with Tailwind's
+   `-translate-x-1/2`, which in v4 compiles to the `translate` property. A
+   keyframe on `transform` composes with that instead of replacing it, so the
+   dialog would fly in from half a panel away. */
+@keyframes dialog-pop {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
 @keyframes shimmer {
   0% {
     background-position: 200% 0;

@@ -1,13 +1,14 @@
 'use client'
 
 import * as React from 'react'
-import { AlertTriangle, Check, Coins, Loader2, RotateCw } from 'lucide-react'
+import { AlertTriangle, Check, Coins, Loader2, RotateCw, Wand2 } from 'lucide-react'
 
 import { aspectStyle, GenerationMedia } from '@/components/gallery/generation-media'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { RelativeTime } from '@/components/ui/relative-time'
+import { usePresetCatalogue } from '@/hooks/use-preset-catalogue'
 import { getModel } from '@/lib/ai/registry'
 import { STATUS_LABELS } from '@/lib/constants'
 import { truncate } from '@/lib/utils'
@@ -26,7 +27,12 @@ export function JobCard({
   generation: GenerationWithAssets
   onRetry?: (generation: GenerationWithAssets) => void
 }) {
+  const { byId } = usePresetCatalogue()
+
   const model = getModel(generation.model_id)
+  // Null for a shot made without a preset, and for one made with a preset that
+  // has since been retired from the catalogue.
+  const preset = generation.preset_id ? byId.get(generation.preset_id) : undefined
   const pending = !isTerminal(generation.status)
   const failed = generation.status === 'failed' || generation.status === 'canceled'
 
@@ -56,6 +62,13 @@ export function JobCard({
         <p className="line-clamp-2 text-sm leading-snug text-foreground/90">
           {generation.prompt || <span className="text-muted-foreground">Preset only</span>}
         </p>
+
+        {preset && (
+          <Badge variant="outline" className="max-w-full">
+            <Wand2 className="size-3 shrink-0" aria-hidden />
+            <span className="truncate">{preset.title}</span>
+          </Badge>
+        )}
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="font-medium text-foreground/70">{model?.label ?? generation.model_id}</span>

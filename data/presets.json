@@ -8,7 +8,9 @@
     "promptFragment": "extremely fast crash zoom in toward the subject, rapid dolly acceleration, motion blur streaking at the frame edges, subject locked in centre frame, cinematic 35mm",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.75
+    },
     "previewVideoUrl": "/samples/shot-01.svg",
     "previewPosterUrl": "/samples/shot-01.svg",
     "accent": "#7c5cff",
@@ -42,7 +44,9 @@
     "promptFragment": "dolly zoom vertigo effect, camera pushes in while the lens zooms out, background perspective stretches and compresses, subject remains the same size in frame, unsettling cinematic tension",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.8
+    },
     "previewVideoUrl": "/samples/shot-04.svg",
     "previewPosterUrl": "/samples/shot-04.svg",
     "accent": "#7c5cff",
@@ -93,13 +97,15 @@
     "promptFragment": "smooth 360 degree orbit around the subject, camera circles at a constant radius, horizon stays level, subject centred throughout, cinematic parallax",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.7
+    },
     "previewVideoUrl": "/samples/shot-06.svg",
     "previewPosterUrl": "/samples/shot-06.svg",
     "accent": "#7c5cff",
     "isFeatured": true,
     "sortOrder": 5,
-    "creditCost": 0
+    "creditCost": 2
   },
   {
     "slug": "arc-left",
@@ -161,7 +167,9 @@
     "promptFragment": "fast FPV drone flight through the scene, aggressive banking turns, low altitude proximity to objects, wide angle lens distortion, high energy cinematic",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.8
+    },
     "previewVideoUrl": "/samples/shot-02.svg",
     "previewPosterUrl": "/samples/shot-02.svg",
     "accent": "#7c5cff",
@@ -178,7 +186,9 @@
     "promptFragment": "fast whip pan across the scene, extreme horizontal motion blur, snapping to rest on the subject, kinetic cinematic transition",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-turbo",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.75
+    },
     "previewVideoUrl": "/samples/shot-05.svg",
     "previewPosterUrl": "/samples/shot-05.svg",
     "accent": "#7c5cff",
@@ -195,7 +205,9 @@
     "promptFragment": "handheld camera with natural human sway, subtle breathing motion, documentary realism, slight frame instability, grounded cinematic",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-turbo",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.45
+    },
     "previewVideoUrl": "/samples/shot-05.svg",
     "previewPosterUrl": "/samples/shot-05.svg",
     "accent": "#7c5cff",
@@ -252,7 +264,7 @@
     "accent": "#7c5cff",
     "isFeatured": false,
     "sortOrder": 14,
-    "creditCost": 0
+    "creditCost": 2
   },
   {
     "slug": "object-pov",
@@ -314,13 +326,15 @@
     "promptFragment": "bullet time effect, action frozen in mid air while the camera sweeps around the subject, suspended particles and debris, high speed photography look, cinematic",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.85
+    },
     "previewVideoUrl": "/samples/shot-06.svg",
     "previewPosterUrl": "/samples/shot-06.svg",
     "accent": "#7c5cff",
     "isFeatured": true,
     "sortOrder": 18,
-    "creditCost": 0
+    "creditCost": 4
   },
   {
     "slug": "disintegrate",
@@ -331,13 +345,15 @@
     "promptFragment": "the subject gradually disintegrates into fine drifting particles and embers, dissolving from the edges inward, volumetric light through the dust, cinematic vfx",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.85
+    },
     "previewVideoUrl": "/samples/shot-01.svg",
     "previewPosterUrl": "/samples/shot-01.svg",
     "accent": "#7c5cff",
     "isFeatured": false,
     "sortOrder": 19,
-    "creditCost": 0
+    "creditCost": 3
   },
   {
     "slug": "time-lapse",
@@ -348,7 +364,9 @@
     "promptFragment": "time lapse, clouds streaking across the sky, light and shadow racing over the scene, subject static while the world accelerates, cinematic",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-turbo",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.6
+    },
     "previewVideoUrl": "/samples/shot-02.svg",
     "previewPosterUrl": "/samples/shot-02.svg",
     "accent": "#7c5cff",
@@ -365,13 +383,15 @@
     "promptFragment": "the subject slowly levitates off the ground, weightless rise, fabric and hair drifting upward, static camera, ethereal cinematic lighting",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.7
+    },
     "previewVideoUrl": "/samples/shot-03.svg",
     "previewPosterUrl": "/samples/shot-03.svg",
     "accent": "#7c5cff",
     "isFeatured": false,
     "sortOrder": 21,
-    "creditCost": 0
+    "creditCost": 2
   },
   {
     "slug": "shatter",
@@ -382,13 +402,15 @@
     "promptFragment": "reality shatters like glass around the subject, fracturing shards suspended mid air catching the light, dramatic cinematic vfx",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.85
+    },
     "previewVideoUrl": "/samples/shot-06.svg",
     "previewPosterUrl": "/samples/shot-06.svg",
     "accent": "#7c5cff",
     "isFeatured": false,
     "sortOrder": 22,
-    "creditCost": 0
+    "creditCost": 3
   },
   {
     "slug": "morph",
@@ -399,13 +421,15 @@
     "promptFragment": "seamless morph transformation, the subject fluidly transitions into a new form, liquid continuity between states, cinematic vfx",
     "negativePrompt": "blurry, warped faces, flickering, watermark, text artifacts, morphing limbs",
     "modelId": "motion-cine",
-    "params": {},
+    "params": {
+      "cfg_scale": 0.9
+    },
     "previewVideoUrl": "/samples/shot-04.svg",
     "previewPosterUrl": "/samples/shot-04.svg",
     "accent": "#7c5cff",
     "isFeatured": false,
     "sortOrder": 23,
-    "creditCost": 0
+    "creditCost": 4
   },
   {
     "slug": "film-noir",
@@ -416,13 +440,16 @@
     "promptFragment": "film noir aesthetic, high contrast black and white, hard directional key light, deep shadows, venetian blind light patterns, 1940s cinematography",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 4.5,
+      "num_inference_steps": 34
+    },
     "previewVideoUrl": "/samples/shot-06.svg",
     "previewPosterUrl": "/samples/shot-06.svg",
     "accent": "#22d3ee",
     "isFeatured": true,
     "sortOrder": 24,
-    "creditCost": 0
+    "creditCost": 1
   },
   {
     "slug": "35mm-film",
@@ -433,7 +460,10 @@
     "promptFragment": "shot on 35mm film, natural grain structure, subtle halation around highlights, organic colour response, shallow depth of field, warm portrait film palette",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 3.2,
+      "num_inference_steps": 32
+    },
     "previewVideoUrl": "/samples/shot-05.svg",
     "previewPosterUrl": "/samples/shot-05.svg",
     "accent": "#22d3ee",
@@ -450,7 +480,9 @@
     "promptFragment": "golden hour lighting, low warm sun raking across the frame, long shadows, glowing rim light on the subject, hazy atmospheric backlight",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 3.0
+    },
     "previewVideoUrl": "/samples/shot-05.svg",
     "previewPosterUrl": "/samples/shot-05.svg",
     "accent": "#22d3ee",
@@ -467,13 +499,16 @@
     "promptFragment": "cyberpunk aesthetic, rain slicked neon reflections, magenta and cyan practical lights, dense urban night, volumetric haze, moody science fiction cinematography",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 5.0,
+      "num_inference_steps": 36
+    },
     "previewVideoUrl": "/samples/shot-01.svg",
     "previewPosterUrl": "/samples/shot-01.svg",
     "accent": "#22d3ee",
     "isFeatured": true,
     "sortOrder": 27,
-    "creditCost": 0
+    "creditCost": 1
   },
   {
     "slug": "fashion-editorial",
@@ -484,13 +519,16 @@
     "promptFragment": "high fashion editorial photography, studio strobe lighting with crisp falloff, seamless backdrop, confident styling, magazine quality retouching, sharp detail",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 4.0,
+      "num_inference_steps": 36
+    },
     "previewVideoUrl": "/samples/shot-03.svg",
     "previewPosterUrl": "/samples/shot-03.svg",
     "accent": "#22d3ee",
     "isFeatured": true,
     "sortOrder": 28,
-    "creditCost": 0
+    "creditCost": 1
   },
   {
     "slug": "polaroid",
@@ -501,7 +539,10 @@
     "promptFragment": "instant polaroid photograph, direct on camera flash, soft faded colours, slight vignetting, washed highlights, nostalgic snapshot quality",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 2.8,
+      "num_inference_steps": 24
+    },
     "previewVideoUrl": "/samples/shot-03.svg",
     "previewPosterUrl": "/samples/shot-03.svg",
     "accent": "#22d3ee",
@@ -518,7 +559,10 @@
     "promptFragment": "anamorphic lens characteristics, horizontal blue lens flares, oval bokeh, wide 2.39 to 1 framing, slight edge distortion, premium cinematography",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 3.6,
+      "num_inference_steps": 32
+    },
     "previewVideoUrl": "/samples/shot-02.svg",
     "previewPosterUrl": "/samples/shot-02.svg",
     "accent": "#22d3ee",
@@ -535,7 +579,9 @@
     "promptFragment": "moody low key portrait, single soft key light with deep shadow falloff, dark background, detailed skin texture, intimate cinematic framing",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-portrait",
-    "params": {},
+    "params": {
+      "guidance_scale": 4.2
+    },
     "previewVideoUrl": "/samples/shot-04.svg",
     "previewPosterUrl": "/samples/shot-04.svg",
     "accent": "#22d3ee",
@@ -552,13 +598,16 @@
     "promptFragment": "dreamlike surreal atmosphere, soft diffused focus, impossible pastel lighting, floating particles, ethereal hazy glow, memory like quality",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 5.5,
+      "num_inference_steps": 36
+    },
     "previewVideoUrl": "/samples/shot-03.svg",
     "previewPosterUrl": "/samples/shot-03.svg",
     "accent": "#22d3ee",
     "isFeatured": false,
     "sortOrder": 32,
-    "creditCost": 0
+    "creditCost": 1
   },
   {
     "slug": "documentary",
@@ -569,7 +618,10 @@
     "promptFragment": "documentary photography, available light only, unposed candid moment, natural colour, photojournalistic honesty, slight grain",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 2.6,
+      "num_inference_steps": 24
+    },
     "previewVideoUrl": "/samples/shot-05.svg",
     "previewPosterUrl": "/samples/shot-05.svg",
     "accent": "#22d3ee",
@@ -586,7 +638,10 @@
     "promptFragment": "tilt shift miniature effect, extremely shallow selective focus band, saturated colours, high angle view, the scene resembles a tabletop model",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 4.0,
+      "num_inference_steps": 30
+    },
     "previewVideoUrl": "/samples/shot-06.svg",
     "previewPosterUrl": "/samples/shot-06.svg",
     "accent": "#22d3ee",
@@ -603,12 +658,15 @@
     "promptFragment": "infrared photography aesthetic, foliage rendered brilliant white, sky darkened to near black, surreal tonal inversion, high contrast",
     "negativePrompt": "lowres, jpeg artifacts, extra fingers, watermark, text, oversaturated",
     "modelId": "lumen-pro",
-    "params": {},
+    "params": {
+      "guidance_scale": 4.8,
+      "num_inference_steps": 32
+    },
     "previewVideoUrl": "/samples/shot-02.svg",
     "previewPosterUrl": "/samples/shot-02.svg",
     "accent": "#22d3ee",
     "isFeatured": false,
     "sortOrder": 35,
-    "creditCost": 0
+    "creditCost": 1
   }
 ]
