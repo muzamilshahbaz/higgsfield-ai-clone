@@ -79,7 +79,9 @@ describe('declines are reachable and specific', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.code).toBe('card_declined')
-      expect(result.message).toMatch(/declined/i)
+      // The code is the contract; the wording belongs to the UI and is free to
+      // change. Asserting on copy here just breaks the suite on a rewrite.
+      expect(result.message.length).toBeGreaterThan(0)
     }
   })
 

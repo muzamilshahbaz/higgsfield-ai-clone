@@ -89,8 +89,9 @@ export interface PaymentGateway {
  */
 const DECLINE_CARDS: Record<string, { code: DeclineCode; message: string }> = {
   '4000000000000002': {
+    // Phrased so it does not repeat the "Payment declined" heading above it.
     code: 'card_declined',
-    message: 'Your card was declined. Try a different card.',
+    message: 'Your bank refused this payment.',
   },
   '4000000000009995': {
     code: 'insufficient_funds',
