@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { toPresetSummary, type PresetSummary } from '@/lib/presets'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, tryCreateClient } from '@/lib/supabase/server'
 import type { PresetKind, PresetRow } from '@/types/database'
 
 /**
@@ -50,7 +50,10 @@ export async function getPreset(id: string): Promise<Preset | null> {
  * ties so the list can never reorder itself between renders.
  */
 export async function listPresetCatalogue(kind?: PresetKind): Promise<PresetSummary[]> {
-  const supabase = await createClient()
+  // The studio shell renders this before anything else, so an unconfigured
+  // deployment must get an empty catalogue rather than a thrown 500.
+  const supabase = await tryCreateClient()
+  if (!supabase) return []
   let query = supabase.from('presets').select('*').eq('is_active', true)
   if (kind) query = query.eq('kind', kind)
 
@@ -68,7 +71,8 @@ export async function listPresetCatalogue(kind?: PresetKind): Promise<PresetSumm
 
 /** A single preset by its stable slug — what a `?preset=` deep link carries. */
 export async function getPresetBySlug(slug: string): Promise<PresetSummary | null> {
-  const supabase = await createClient()
+  const supabase = await tryCreateClient()
+  if (!supabase) return null
   const { data, error } = await supabase
     .from('presets')
     .select('*')

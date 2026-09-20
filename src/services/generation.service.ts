@@ -15,7 +15,7 @@ import {
   resolvePrompt,
 } from '@/lib/presets'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient, getCurrentUser } from '@/lib/supabase/server'
+import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import type { CreateGenerationInput } from '@/lib/validation/generation'
 import {
   assetsByGeneration,
@@ -518,7 +518,10 @@ export async function listMyGenerations(
 }
 
 export async function getGeneration(id: string): Promise<GenerationWithAssets | null> {
-  const supabase = await createClient()
+  // No session required — this also serves published rows — so it cannot rely
+  // on `getCurrentUser` to stop first when Supabase is unconfigured.
+  const supabase = await tryCreateClient()
+  if (!supabase) return null
   const { data, error } = await supabase
     .from('generations')
     .select('*')

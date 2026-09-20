@@ -3,7 +3,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
-import { requireSupabaseConfig } from '@/lib/env'
+import { isSupabaseConfigured, requireSupabaseConfig } from '@/lib/env'
 import type { Database } from '@/types/database'
 
 type CookiesToSet = { name: string; value: string; options: CookieOptions }[]
@@ -33,6 +33,25 @@ export async function createClient() {
       },
     },
   })
+}
+
+/**
+ * The same client, or `null` when Supabase is not configured.
+ *
+ * `createClient` throws on missing config, which is right for a write path —
+ * failing loudly beats pretending the write landed. It is wrong for a *read*
+ * on a page, because the throw propagates to an error boundary and the visitor
+ * gets a 500.
+ *
+ * That is not hypothetical: a deploy with the Supabase variables unset served
+ * 500s on /explore, /presets and every studio route, because the shell reads
+ * the preset catalogue before rendering. The reads that do not require a
+ * session use this and degrade to empty; the ones that do already stop at
+ * `getCurrentUser`, which returns null here for the same reason.
+ */
+export async function tryCreateClient() {
+  if (!isSupabaseConfigured) return null
+  return createClient()
 }
 
 /** The signed-in user, or null. Never throws. */

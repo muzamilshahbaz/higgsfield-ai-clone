@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { EXPLORE_PRIVATE_FIELDS, type ExploreItem, type ExploreSort } from '@/lib/explore'
-import { createClient, getCurrentUser } from '@/lib/supabase/server'
+import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import { assetsByGeneration } from '@/services/asset.service'
 import type { GenerationRow } from '@/types/database'
 
@@ -32,7 +32,8 @@ export async function listPublicGenerations(
 ): Promise<ExploreItem[]> {
   const { sort = 'new', limit = 24, offset = 0, excludeId } = options
 
-  const supabase = await createClient()
+  const supabase = await tryCreateClient()
+  if (!supabase) return []
 
   let query = supabase
     .from('generations')
@@ -67,7 +68,8 @@ export async function listPublicGenerations(
  * 404s for everyone else is worse than one that is simply not live yet.
  */
 export async function getPublicGeneration(id: string): Promise<ExploreItem | null> {
-  const supabase = await createClient()
+  const supabase = await tryCreateClient()
+  if (!supabase) return null
 
   const { data, error } = await supabase
     .from('generations')
