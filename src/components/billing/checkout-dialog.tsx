@@ -189,7 +189,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
 
   return (
     <Dialog open={open} onOpenChange={phase === 'processing' ? undefined : onOpenChange}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {phase === 'success' ? 'Payment complete' : `Subscribe to ${plan.name}`}
@@ -208,7 +208,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.15 }}
-            className="space-y-4"
+            className="min-h-0 space-y-4 overflow-y-auto p-5"
             noValidate
           >
             <DemoNotice onFill={fillDemoCard} />
@@ -319,7 +319,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
             key="processing"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center gap-5 py-10"
+            className="flex flex-col items-center gap-5 p-5 py-10"
             role="status"
             aria-live="polite"
           >
@@ -344,7 +344,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
             key="success"
             initial={{ opacity: 0, scale: 0.97 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center gap-4 py-8 text-center"
+            className="flex flex-col items-center gap-4 p-5 py-8 text-center"
           >
             <CheckCircle2 className="size-11 text-success" aria-hidden />
             <div>
@@ -367,7 +367,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
             key="error"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center gap-4 py-8 text-center"
+            className="flex flex-col items-center gap-4 p-5 py-8 text-center"
             role="alert"
           >
             <XCircle className="size-11 text-danger" aria-hidden />
