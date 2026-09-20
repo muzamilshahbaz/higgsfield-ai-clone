@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+import { getCurrentUser } from '@/lib/supabase/server'
 import { createGenerationSchema, fieldErrors } from '@/lib/validation/generation'
 import { createGeneration, listMyGenerations } from '@/services/generation.service'
 import type { GenerationStatus } from '@/types/database'
@@ -65,6 +66,17 @@ export async function POST(request: Request) {
 const STATUSES: GenerationStatus[] = ['queued', 'running', 'succeeded', 'failed', 'canceled']
 
 export async function GET(request: Request) {
+  // An empty list and "you are signed out" are different answers, and a caller
+  // that cannot tell them apart will render "nothing here yet" at someone whose
+  // session just expired.
+  const user = await getCurrentUser()
+  if (!user) {
+    return NextResponse.json(
+      { error: { code: 'UNAUTHENTICATED', message: 'You need to be signed in.' } },
+      { status: 401 },
+    )
+  }
+
   const url = new URL(request.url)
 
   const limitParam = Number(url.searchParams.get('limit'))

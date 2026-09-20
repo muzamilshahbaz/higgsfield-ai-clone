@@ -53,7 +53,7 @@ function DropdownMenuItem({
         'focus:bg-surface-2 focus:text-foreground',
         'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
         "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0",
-        variant === 'destructive' && 'text-destructive focus:bg-destructive/10 focus:text-destructive',
+        variant === 'destructive' && 'text-danger focus:bg-destructive/10 focus:text-danger',
         inset && 'pl-8',
         className,
       )}

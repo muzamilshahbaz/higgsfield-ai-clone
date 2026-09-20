@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function CreateLoading() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <HeaderSkeleton />
+      <HeaderSkeleton title="Create" />
 
       <div className="flex gap-3 overflow-hidden">
         {Array.from({ length: 6 }, (_, i) => (

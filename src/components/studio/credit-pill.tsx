@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 export function CreditPill({ credits, className }: { credits: number; className?: string }) {
   const tone =
     credits <= 0
-      ? 'border-destructive/40 bg-destructive/10 text-destructive'
+      ? 'border-destructive/40 bg-destructive/10 text-danger'
       : credits < 40
         ? 'border-warning/40 bg-warning/10 text-warning'
         : 'border-border bg-surface text-foreground'

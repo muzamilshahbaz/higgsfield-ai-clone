@@ -15,29 +15,36 @@ const MARQUEE = [
 /**
  * Split auth shell: the form on the left, a strip of the product on the right.
  * The right panel is decorative and drops away below `lg`.
+ *
+ * The header/main/aside/footer elements are load-bearing, not tidiness: this
+ * layout previously used plain divs, which left the logo and the disclaimer
+ * outside every landmark and the page with no `main` at all — so a screen
+ * reader had no way to jump to the form.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col px-4 py-8 sm:px-8">
-        <Link href="/" className="inline-flex w-fit items-center gap-2.5">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary">
-            <Clapperboard className="size-4 text-primary-foreground" />
-          </span>
-          <span className="text-sm font-semibold tracking-tight">{siteConfig.name}</span>
-        </Link>
+        <header>
+          <Link href="/" className="inline-flex w-fit items-center gap-2.5">
+            <span className="flex size-7 items-center justify-center rounded-lg bg-primary">
+              <Clapperboard className="size-4 text-primary-foreground" />
+            </span>
+            <span className="text-sm font-semibold tracking-tight">{siteConfig.name}</span>
+          </Link>
+        </header>
 
-        <div className="flex flex-1 items-center justify-center py-10">
+        <main className="flex flex-1 items-center justify-center py-10">
           <div className="w-full max-w-sm">{children}</div>
-        </div>
+        </main>
 
-        <p className="text-center text-xs text-muted-foreground">
-          Not affiliated with any commercial AI video service.
-        </p>
+        <footer className="text-center text-xs text-muted-foreground">
+          <p>Not affiliated with any commercial AI video service.</p>
+        </footer>
       </div>
 
       {/* decorative panel */}
-      <div className="relative hidden overflow-hidden border-l border-border/60 bg-surface/30 lg:block">
+      <aside className="relative hidden overflow-hidden border-l border-border/60 bg-surface/30 lg:block">
         <div className="aurora opacity-50" aria-hidden />
 
         <div className="relative flex h-full flex-col justify-center px-12">
@@ -64,7 +71,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             ))}
           </div>
         </div>
-      </div>
+      </aside>
     </div>
   )
 }

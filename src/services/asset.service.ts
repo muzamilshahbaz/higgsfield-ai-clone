@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { createHash } from 'node:crypto'
+
 import type { RawAsset } from '@/lib/ai/types'
 import { STORAGE_BUCKETS } from '@/lib/constants'
 import { env } from '@/lib/env'
@@ -103,6 +105,37 @@ async function copyIntoStorage(
 }
 
 /**
+ * A stable asset id for (generation, slot).
+ *
+ * The read-then-insert below is not atomic, so two syncs that finish a job at
+ * the same instant — two open tabs, or a tab and the cron sweep — can both see
+ * no rows and both insert, leaving the library with duplicate media. Deriving
+ * the primary key from the generation and the slot makes the second insert a
+ * primary-key conflict instead, which is a guarantee rather than a narrow
+ * window. UUIDv5 over the generation's own uuid namespace, per RFC 4122.
+ */
+function deterministicAssetId(generationId: string, index: number): string {
+  const namespace = Buffer.from(generationId.replace(/-/g, ''), 'hex')
+  const hash = createHash('sha1')
+    .update(namespace)
+    .update(`asset:${index}`)
+    .digest()
+
+  const bytes = Buffer.from(hash.subarray(0, 16))
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50 // version 5
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80 // RFC 4122 variant
+
+  const hex = bytes.toString('hex')
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20, 32),
+  ].join('-')
+}
+
+/**
  * Persists a completed job's media.
  *
  * Idempotent: the ticker, the opportunistic sweep and the cron backstop can all
@@ -133,6 +166,7 @@ export async function persistProviderAssets(
   )
 
   const rows = rawAssets.map((asset, index) => ({
+    id: deterministicAssetId(generation.id, index),
     generation_id: generation.id,
     user_id: generation.user_id,
     kind: asset.kind as AssetKind,
@@ -146,7 +180,12 @@ export async function persistProviderAssets(
     sort_order: index,
   }))
 
-  const { data, error } = await admin.from('assets').insert(rows).select('*')
+  // upsert, not insert: the loser of the race re-reads the winner's rows
+  // rather than erroring or duplicating them.
+  const { data, error } = await admin
+    .from('assets')
+    .upsert(rows, { onConflict: 'id', ignoreDuplicates: false })
+    .select('*')
 
   if (error) {
     console.error('[asset.service] insert failed:', error.message)

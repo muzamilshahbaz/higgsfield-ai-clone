@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function SettingsLoading() {
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <HeaderSkeleton />
+      <HeaderSkeleton title="Settings" />
 
       <Card className="p-6">
         <div className="flex items-center gap-4">

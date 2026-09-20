@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 /** Catches any URL that matches no route, so a typo is never a bare 404. */
 export default function NotFound() {
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
+    <main className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-border bg-surface">
           <MapPinOff className="size-5 text-muted-foreground" aria-hidden />
@@ -40,6 +40,6 @@ export default function NotFound() {
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

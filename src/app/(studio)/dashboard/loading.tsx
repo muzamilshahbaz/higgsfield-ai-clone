@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 export default function DashboardLoading() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <HeaderSkeleton action />
+      <HeaderSkeleton action title="Dashboard" />
       <StatsSkeleton />
 
       <section className="space-y-4">

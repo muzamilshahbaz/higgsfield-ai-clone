@@ -21,10 +21,10 @@ export default async function AuthCodeErrorPage({
   const { reason } = await searchParams
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
+    <main className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10">
-          <TriangleAlert className="size-5 text-destructive" />
+          <TriangleAlert className="size-5 text-danger" />
         </div>
 
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">That link did not work</h1>
@@ -55,6 +55,6 @@ export default async function AuthCodeErrorPage({
           Back to the home page
         </Link>
       </div>
-    </div>
+    </main>
   )
 }

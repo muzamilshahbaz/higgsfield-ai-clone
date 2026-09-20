@@ -22,10 +22,10 @@ export default function Error({
   }, [error])
 
   return (
-    <div className="flex min-h-dvh items-center justify-center px-4 py-16">
+    <main className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md text-center">
         <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10">
-          <TriangleAlert className="size-5 text-destructive" aria-hidden />
+          <TriangleAlert className="size-5 text-danger" aria-hidden />
         </div>
 
         <h1 className="mt-6 text-2xl font-semibold tracking-tight">Something went wrong</h1>
@@ -49,6 +49,6 @@ export default function Error({
           </Button>
         </div>
       </div>
-    </div>
+    </main>
   )
 }

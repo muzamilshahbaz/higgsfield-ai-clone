@@ -87,7 +87,7 @@ function SelectItem({
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
       {hint && <span className="text-xs leading-snug text-muted-foreground">{hint}</span>}
       <SelectPrimitive.ItemIndicator className="absolute right-2.5 top-2.5">
-        <Check className="size-4 text-primary" aria-hidden />
+        <Check className="size-4 text-brand" aria-hidden />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
   )

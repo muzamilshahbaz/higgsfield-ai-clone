@@ -8,7 +8,7 @@ import { HeaderSkeleton, PanelSkeleton } from '@/components/studio/page-skeleton
 export default function StudioLoading() {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <HeaderSkeleton />
+      <HeaderSkeleton title="Studio" />
       <PanelSkeleton className="h-80" />
     </div>
   )

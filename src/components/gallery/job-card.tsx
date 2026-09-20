@@ -70,7 +70,7 @@ export function JobCard({
         </div>
 
         {failed && generation.error_message && (
-          <p className="text-xs leading-snug text-destructive">{generation.error_message}</p>
+          <p className="text-xs leading-snug text-danger">{generation.error_message}</p>
         )}
 
         {failed && onRetry && (
@@ -142,7 +142,7 @@ function PendingFrame({ generation }: { generation: GenerationWithAssets }) {
 function FailedFrame({ message }: { message: string | null }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-destructive/5 px-6 text-center">
-      <AlertTriangle className="size-5 text-destructive" aria-hidden />
+      <AlertTriangle className="size-5 text-danger" aria-hidden />
       <span className="text-xs leading-snug text-muted-foreground">
         {message ? truncate(message, 90) : 'This one did not make it. Your credits are back.'}
       </span>

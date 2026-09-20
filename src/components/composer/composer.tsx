@@ -197,7 +197,7 @@ export function Composer({ credits, projectId }: { credits: number; projectId?: 
           <span
             className={cn(
               'text-xs tabular-nums text-muted-foreground',
-              state.prompt.length > LIMITS.maxPromptLength && 'text-destructive',
+              state.prompt.length > LIMITS.maxPromptLength && 'text-danger',
             )}
           >
             {state.prompt.length}/{LIMITS.maxPromptLength}
@@ -212,7 +212,7 @@ export function Composer({ credits, projectId }: { credits: number; projectId?: 
           placeholder="A lighthouse in a storm, waves breaking over the rocks, dusk, anamorphic"
           onChange={(event) => setState((current) => ({ ...current, prompt: event.target.value }))}
         />
-        {errors.prompt && <p className="text-xs text-destructive">{errors.prompt}</p>}
+        {errors.prompt && <p className="text-xs text-danger">{errors.prompt}</p>}
       </div>
 
       {model.supports.imageInput && (
@@ -228,7 +228,7 @@ export function Composer({ credits, projectId }: { credits: number; projectId?: 
       )}
 
       <ModelSelector task={state.task} value={state.modelId} onChange={selectModel} />
-      {errors.modelId && <p className="text-xs text-destructive">{errors.modelId}</p>}
+      {errors.modelId && <p className="text-xs text-danger">{errors.modelId}</p>}
 
       <div className="space-y-1.5">
         <span className="text-xs font-medium text-muted-foreground">Aspect ratio</span>
@@ -300,7 +300,7 @@ export function Composer({ credits, projectId }: { credits: number; projectId?: 
                   }))
                 }
               />
-              {errors.seed && <p className="text-xs text-destructive">{errors.seed}</p>}
+              {errors.seed && <p className="text-xs text-danger">{errors.seed}</p>}
             </div>
           </div>
         )}
@@ -310,7 +310,7 @@ export function Composer({ credits, projectId }: { credits: number; projectId?: 
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Cost</span>
           <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
-            <Coins className={cn('size-4', affordable ? 'text-credit' : 'text-destructive')} aria-hidden />
+            <Coins className={cn('size-4', affordable ? 'text-credit' : 'text-danger')} aria-hidden />
             {cost} {cost === 1 ? 'credit' : 'credits'}
           </span>
         </div>

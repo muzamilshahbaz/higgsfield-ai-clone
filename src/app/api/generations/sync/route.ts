@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+import { getCurrentUser } from '@/lib/supabase/server'
 import { getMyCredits } from '@/services/profile.service'
 import { syncMyJobs } from '@/services/generation.service'
 
@@ -15,6 +16,14 @@ import { syncMyJobs } from '@/services/generation.service'
  * separate round trip.
  */
 export async function POST() {
+  const user = await getCurrentUser()
+  if (!user) {
+    return NextResponse.json(
+      { error: { code: 'UNAUTHENTICATED', message: 'You need to be signed in.' } },
+      { status: 401 },
+    )
+  }
+
   const generations = await syncMyJobs()
   const credits = await getMyCredits()
 

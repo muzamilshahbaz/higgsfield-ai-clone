@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Clapperboard, Loader2 } from 'lucide-react'
 
@@ -24,6 +25,7 @@ export function JobFeed({
   /** Off where a surrounding stat already states the total, as on the dashboard. */
   showCount?: boolean
 }) {
+  const router = useRouter()
   const { generations, activeCount, syncing, upsert } = useGenerationFeed()
   const [retrying, setRetrying] = React.useState<string | null>(null)
 
@@ -61,6 +63,9 @@ export function JobFeed({
         }
 
         upsert([data.generation])
+        // A retry is a fresh debit, so the topbar pill is stale until the
+        // layout re-renders — same reason the composer refreshes after a submit.
+        router.refresh()
         toast.success('Running it again')
       } catch {
         toast.error('Could not reach the server. Check your connection.')
@@ -68,7 +73,7 @@ export function JobFeed({
         setRetrying(null)
       }
     },
-    [upsert],
+    [upsert, router],
   )
 
   if (generations.length === 0) {

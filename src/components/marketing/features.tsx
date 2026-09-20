@@ -60,7 +60,7 @@ export function Features() {
                 key={feature.title}
                 className="group relative bg-background p-7 transition-colors hover:bg-surface"
               >
-                <feature.icon className="size-5 text-primary" />
+                <feature.icon className="size-5 text-brand" />
                 <h3 className="mt-4 text-[15px] font-medium">{feature.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{feature.body}</p>
               </div>
@@ -78,7 +78,7 @@ export function Features() {
           <div className="mt-14 grid gap-10 sm:grid-cols-3">
             {STEPS.map((item) => (
               <div key={item.step} className="relative">
-                <span className="font-mono text-sm text-primary">{item.step}</span>
+                <span className="font-mono text-sm text-brand">{item.step}</span>
                 <h3 className="mt-3 text-lg font-medium">{item.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
               </div>

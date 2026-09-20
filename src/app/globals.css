@@ -24,9 +24,20 @@
   --color-muted-foreground: oklch(0.68 0.012 280);
 
   /* brand */
-  --color-primary: oklch(0.63 0.205 293);
+  /* Lightness is 0.57, not the 0.63 this started at: white-on-primary was
+     3.69:1, which fails WCAG AA for anything under 18.66px bold — and the
+     small primary buttons are 12px. 0.57 gives 4.78:1, so every primary
+     button passes at every size. The ring below deliberately keeps the
+     brighter value: a focus indicator is non-text and wants to be loud. */
+  --color-primary: oklch(0.57 0.205 293);
   --color-primary-foreground: oklch(0.99 0 0);
   --color-primary-soft: oklch(0.42 0.14 293);
+
+  /* The same brand violet as ink rather than as a fill. A colour cannot be
+     both a background for white text and legible text on a near-black
+     background: the first wants darkness, the second wants light. `primary`
+     fills, `brand` writes — 6.6:1 on the page background, 5.7:1 on surface-2. */
+  --color-brand: oklch(0.69 0.19 293);
 
   --color-accent: oklch(0.78 0.145 196);
   --color-accent-foreground: oklch(0.16 0.02 280);
@@ -36,8 +47,13 @@
 
   --color-credit: oklch(0.82 0.15 85);
 
-  --color-destructive: oklch(0.62 0.21 25);
+  /* Same fill/ink split as the brand pair above: white on the old 0.62 red was
+     3.92:1 and red-on-tint in a badge was 3.85:1, so both roles failed at once.
+     `destructive` fills (5.05:1 under white), `danger` writes (5.5:1 on a
+     tinted badge, 6.3:1 on a card). */
+  --color-destructive: oklch(0.56 0.21 25);
   --color-destructive-foreground: oklch(0.99 0 0);
+  --color-danger: oklch(0.72 0.21 25);
 
   --color-success: oklch(0.74 0.17 155);
   --color-warning: oklch(0.82 0.15 85);

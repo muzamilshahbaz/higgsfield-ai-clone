@@ -46,7 +46,7 @@ export function FormError({ message }: { message?: string }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
+      className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-danger"
     >
       <CircleAlert className="mt-0.5 size-4 shrink-0" />
       <span>{message}</span>
@@ -74,7 +74,7 @@ export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
 
   return (
-    <p id={id} className="text-xs text-destructive">
+    <p id={id} className="text-xs text-danger">
       {message}
     </p>
   )

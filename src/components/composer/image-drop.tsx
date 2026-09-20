@@ -144,7 +144,7 @@ export function ImageDrop({
         }}
       />
 
-      {message && <p className="text-xs text-destructive">{message}</p>}
+      {message && <p className="text-xs text-danger">{message}</p>}
     </div>
   )
 }

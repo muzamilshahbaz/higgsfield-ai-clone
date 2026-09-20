@@ -10,15 +10,26 @@ import { cn } from '@/lib/utils'
  * shift the layout under the reader's eye.
  */
 
-/** Heading + subtitle block that every studio page opens with. */
-export function HeaderSkeleton({ action = false }: { action?: boolean }) {
+/**
+ * Heading + subtitle block that every studio page opens with.
+ *
+ * `title` is not decoration. Without it the loading state is a page of grey
+ * rectangles with no heading and nothing to announce — a screen reader lands
+ * on silence, and an automated audit correctly reports a page with no `h1`.
+ * The real page renders its own visible `h1` a moment later.
+ */
+export function HeaderSkeleton({ action = false, title }: { action?: boolean; title: string }) {
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="space-y-2">
-        <Skeleton className="h-7 w-56" />
-        <Skeleton className="h-4 w-72" />
+        <h1 className="sr-only">{title}</h1>
+        <p role="status" className="sr-only">
+          Loading {title.toLowerCase()}…
+        </p>
+        <Skeleton className="h-7 w-56" aria-hidden />
+        <Skeleton className="h-4 w-72" aria-hidden />
       </div>
-      {action && <Skeleton className="h-10 w-40 rounded-lg" />}
+      {action && <Skeleton className="h-10 w-40 rounded-lg" aria-hidden />}
     </div>
   )
 }
