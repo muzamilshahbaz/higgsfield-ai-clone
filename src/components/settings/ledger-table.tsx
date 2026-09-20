@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { ArrowDownLeft, ArrowUpRight, Gift, Wrench } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, Gift, RefreshCw, Wrench } from 'lucide-react'
 
 import { EmptyState } from '@/components/studio/empty-state'
 import { Button } from '@/components/ui/button'
@@ -25,6 +25,7 @@ const REASON_LABELS: Record<CreditReason, string> = {
   generation_refund: 'Refund',
   admin_adjust: 'Adjustment',
   promo: 'Promo credit',
+  subscription_grant: 'Monthly credits',
 }
 
 const REASON_ICONS: Record<CreditReason, typeof Gift> = {
@@ -33,6 +34,7 @@ const REASON_ICONS: Record<CreditReason, typeof Gift> = {
   generation_refund: ArrowDownLeft,
   admin_adjust: Wrench,
   promo: Gift,
+  subscription_grant: RefreshCw,
 }
 
 export function LedgerTable({

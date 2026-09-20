@@ -39,6 +39,7 @@ export const env = {
   cronSecret: clean(process.env.CRON_SECRET),
   /** Seals the provider keys users store. Without it, the vault is read-only. */
   aiKeySecret: clean(process.env.AI_KEY_ENCRYPTION_SECRET),
+
 } as const
 
 /**

@@ -4,6 +4,7 @@ import { getModel, type GenerationRequest } from '@/lib/ai'
 import { MockProvider } from '@/lib/ai/providers/mock'
 import { routeGeneration, type RouteDecision } from '@/services/ai/ai-router'
 import { getUserProviderKey } from '@/services/ai-keys.service'
+import { planForUser } from '@/services/subscription.service'
 import { LIMITS } from '@/lib/constants'
 import { isServiceRoleConfigured } from '@/lib/env'
 import {
@@ -841,8 +842,22 @@ async function findByIdempotencyKey(
   return data
 }
 
+/**
+ * Queue-depth and rate guardrails, scaled by the caller's plan.
+ *
+ * The numbers live on the plan rather than in `LIMITS` because the pricing
+ * page sells them: "higher concurrent job limit" has to be the same number
+ * here that the marketing section promises, or the product quietly fails to
+ * deliver what was bought. `LIMITS` keeps the free-tier values as the floor
+ * and `plans.ts` is what the paid tier raises.
+ *
+ * A billing lookup that fails resolves to the free plan, so an outage in the
+ * subscription table costs a paying user some concurrency rather than all
+ * access.
+ */
 async function checkLimits(userId: string): Promise<(CreateResult & { ok: false }) | null> {
   const admin = createAdminClient()
+  const plan = await planForUser(userId)
 
   const { count: active } = await admin
     .from('generations')
@@ -851,12 +866,12 @@ async function checkLimits(userId: string): Promise<(CreateResult & { ok: false 
     .is('deleted_at', null)
     .in('status', ['queued', 'running'])
 
-  if ((active ?? 0) >= LIMITS.maxConcurrentJobs) {
+  if ((active ?? 0) >= plan.maxConcurrentJobs) {
     return {
       ok: false,
       code: 'TOO_MANY_ACTIVE',
       status: 429,
-      message: `You already have ${LIMITS.maxConcurrentJobs} jobs running. Wait for one to finish.`,
+      message: `You already have ${plan.maxConcurrentJobs} jobs running. Wait for one to finish.`,
     }
   }
 
@@ -867,12 +882,12 @@ async function checkLimits(userId: string): Promise<(CreateResult & { ok: false 
     .eq('user_id', userId)
     .gte('created_at', since)
 
-  if ((recent ?? 0) >= LIMITS.maxGenerationsPerHour) {
+  if ((recent ?? 0) >= plan.maxGenerationsPerHour) {
     return {
       ok: false,
       code: 'RATE_LIMITED',
       status: 429,
-      message: `That is ${LIMITS.maxGenerationsPerHour} generations in an hour — give it a few minutes.`,
+      message: `That is ${plan.maxGenerationsPerHour} generations in an hour — give it a few minutes.`,
     }
   }
 

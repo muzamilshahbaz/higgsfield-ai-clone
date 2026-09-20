@@ -49,6 +49,12 @@ export type CreditReason =
   | 'generation_refund'
   | 'admin_adjust'
   | 'promo'
+  | 'subscription_grant'
+
+/** See migration 0008. Mirrors what a payment provider would report. */
+export type PlanTier = 'free' | 'pro' | 'enterprise'
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete'
+export type PaymentStatus = 'succeeded' | 'failed' | 'refunded'
 
 export type ProfileRow = {
   id: string
@@ -190,6 +196,38 @@ export type UserProviderKeyRow = {
   updated_at: string
 }
 
+export type SubscriptionRow = {
+  id: string
+  user_id: string
+  plan: PlanTier
+  status: SubscriptionStatus
+  current_period_start: string
+  current_period_end: string | null
+  cancel_at_period_end: boolean
+  canceled_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * A billing-history row. `card_brand` and `card_last4` are what a receipt
+ * shows; the card number itself is never written here or anywhere else.
+ */
+export type PaymentTransactionRow = {
+  id: string
+  user_id: string
+  plan: PlanTier
+  amount_pence: number
+  currency: string
+  status: PaymentStatus
+  description: string
+  card_brand: string | null
+  card_last4: string | null
+  reference: string | null
+  failure_code: string | null
+  created_at: string
+}
+
 /**
  * `Relationships` is required by the client's GenericTable constraint. It is
  * left empty here because we query tables explicitly rather than through
@@ -257,6 +295,21 @@ export type Database = {
         Update: Partial<UserProviderKeyRow>
         Relationships: []
       }
+      subscriptions: {
+        Row: SubscriptionRow
+        Insert: InsertOf<SubscriptionRow, 'user_id'>
+        Update: Partial<SubscriptionRow>
+        Relationships: []
+      }
+      payment_transactions: {
+        Row: PaymentTransactionRow
+        Insert: InsertOf<
+          PaymentTransactionRow,
+          'user_id' | 'plan' | 'amount_pence' | 'status' | 'description'
+        >
+        Update: Partial<PaymentTransactionRow>
+        Relationships: []
+      }
     }
     // `{ [_ in never]: never }` is the shape the Supabase codegen emits for an
     // empty group. `Record<never, never>` resolves to `{}`, which has no string
@@ -290,6 +343,10 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: string
       }
+      set_subscription_credits: {
+        Args: { p_user_id: string; p_amount: number; p_note?: string | null }
+        Returns: number
+      }
     }
     Enums: {
       user_role: UserRole
@@ -301,6 +358,9 @@ export type Database = {
       generation_visibility: GenerationVisibility
       asset_kind: AssetKind
       credit_reason: CreditReason
+      subscription_status: SubscriptionStatus
+      plan_tier: PlanTier
+      payment_status: PaymentStatus
     }
     CompositeTypes: { [_ in never]: never }
   }
