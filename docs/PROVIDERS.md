@@ -98,7 +98,7 @@ changing what sits behind an id is a single edit in `lib/ai/registry.ts`.
 | `motion-cine` | Wan 2.2 I2V A14B | `fal-ai/wan/v2.2-a14b/image-to-video` | `wan-video/wan-2.2-i2v-a14b` |
 | `motion-scene` | Wan 2.2 T2V A14B | `fal-ai/wan/v2.2-a14b/text-to-video` | `wan-video/wan-2.2-t2v-fast` |
 | `motion-ltx` | LTX-Video 13B distilled | `fal-ai/ltx-video-13b-distilled` | `lightricks/ltx-video` |
-| `motion-cog` | CogVideoX-5B | `fal-ai/cogvideox-5b` | `lucataco/cogvideox-5b` |
+| `motion-cog` | CogVideoX-5B | `fal-ai/cogvideox-5b` | `cuuupid/cogvideox-5b` |
 | `motion-hunyuan` | HunyuanVideo | `fal-ai/hunyuan-video` | `tencent/hunyuan-video` |
 
 ## Choices worth recording

@@ -267,7 +267,7 @@ export const MODELS: ModelEntry[] = [
     family: 'CogVideoX-5B',
     routes: [
       { provider: 'fal', path: 'fal-ai/cogvideox-5b' },
-      { provider: 'replicate', path: 'lucataco/cogvideox-5b', videoFrameRate: 8 },
+      { provider: 'replicate', path: 'cuuupid/cogvideox-5b', videoFrameRate: 8 },
     ],
     credits: 16,
     indicativeUsd: 0.12,
