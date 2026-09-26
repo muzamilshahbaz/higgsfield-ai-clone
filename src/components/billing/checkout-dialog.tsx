@@ -292,12 +292,12 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
             {/* The total, restated beside the button that charges it. */}
             <div className="flex items-baseline justify-between border-t border-border pt-4">
               <span className="text-sm text-muted-foreground">Total today</span>
-              <span className="text-lg font-semibold tabular-nums">£{plan.priceGbp}.00</span>
+              <span className="text-lg font-semibold tabular-nums">${plan.priceUsd}.00</span>
             </div>
 
             <Button type="submit" className="w-full">
               <Lock className="size-4" aria-hidden />
-              Pay £{plan.priceGbp}
+              Pay ${plan.priceUsd}
             </Button>
           </motion.form>
         ) : phase === 'processing' ? (

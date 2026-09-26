@@ -30,10 +30,10 @@ function card(over: Partial<CardDetails> = {}): CardDetails {
   }
 }
 
-function charge(over: Partial<CardDetails> = {}, amountPence = 2400) {
+function charge(over: Partial<CardDetails> = {}, amountMinor = 2400) {
   return gateway.charge({
-    amountPence,
-    currency: 'gbp',
+    amountMinor,
+    currency: 'usd',
     description: 'Kinetic Pro — one month',
     card: card(over),
   })

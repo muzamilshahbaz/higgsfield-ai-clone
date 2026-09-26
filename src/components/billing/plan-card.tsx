@@ -65,14 +65,14 @@ export function PlanCard({ plan, currentPlanId, action, className }: PlanCardPro
 
       <p className="mt-5 flex items-baseline gap-1.5">
         <span className="font-display text-[2.75rem] font-semibold leading-none tracking-tight tabular-nums">
-          £{plan.priceGbp}
+          ${plan.priceUsd}
         </span>
         <span className="text-sm text-muted-foreground">{plan.cadence}</span>
       </p>
 
       <p className="mt-3 inline-flex w-fit items-center rounded-md bg-credit/10 px-2 py-1 text-xs font-medium tabular-nums text-credit">
         {plan.credits.toLocaleString()} credits
-        {plan.priceGbp > 0 ? ' a month' : ' at signup'}
+        {plan.priceUsd > 0 ? ' a month' : ' at signup'}
       </p>
 
       <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{plan.tagline}</p>

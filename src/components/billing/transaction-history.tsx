@@ -13,14 +13,19 @@ import type { PaymentTransactionRow } from '@/types/database'
  * only lists what worked is the one people distrust — somebody whose card was
  * declined wants to see that it was declined, not an unexplained gap.
  *
- * Amounts are rendered from integer pence. Money is never a float here.
+ * Amounts are rendered from integer minor units. Money is never a float here.
+ *
+ * Each row is formatted with the currency it was written with, not the
+ * catalogue's current one. Receipts taken before the move to USD are genuinely
+ * in GBP, and restating them as dollars would be inventing a number nobody was
+ * charged.
  */
 
-function money(pence: number, currency: string): string {
-  return new Intl.NumberFormat('en-GB', {
+function money(minorUnits: number, currency: string): string {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency.toUpperCase(),
-  }).format(pence / 100)
+  }).format(minorUnits / 100)
 }
 
 export function TransactionHistory({ transactions }: { transactions: PaymentTransactionRow[] }) {

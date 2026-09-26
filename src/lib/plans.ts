@@ -19,8 +19,8 @@ export interface Plan {
   id: PlanId
   name: string
   tagline: string
-  /** Whole pounds per month. Free is 0. */
-  priceGbp: number
+  /** Whole dollars per month. Free is 0. */
+  priceUsd: number
   cadence: string
   /**
    * On `free` this is the one-off signup grant. On a paid plan it is the
@@ -46,7 +46,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'free',
     name: 'Free',
     tagline: 'Everything in the studio, on the credits you get at signup.',
-    priceGbp: 0,
+    priceUsd: 0,
     cadence: 'forever',
     credits: SIGNUP_CREDIT_GRANT,
     maxConcurrentJobs: 2,
@@ -64,7 +64,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'pro',
     name: 'Pro',
     tagline: 'For the week where one idea turns into forty takes.',
-    priceGbp: 24,
+    priceUsd: 24,
     cadence: 'per month',
     credits: 2_500,
     maxConcurrentJobs: 5,
@@ -82,7 +82,7 @@ export const PLANS: Record<PlanId, Plan> = {
     id: 'enterprise',
     name: 'Enterprise',
     tagline: 'Team-scale throughput, with room for a bad week.',
-    priceGbp: 79,
+    priceUsd: 79,
     cadence: 'per month',
     credits: 10_000,
     maxConcurrentJobs: 12,
@@ -111,9 +111,19 @@ export function getPlan(id: PlanId): Plan {
   return PLANS[id]
 }
 
-/** Pence, for the transaction record. Money is never stored as a float. */
-export function priceInPence(plan: Plan): number {
-  return plan.priceGbp * 100
+/** The currency every price in this catalogue is quoted and charged in. */
+export const CURRENCY = 'usd' as const
+
+/**
+ * The price in minor units, for the transaction record. Money is never stored
+ * as a float — $24 is 2400, not 24.0.
+ *
+ * Named for minor units rather than cents because the column it feeds
+ * (`payment_transactions.amount_pence`) predates the move to USD and holds
+ * whatever the row's own `currency` says it is.
+ */
+export function priceInMinorUnits(plan: Plan): number {
+  return plan.priceUsd * 100
 }
 
 // ---------------------------------------------------------------------------

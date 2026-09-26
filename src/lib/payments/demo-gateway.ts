@@ -42,8 +42,9 @@ export interface CardDetails {
 }
 
 export interface ChargeRequest {
-  amountPence: number
-  currency: 'gbp'
+  /** Minor units: $24 is 2400. Never a float. */
+  amountMinor: number
+  currency: 'usd'
   description: string
   card: CardDetails
 }
@@ -127,7 +128,7 @@ function reference(): string {
 class DemoGateway implements PaymentGateway {
   readonly simulated = true
 
-  async charge({ amountPence, card }: ChargeRequest): Promise<ChargeResult> {
+  async charge({ amountMinor, card }: ChargeRequest): Promise<ChargeResult> {
     const digits = normaliseCardNumber(card.cardNumber)
     const brand = detectBrand(digits)
 
@@ -158,7 +159,7 @@ class DemoGateway implements PaymentGateway {
     if (!checkExpiry(card.expiry).ok) {
       return { ok: false, ...summary, code: 'expired_card', message: 'That expiry date is not valid.' }
     }
-    if (amountPence <= 0) {
+    if (amountMinor <= 0) {
       return { ok: false, ...summary, code: 'processing_error', message: 'Nothing to charge.' }
     }
 

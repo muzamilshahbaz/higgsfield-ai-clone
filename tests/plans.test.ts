@@ -12,7 +12,7 @@ import {
   PLAN_LIST,
   PLANS,
   planFor,
-  priceInPence,
+  priceInMinorUnits,
 } from '@/lib/plans'
 
 /**
@@ -84,7 +84,7 @@ describe('the plan catalogue', () => {
       expect(higher.credits).toBeGreaterThan(lower.credits)
       expect(higher.maxConcurrentJobs).toBeGreaterThan(lower.maxConcurrentJobs)
       expect(higher.maxGenerationsPerHour).toBeGreaterThan(lower.maxGenerationsPerHour)
-      expect(higher.priceGbp).toBeGreaterThan(lower.priceGbp)
+      expect(higher.priceUsd).toBeGreaterThan(lower.priceUsd)
     }
   })
 
@@ -98,7 +98,7 @@ describe('the plan catalogue', () => {
     // limits change depending on which source a caller consulted.
     expect(FREE_PLAN.maxConcurrentJobs).toBe(LIMITS.maxConcurrentJobs)
     expect(FREE_PLAN.maxGenerationsPerHour).toBe(LIMITS.maxGenerationsPerHour)
-    expect(FREE_PLAN.priceGbp).toBe(0)
+    expect(FREE_PLAN.priceUsd).toBe(0)
   })
 
   it('gives the comparison table a value for every plan on every row', () => {
@@ -114,10 +114,10 @@ describe('the plan catalogue', () => {
     expect(PLAN_LIST.filter((p) => p.featured)).toHaveLength(1)
   })
 
-  it('converts price to whole pence, never a float', () => {
+  it('converts price to whole minor units, never a float', () => {
     for (const plan of PLAN_LIST) {
-      expect(Number.isInteger(priceInPence(plan))).toBe(true)
-      expect(priceInPence(plan)).toBe(plan.priceGbp * 100)
+      expect(Number.isInteger(priceInMinorUnits(plan))).toBe(true)
+      expect(priceInMinorUnits(plan)).toBe(plan.priceUsd * 100)
     }
   })
 })

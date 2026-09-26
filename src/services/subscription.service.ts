@@ -8,7 +8,8 @@ import {
   type Plan,
   type PlanId,
   planFor,
-  priceInPence,
+  CURRENCY,
+  priceInMinorUnits,
 } from '@/lib/plans'
 import { getGateway, type CardDetails } from '@/lib/payments/demo-gateway'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -188,7 +189,7 @@ function addMonth(from: Date): Date {
 async function recordTransaction(entry: {
   userId: string
   plan: PlanTier
-  amountPence: number
+  amountMinor: number
   status: 'succeeded' | 'failed'
   description: string
   cardBrand?: string | null
@@ -201,7 +202,7 @@ async function recordTransaction(entry: {
   const { error } = await admin.from('payment_transactions').insert({
     user_id: entry.userId,
     plan: entry.plan,
-    amount_pence: entry.amountPence,
+    amount_pence: entry.amountMinor,
     status: entry.status,
     description: entry.description,
     card_brand: entry.cardBrand ?? null,
@@ -238,11 +239,11 @@ export async function subscribeToPlan(
     return { ok: false, error: `You are already on the ${plan.name} plan.` }
   }
 
-  const amountPence = priceInPence(plan)
+  const amountMinor = priceInMinorUnits(plan)
 
   const charge = await getGateway().charge({
-    amountPence,
-    currency: 'gbp',
+    amountMinor,
+    currency: CURRENCY,
     description: `Kinetic ${plan.name} — one month`,
     card,
   })
@@ -251,7 +252,7 @@ export async function subscribeToPlan(
     await recordTransaction({
       userId: user.id,
       plan: planId,
-      amountPence,
+      amountMinor,
       status: 'failed',
       description: `${plan.name} — payment declined`,
       cardBrand: charge.brandLabel ?? null,
@@ -289,7 +290,7 @@ export async function subscribeToPlan(
     await recordTransaction({
       userId: user.id,
       plan: planId,
-      amountPence,
+      amountMinor,
       status: 'failed',
       description: `${plan.name} — could not activate`,
       failureCode: 'processing_error',
@@ -300,7 +301,7 @@ export async function subscribeToPlan(
   await recordTransaction({
     userId: user.id,
     plan: planId,
-    amountPence,
+    amountMinor,
     status: 'succeeded',
     description: `Kinetic ${plan.name} — one month`,
     cardBrand: charge.brandLabel,

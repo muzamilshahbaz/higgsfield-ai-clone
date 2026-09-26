@@ -33,7 +33,7 @@ export function SubscriptionStatus({
 }) {
   const ending = subscription?.cancel_at_period_end ?? false
   const renewal = formatDate(subscription?.current_period_end)
-  const isPaid = plan.priceGbp > 0
+  const isPaid = plan.priceUsd > 0
 
   return (
     <Card className="p-6">
@@ -46,7 +46,7 @@ export function SubscriptionStatus({
 
           <p className="mt-1.5 text-sm text-muted-foreground">
             {isPaid
-              ? `£${plan.priceGbp} ${plan.cadence}`
+              ? `$${plan.priceUsd} ${plan.cadence}`
               : 'No card required — the credits you got at signup.'}
           </p>
         </div>

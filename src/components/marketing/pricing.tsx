@@ -53,8 +53,8 @@ export function Pricing() {
                     /sign-in?next=… and back again afterwards, so one href
                     serves both the visitor and the returning user.
                   */}
-                  <Link href={plan.priceGbp === 0 ? '/sign-up' : '/settings/billing'}>
-                    {plan.priceGbp === 0 ? 'Start creating free' : `Choose ${plan.name}`}
+                  <Link href={plan.priceUsd === 0 ? '/sign-up' : '/settings/billing'}>
+                    {plan.priceUsd === 0 ? 'Start creating free' : `Choose ${plan.name}`}
                     <ArrowRight className="size-4" aria-hidden />
                   </Link>
                 </Button>
