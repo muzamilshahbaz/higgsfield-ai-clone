@@ -11,6 +11,7 @@ import { PROVIDERS } from '@/lib/ai/catalogue'
 import { MODELS } from '@/lib/ai/registry'
 import { TRENDING_MODELS } from '@/lib/marketing/showcase'
 import type { MediaAsset } from '@/services/media.service'
+import type { PresetSummary } from '@/lib/presets'
 
 /**
  * Providers a generation can actually run through, not every vendor whose key
@@ -19,18 +20,6 @@ import type { MediaAsset } from '@/services/media.service'
  */
 const GENERATION_PROVIDER_COUNT = PROVIDERS.filter((provider) => provider.generationReady).length
 
-const HERO_PRESETS = [
-  { name: 'Crash Zoom', category: 'Camera' },
-  { name: 'Bullet Time', category: 'VFX' },
-  { name: 'Dolly Zoom', category: 'Camera' },
-  { name: '360 Orbit', category: 'Camera' },
-  { name: 'FPV Drone', category: 'Camera' },
-  { name: 'Film Noir', category: 'Style' },
-  { name: 'Golden Hour', category: 'Style' },
-  { name: 'Snorricam', category: 'Camera' },
-  { name: 'Whip Pan', category: 'Camera' },
-  { name: 'Tilt Shift', category: 'Style' },
-]
 
 /**
  * The hero.
@@ -46,10 +35,13 @@ const HERO_PRESETS = [
 export function Hero({
   isSignedIn = false,
   media = [],
+  presets = [],
 }: {
   isSignedIn?: boolean
   /** Reference photography from `media_assets`, for the collage. */
   media?: MediaAsset[]
+  /** The real catalogue, for the marquee. Empty on an unreachable database. */
+  presets?: PresetSummary[]
 }) {
   return (
     <section className="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24">
@@ -124,20 +116,26 @@ export function Hero({
             <div className="marquee flex gap-3">
               {[0, 1].map((copy) => (
                 <div key={copy} className="flex shrink-0 gap-3" aria-hidden={copy === 1}>
-                  {HERO_PRESETS.map((preset, index) => (
+                  {presets.map((preset) => (
                     <div
-                      key={preset.name}
+                      key={preset.slug}
                       className="group relative aspect-[3/4] w-36 shrink-0 overflow-hidden rounded-xl border border-border bg-surface sm:w-44"
-                      style={{
-                        background: `linear-gradient(${140 + index * 24}deg, oklch(0.24 0.05 ${260 + index * 14}), oklch(0.17 0.02 280))`,
-                      }}
                     >
+                      {preset.posterUrl && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={preset.posterUrl}
+                          alt=""
+                          loading="lazy"
+                          className="absolute inset-0 size-full object-cover"
+                        />
+                      )}
                       <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 p-3">
                         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
                           {preset.category}
                         </p>
-                        <p className="text-sm font-medium">{preset.name}</p>
+                        <p className="text-sm font-medium">{preset.title}</p>
                       </div>
                     </div>
                   ))}

@@ -14,6 +14,7 @@ import { isSupabaseConfigured } from '@/lib/env'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
 import { listMedia, listMediaMix } from '@/services/media.service'
+import { listPresetCatalogue } from '@/services/preset.service'
 
 const SHOWCASE_COUNT = 8
 
@@ -38,7 +39,7 @@ export default async function LandingPage() {
   const user = isSupabaseConfigured ? await getCurrentUser() : null
   const isSignedIn = Boolean(user)
 
-  const [showcase, heroMedia, trendingMedia, showcaseMedia] = isSupabaseConfigured
+  const [showcase, heroMedia, trendingMedia, showcaseMedia, presets] = isSupabaseConfigured
     ? await Promise.all([
         listPublicGenerations({ limit: SHOWCASE_COUNT, sort: 'top' }),
         // The hero gets landscape only: the three frames are small, overlap,
@@ -48,15 +49,19 @@ export default async function LandingPage() {
         // The showcase grid is the one that should look like a body of work,
         // so it takes a spread across people, animals, cities and landscape.
         listMediaMix(SHOWCASE_COUNT),
+        // The marquee used to be ten hardcoded names over generated CSS
+        // gradients. It is the real catalogue now, with the real preview each
+        // preset holds.
+        listPresetCatalogue(),
       ])
-    : [[], [], [], []]
+    : [[], [], [], [], []]
 
   return (
     <div className="relative min-h-dvh">
       <SiteHeader isSignedIn={isSignedIn} />
 
       <main>
-        <Hero isSignedIn={isSignedIn} media={heroMedia} />
+        <Hero isSignedIn={isSignedIn} media={heroMedia} presets={presets} />
         <TrendingModels media={trendingMedia} />
         <HowItWorks />
         <Features />
