@@ -72,7 +72,23 @@ export default function RootLayout({
       className={`${inter.variable} ${spaceGrotesk.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-dvh bg-background text-foreground antialiased">
+      {/*
+        `suppressHydrationWarning` here is about browser extensions, not about
+        anything this app renders. Grammarly and friends write their own
+        attributes — `data-gr-ext-installed`, `data-new-gr-c-s-check-loaded` —
+        onto <body> before React hydrates, so the server HTML and the live DOM
+        genuinely differ and React reports a mismatch the app cannot fix.
+
+        It is safe because the flag is one level deep: it silences mismatches on
+        this element's own attributes and text only, never its children. A real
+        hydration bug inside the tree still shouts. That is also why it belongs
+        on <body> specifically rather than being sprinkled downward — the same
+        reason <html> above already carries it.
+      */}
+      <body
+        className="min-h-dvh bg-background text-foreground antialiased"
+        suppressHydrationWarning
+      >
         <RouteProgress />
         {children}
         <Toaster
