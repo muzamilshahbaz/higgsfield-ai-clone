@@ -43,6 +43,14 @@ export function SignUpForm({ next }: { next?: string }) {
 
         <div className="space-y-2">
           <h2 className="font-display text-xl font-semibold">Confirm your email</h2>
+          {/*
+            The address is echoed back deliberately. A confirmation link that
+            never arrives is most often a typo in the address, and this is the
+            last moment it can be spotted without starting again.
+          */}
+          {state.values?.email && (
+            <p className="break-all font-medium">{state.values.email}</p>
+          )}
           <p className="text-sm leading-relaxed text-muted-foreground">{state.success}</p>
         </div>
 

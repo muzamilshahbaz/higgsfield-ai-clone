@@ -99,16 +99,24 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
  * is an endpoint a stranger can use to harvest which of their addresses have
  * accounts here.
  *
- * Left off, which keeps sign-up consistent with the two other places that
- * already refuse to be an oracle: `signIn` will not say which half was wrong,
- * and `requestPasswordReset` gives the same answer whether or not it sent
- * anything. The copy below is written to be true either way, so a visitor is
- * never told a new account was created when one was not.
+ * On, by the product owner's decision. Someone who has forgotten they already
+ * signed up is a far more common visitor to this form than someone enumerating
+ * addresses against a portfolio project, and being told "check your inbox" for
+ * a link that never comes is a dead end with nothing to act on.
  *
- * Turning it on is a real trade, not a bug fix: better sign-up UX, at the cost
- * of confirming account existence to anyone who asks.
+ * What that costs, stated plainly so nobody has to rediscover it: sign-up is
+ * now an oracle. Anyone can POST an address here and learn whether it has an
+ * account. Two things blunt it — GoTrue rate-limits this endpoint itself, and
+ * the answer only ever confirms an address someone already had to guess — but
+ * it is a real disclosure, not a theoretical one.
+ *
+ * Note the deliberate asymmetry with its neighbours: `signIn` still refuses to
+ * say which half was wrong, and `requestPasswordReset` still answers the same
+ * whether or not it sent anything. Those two leak on every failed login and
+ * every reset attempt respectively, which is a much larger surface than one
+ * sign-up form. Flip this back to false to make all three consistent.
  */
-const REVEAL_EXISTING_ACCOUNTS = false
+const REVEAL_EXISTING_ACCOUNTS = true
 
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const raw = {
@@ -173,12 +181,14 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   */
   if (!data.session) {
     return {
-      // Deliberately true whether or not the address was already registered.
-      // The old wording promised a link unconditionally, which read as "a
-      // second account has been made" to anyone signing up twice — the one
-      // thing that never happens.
-      success:
-        'If that address is new here, a confirmation link is on its way — click it to activate your account. If it already has an account, nothing has changed and no second account was created.',
+      /*
+        Unhedged, because with REVEAL_EXISTING_ACCOUNTS on a duplicate address
+        has already returned above — only a genuinely new one reaches here. If
+        that constant is ever turned back off, this copy has to go back to
+        covering both cases, or it will tell someone a new account was made
+        when it was not.
+      */
+      success: 'Click the link to activate your account, then sign in to start creating.',
       values: { email: parsed.data.email },
     }
   }
