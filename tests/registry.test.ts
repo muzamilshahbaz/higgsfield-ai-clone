@@ -91,8 +91,8 @@ describe('model registry integrity', () => {
   })
 
   it('never routes a model to the mock driver', () => {
-    // The mock is reachable only through AI_ALLOW_MOCK_FALLBACK, deliberately.
-    // A registry entry naming it would make stand-in media the normal path.
+    // There is no mock driver any more. A registry entry naming one would
+    // route a paid job at something that cannot generate.
     for (const model of MODELS) {
       for (const route of model.routes) {
         expect(route.provider, `${model.id}`).not.toBe('mock')

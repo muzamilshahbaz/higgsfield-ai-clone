@@ -124,9 +124,9 @@ No console errors at any step.
   — Hugging Face, fal.ai and Replicate — and a job runs on the user's own key
   first, then the deployment's shared one. With neither, the job is refused
   before it is charged. That is deliberate: a generation that did not happen
-  must not look like one that did. A UI walkthrough with no keys at all can set
-  `AI_ALLOW_MOCK_FALLBACK=1`, which renders bundled sample media instead; it is
-  off by default and should stay off anywhere real.
+  must not look like one that did. There is no stand-in driver — the mock
+  provider and its bundled sample media were removed — so a deployment with no
+  keys anywhere can browse the product but cannot generate.
 - **Eight vendors can be verified but not generated with.** Flux (BFL direct),
   Stability, OpenAI, Google, Kling, Runway, Luma and Pika have live
   key-verification probes and no generation driver, so no model routes to them.

@@ -1,6 +1,3 @@
-import { existsSync } from 'node:fs'
-import { resolve } from 'node:path'
-
 import { describe, expect, it } from 'vitest'
 
 import presets from '../data/presets.json'
@@ -14,8 +11,6 @@ import { getModel } from '@/lib/ai/registry'
  */
 
 type Preset = (typeof presets)[number]
-
-const PUBLIC_DIR = resolve(process.cwd(), 'public')
 
 describe('preset catalogue', () => {
   it('ships the planned 24 motion and 12 style presets', () => {
@@ -82,18 +77,18 @@ describe('preset catalogue', () => {
     }
   })
 
-  it('references preview media that actually exists in public/', () => {
-    const missing: string[] = []
+  it('references preview media by absolute url, never a bundled file', () => {
+    // The bundled placeholders under public/samples are gone. A preview is a
+    // real image somewhere, catalogued in `media_assets` and seeded into this
+    // file by scripts/seed-media.ts — so a local path here would be a file
+    // that no longer exists and a broken card in the grid.
     for (const preset of presets as Preset[]) {
       for (const url of [preset.previewVideoUrl, preset.previewPosterUrl]) {
         if (!url) continue
-        expect(url, preset.slug).toMatch(/^\//)
-        if (!existsSync(resolve(PUBLIC_DIR, url.replace(/^\//, '')))) {
-          missing.push(`${preset.slug} -> ${url}`)
-        }
+        expect(url, preset.slug).toMatch(/^https:\/\//)
+        expect(url, preset.slug).not.toMatch(/^\/samples\//)
       }
     }
-    expect(missing).toEqual([])
   })
 
   it('uses a valid hex accent colour', () => {

@@ -6,11 +6,11 @@ import { signKlingToken, splitKlingCredential } from '@/services/ai/providers/kl
 import type { ProviderName } from '@/types/database'
 
 /**
- * The router reads AI_ALLOW_MOCK_FALLBACK once at import time, and reads the
- * shared provider keys from the environment on every call. So each case resets
- * the module registry, re-imports, and runs against an environment with no
- * shared keys at all — which is the state that proves a job with no key is
- * refused rather than quietly mocked.
+ * The router reads the shared provider keys from the environment on every
+ * call, so each case resets the module registry, re-imports, and runs against
+ * an environment with no shared keys at all — which is the state that proves a
+ * job with no key is refused rather than run on something that is not a
+ * provider. There is no stand-in driver left to fall back to.
  */
 const SHARED_KEY_VARS = [
   'HUGGINGFACE_API_KEY',
@@ -26,12 +26,10 @@ const SHARED_KEY_VARS = [
   'PIKA_API_KEY',
 ] as const
 
-const TOUCHED = ['AI_ALLOW_MOCK_FALLBACK', ...SHARED_KEY_VARS] as const
+const TOUCHED = SHARED_KEY_VARS
 
-async function routerWith({ mockFallback = false } = {}) {
+async function routerWith() {
   vi.resetModules()
-  if (mockFallback) process.env.AI_ALLOW_MOCK_FALLBACK = '1'
-  else delete process.env.AI_ALLOW_MOCK_FALLBACK
   for (const name of SHARED_KEY_VARS) delete process.env[name]
   return import('@/services/ai/ai-router')
 }
@@ -215,13 +213,14 @@ describe('routeGeneration', () => {
     expect(route.ok).toBe(false)
   })
 
-  it('always answers for the mock provider, so an old mock job still polls', async () => {
+  it('refuses a job pinned to the retired mock provider', async () => {
+    // Rows from before the mock driver was removed still carry provider=mock.
+    // There is nothing to poll them with, so the sync path fails and refunds
+    // them rather than spinning to the timeout. See driverForRow.
     const { routeGeneration } = await routerWith()
     const route = routeGeneration({ modelId: 'lumen-flash', only: 'mock' })
 
-    expect(route.ok).toBe(true)
-    if (!route.ok) return
-    expect(route.driver.name).toBe('mock')
+    expect(route.ok).toBe(false)
   })
 
   it('never claims a key source it did not use', async () => {
@@ -231,8 +230,7 @@ describe('routeGeneration', () => {
       const route = routeGeneration({ modelId: model.id, keys: { fal: 'k' } })
       if (!route.ok) continue
 
-      if (route.providerName === 'mock') expect(route.keySource, model.id).toBe('none')
-      else expect(route.keySource, model.id).not.toBe('none')
+      expect(route.keySource, model.id).not.toBe('none')
     }
   })
 
@@ -250,33 +248,6 @@ describe('routeGeneration', () => {
       expect(typeof route.driver.poll, model.id).toBe('function')
       expect(route.providerName, model.id).toBe(requireModel(model.id).routes[0]!.provider)
     }
-  })
-})
-
-describe('AI_ALLOW_MOCK_FALLBACK', () => {
-  it('is off by default, so nothing is ever silently faked', async () => {
-    const { routingSummary } = await routerWith()
-    expect(routingSummary().mockFallbackEnabled).toBe(false)
-  })
-
-  it('substitutes the mock driver only when explicitly turned on', async () => {
-    const { routeGeneration } = await routerWith({ mockFallback: true })
-    const route = routeGeneration({ modelId: 'lumen-flash' })
-
-    expect(route.ok).toBe(true)
-    if (!route.ok) return
-    expect(route.providerName).toBe('mock')
-    // Recorded so an operator reading the logs knows why a sample came back.
-    expect(route.fallbackReason).toBeTruthy()
-  })
-
-  it('still prefers a real provider over the mock when a key exists', async () => {
-    const { routeGeneration } = await routerWith({ mockFallback: true })
-    const route = routeGeneration({ modelId: 'lumen-flash', keys: { huggingface: 'hf_k' } })
-
-    expect(route.ok).toBe(true)
-    if (!route.ok) return
-    expect(route.providerName).toBe('huggingface')
   })
 })
 

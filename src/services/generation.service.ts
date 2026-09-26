@@ -144,12 +144,6 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
     }
   }
 
-  if (route.fallbackReason) {
-    console.warn(
-      `[generation.service] ${model.id} is running on the mock driver: ${route.fallbackReason}`,
-    )
-  }
-
   const { data: inserted, error: insertError } = await admin
     .from('generations')
     .insert({
@@ -930,11 +924,7 @@ async function routeForUser(userId: string, modelId: string) {
  * polling something that cannot answer until the timeout.
  */
 async function driverForRow(row: GenerationRow) {
-  // A mock job's state lives entirely in its job id, so it needs no credential
-  // and must not cost a vault query.
-  const keys =
-    row.provider === 'mock' ? {} : await getUserProviderKeys(row.user_id, [row.provider])
-
+  const keys = await getUserProviderKeys(row.user_id, [row.provider])
   const route = routeGeneration({ modelId: row.model_id, keys, only: row.provider })
 
   return route.ok ? route.driver : null

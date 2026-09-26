@@ -174,7 +174,7 @@ All of these reach the user as a sentence on the card, and all of them refund.
 | `PROVIDER_TIMEOUT` | No answer in time. | yes |
 | `NO_OUTPUT` | The job finished and returned no media. | yes |
 | `STORAGE_FAILED` | Media came back and could not be stored. | yes |
-| `PROVIDER_DISCONNECTED` | The key the job was running on is gone. | no |
+| `PROVIDER_DISCONNECTED` | The key the job was running on is gone, or it ran on the retired mock driver. | no |
 | `TIMEOUT` | The job outlived `LIMITS.jobTimeoutMs`. | yes |
 
 ## Testing against a live provider

@@ -1,6 +1,5 @@
 import 'server-only'
 
-import { MockProvider } from '@/lib/ai/providers/mock'
 import { getModel, providersFor, type ModelEntry } from '@/lib/ai/registry'
 import { getProvider } from '@/lib/ai/catalogue'
 import type { AIProvider } from '@/lib/ai/types'
@@ -35,10 +34,11 @@ import stability from './providers/stability'
  *     3. the operator's shared key for that provider, if one is configured
  *
  * The first provider that clears all three runs the job. If none does, the
- * answer is a refusal with a sentence naming what to connect — not a mock
- * render. A generation that did not happen must never look like one that did,
- * which is why `routeGeneration` can fail and why the caller checks before it
- * debits a single credit.
+ * answer is a refusal with a sentence naming what to connect. There is no
+ * stand-in driver to fall back to and deliberately so: a generation that did
+ * not happen must never look like one that did, which is why
+ * `routeGeneration` can fail and why the caller checks before it debits a
+ * single credit.
  *
  * Everything in here is a pure function of its arguments plus the environment.
  * Fetching the user's keys is the caller's job (services/ai-keys.service.ts),
@@ -60,8 +60,6 @@ const MODULES: Record<ProviderName, ProviderDriverModule | null> = {
   pika,
 }
 
-const mock = new MockProvider()
-
 /** Where the credential that will run this job came from. */
 export type KeySource = 'user_key' | 'server_key' | 'none'
 
@@ -71,8 +69,6 @@ export interface RouteSuccess {
   /** Recorded on the generation row, so history says who actually ran it. */
   providerName: ProviderName
   keySource: KeySource
-  /** Set only when this is the mock driver standing in deliberately. */
-  fallbackReason?: string
 }
 
 export interface RouteFailure {
@@ -85,17 +81,6 @@ export interface RouteFailure {
 }
 
 export type RouteDecision = RouteSuccess | RouteFailure
-
-/**
- * The mock driver, off by default.
- *
- * It renders a bundled sample instead of calling a provider, which is exactly
- * what this app must not do silently — a generation history full of stand-ins
- * is worse than an empty one. It stays in the build because it is what the
- * automated tests run against and what a UI walkthrough with no keys needs, and
- * an operator who wants that turns it on knowingly.
- */
-const mockFallbackEnabled = process.env.AI_ALLOW_MOCK_FALLBACK === '1'
 
 /** The verification module for a vendor, or null if it has none. */
 export function driverModuleFor(provider: ProviderName): ProviderDriverModule | null {
@@ -161,26 +146,12 @@ export function routeGeneration({ modelId, keys, only }: RouteInput): RouteDecis
   const model = getModel(modelId)
 
   if (!model) {
-    if (mockFallbackEnabled) {
-      return {
-        ok: true,
-        driver: mock,
-        providerName: 'mock',
-        keySource: 'none',
-        fallbackReason: `unknown model ${modelId}`,
-      }
-    }
-
     return {
       ok: false,
       code: 'UNKNOWN_MODEL',
       message: 'That model no longer exists. Pick another one.',
       candidates: [],
     }
-  }
-
-  if (only === 'mock') {
-    return { ok: true, driver: mock, providerName: 'mock', keySource: 'none' }
   }
 
   return routeForModel(model, keys ?? {}, only)
@@ -206,16 +177,6 @@ function routeForModel(
     const shared = serverProviderKey(provider)
     if (shared) {
       return { ok: true, driver: create(shared), providerName: provider, keySource: 'server_key' }
-    }
-  }
-
-  if (mockFallbackEnabled) {
-    return {
-      ok: true,
-      driver: mock,
-      providerName: 'mock',
-      keySource: 'none',
-      fallbackReason: `no key available for ${candidates.join(', ') || model.id}`,
     }
   }
 
@@ -264,6 +225,5 @@ export function routingSummary() {
     generationProviderLabels: providers.map(
       (provider) => getProvider(provider)?.label ?? provider,
     ),
-    mockFallbackEnabled,
   }
 }
