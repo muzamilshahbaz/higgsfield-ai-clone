@@ -12,6 +12,7 @@ import { GenerationDrawer, type DrawerProject } from '@/components/gallery/gener
 import { MasonryGrid } from '@/components/gallery/masonry-grid'
 import { EmptyState } from '@/components/studio/empty-state'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { useGenerationQuery } from '@/hooks/use-generation-query'
 import { cn } from '@/lib/utils'
@@ -83,6 +84,12 @@ export function LibraryGrid({
   const [selection, setSelection] = React.useState<Set<string>>(new Set())
   const [selecting, setSelecting] = React.useState(false)
   const [bulkBusy, setBulkBusy] = React.useState(false)
+  // Two separate confirmations: one shot from its card, or the whole selection
+  // from the toolbar. Holding the single card in state rather than a boolean is
+  // what lets the dialog name the thing it is about to destroy.
+  const [deleting, setDeleting] = React.useState<GenerationWithAssets | null>(null)
+  const [confirmingBulk, setConfirmingBulk] = React.useState(false)
+  const [singleBusy, setSingleBusy] = React.useState(false)
 
   const searchId = React.useId()
   const { setFilters, remove, patch } = query
@@ -117,6 +124,27 @@ export function LibraryGrid({
     setSelection(new Set())
   }
 
+  /** Delete one shot, straight from its tile. */
+  async function deleteOne(generation: GenerationWithAssets) {
+    setSingleBusy(true)
+    const result = await deleteGenerationAction(generation.id, projectId)
+    setSingleBusy(false)
+
+    if (!result.ok) {
+      toast.error(result.error)
+      return
+    }
+
+    remove(generation.id)
+    setDeleting(null)
+    toast.success('Deleted', {
+      description:
+        result.data.assetsRemoved > 0
+          ? `${result.data.assetsRemoved} file${result.data.assetsRemoved === 1 ? '' : 's'} removed from storage.`
+          : 'The job is gone from your library.',
+    })
+  }
+
   /**
    * Bulk delete, one request per row rather than one batched endpoint: each
    * delete has to clean up its own storage objects, and a partial failure
@@ -134,6 +162,8 @@ export function LibraryGrid({
 
     const removed = results.filter((entry) => entry.result.ok)
     for (const entry of removed) remove(entry.id)
+
+    setConfirmingBulk(false)
 
     const failures = results.length - removed.length
     if (removed.length > 0) {
@@ -226,7 +256,7 @@ export function LibraryGrid({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => void deleteSelected()}
+                onClick={() => setConfirmingBulk(true)}
                 disabled={selection.size === 0 || bulkBusy}
                 className="text-danger hover:text-danger"
               >
@@ -300,6 +330,7 @@ export function LibraryGrid({
               selectable={selecting}
               selected={selection.has(generation.id)}
               onToggleSelect={toggleSelect}
+              onDelete={setDeleting}
             />
           ))}
         </MasonryGrid>
@@ -319,6 +350,55 @@ export function LibraryGrid({
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(open) => !open && setDeleting(null)}
+        title="Delete this shot?"
+        description={
+          (deleting?.assets.length ?? 0) > 0
+            ? 'The generated files are removed from storage and cannot be recovered. The job stays in your credit history, so your balance still adds up.'
+            : 'This job produced no files, so only the record goes. It stays in your credit history, so your balance still adds up.'
+        }
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        pending={singleBusy}
+        onConfirm={() => deleting && void deleteOne(deleting)}
+      >
+        {deleting && (
+          <div className="rounded-lg border border-border bg-surface-2/40 p-3">
+            <p className="line-clamp-2 text-sm leading-snug">
+              {deleting.prompt.trim() || 'Preset-only shot'}
+            </p>
+            <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+              {deleting.aspect_ratio} ·{' '}
+              {deleting.assets.length === 0
+                ? 'no files'
+                : `${deleting.assets.length} file${deleting.assets.length === 1 ? '' : 's'}`}
+            </p>
+          </div>
+        )}
+      </ConfirmDialog>
+
+      {/*
+        The bulk confirmation. This used to be missing entirely: pressing Delete
+        in selection mode destroyed every selected shot on the spot, which is
+        the one place in the app where a slip costs the most.
+      */}
+      <ConfirmDialog
+        open={confirmingBulk}
+        onOpenChange={setConfirmingBulk}
+        title={`Delete ${selection.size} ${selection.size === 1 ? 'shot' : 'shots'}?`}
+        description={
+          selection.size === 1
+            ? 'Its generated files are removed from storage and cannot be recovered. The job stays in your credit history, so your balance still adds up.'
+            : 'Their generated files are removed from storage and cannot be recovered. The jobs stay in your credit history, so your balance still adds up.'
+        }
+        confirmLabel={`Delete ${selection.size}`}
+        cancelLabel="Keep them"
+        pending={bulkBusy}
+        onConfirm={() => void deleteSelected()}
+      />
 
       <GenerationDrawer
         generation={openGeneration}

@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useRouter } from 'next/navigation'
-import { AlertTriangle, ArrowDownRight, ArrowUpRight, Loader2, RotateCcw, X } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Loader2, RotateCcw, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import {
@@ -13,14 +13,7 @@ import {
 import { CheckoutDialog } from '@/components/billing/checkout-dialog'
 import { CurrentPlanButton, PlanCard } from '@/components/billing/plan-card'
 import { Button } from '@/components/ui/button'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { comparePlans, getPlan, PLAN_LIST, type Plan, type PlanId } from '@/lib/plans'
 
 /**
@@ -191,49 +184,5 @@ export function BillingManager({ currentPlanId, endingAt }: BillingManagerProps)
         onConfirm={() => run('downgrade', downgradeToFreeAction, 'You are on the Free plan.')}
       />
     </>
-  )
-}
-
-function ConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  confirmLabel,
-  pending,
-  onConfirm,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  title: string
-  description: string
-  confirmLabel: string
-  pending: boolean
-  onConfirm: () => void
-}) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <div className="flex gap-3">
-            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" aria-hidden />
-            <div>
-              <DialogTitle>{title}</DialogTitle>
-              <DialogDescription className="mt-1.5">{description}</DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-            Keep it
-          </Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={pending}>
-            {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-            {confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }

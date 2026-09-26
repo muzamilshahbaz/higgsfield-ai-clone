@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   AlertTriangle,
-  Check,
   Download,
   FolderOpen,
   Globe,
@@ -18,6 +17,7 @@ import {
 } from 'lucide-react'
 
 import { deleteGenerationAction, moveGenerationAction } from '@/app/(studio)/library/actions'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { setVisibilityAction } from '@/app/(studio)/explore/actions'
 import { ShareButton } from '@/components/explore/share-button'
 import { setProjectCoverAction } from '@/app/(studio)/projects/actions'
@@ -45,7 +45,7 @@ import {
   formatDuration,
   formatRelativeTime,
 } from '@/lib/utils'
-import type { GenerationVisibility, GenerationWithAssets } from '@/types/database'
+import { isTerminal, type GenerationVisibility, type GenerationWithAssets } from '@/types/database'
 
 /**
  * The detail view behind every library tile.
@@ -102,6 +102,11 @@ export function GenerationDrawer({
   const preset = generation.preset_id ? byId.get(generation.preset_id) : undefined
   const media = generation.assets.find((asset) => asset.kind !== 'poster') ?? generation.assets[0]
   const failed = generation.status === 'failed' || generation.status === 'canceled'
+  // A job the provider has finished with, either way. Only these can be deleted.
+  const terminal = isTerminal(generation.status)
+  // Poster frames count: a deleted video takes its thumbnail with it, and the
+  // dialog should not claim one file when two leave storage.
+  const assetCount = generation.assets.length
   const label = generation.prompt.trim() || 'Preset-only shot'
   const params = isRecord(generation.params) ? Object.entries(generation.params) : []
   const isPublic = generation.visibility === 'public'
@@ -419,39 +424,52 @@ export function GenerationDrawer({
           )}
 
           <div className="ml-auto flex items-center gap-2">
-            {confirmingDelete ? (
-              <>
-                <span className="text-xs text-muted-foreground">Delete for good?</span>
-                <Button variant="ghost" size="sm" onClick={() => setConfirmingDelete(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => void remove()}
-                  disabled={busy === 'delete'}
-                >
-                  {busy === 'delete' ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Check className="size-4" />
-                  )}
-                  Delete
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="ghost"
-                onClick={() => setConfirmingDelete(true)}
-                className="text-danger hover:text-danger"
-              >
-                <Trash2 className="size-4" />
-                Delete
-              </Button>
-            )}
+            {/*
+              A running job cannot be deleted — the service refuses it, because
+              a provider is still holding the work. Disabling the button says so
+              before the click rather than after it.
+            */}
+            <Button
+              variant="ghost"
+              onClick={() => setConfirmingDelete(true)}
+              disabled={!terminal}
+              title={terminal ? undefined : 'Wait for this job to finish first'}
+              className="text-danger hover:text-danger"
+            >
+              <Trash2 className="size-4" />
+              Delete
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title="Delete this shot?"
+        description={
+          assetCount > 0
+            ? 'The generated files are removed from storage and cannot be recovered. The job stays in your credit history, so your balance still adds up.'
+            : 'This job produced no files, so only the record goes. It stays in your credit history, so your balance still adds up.'
+        }
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        pending={busy === 'delete'}
+        onConfirm={() => void remove()}
+      >
+        {/* The checkable detail: which shot, and how much is actually lost. */}
+        <div className="rounded-lg border border-border bg-surface-2/40 p-3">
+          <p className="line-clamp-2 text-sm leading-snug">
+            {generation.prompt.trim() || 'Preset-only shot'}
+          </p>
+          <p className="mt-2 font-mono text-[11px] text-muted-foreground">
+            {model?.label ?? generation.model_id} · {generation.aspect_ratio} ·{' '}
+            {assetCount === 0
+              ? 'no files'
+              : `${assetCount} file${assetCount === 1 ? '' : 's'}`}
+          </p>
+        </div>
+      </ConfirmDialog>
     </Dialog>
   )
 }

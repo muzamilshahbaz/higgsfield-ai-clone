@@ -1,7 +1,14 @@
 'use client'
 
 import * as React from 'react'
-import { AlertTriangle, Check, Clapperboard, Image as ImageIcon, Loader2 } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  Clapperboard,
+  Image as ImageIcon,
+  Loader2,
+  Trash2,
+} from 'lucide-react'
 
 import { GenerationMedia, useHoverPlayback } from '@/components/gallery/generation-media'
 import { Badge } from '@/components/ui/badge'
@@ -14,9 +21,13 @@ import { isTerminal, type GenerationWithAssets } from '@/types/database'
  *
  * The whole card is a single button — opening the detail drawer is the only
  * thing it does — so hover, focus and click all land on the same element and
- * the clip starts playing for pointer and keyboard alike. The selection
- * checkbox is the one exception, and it stops the click from reaching the
- * card underneath it.
+ * the clip starts playing for pointer and keyboard alike.
+ *
+ * The selection checkbox and the delete button are the two exceptions. Both are
+ * siblings of that button rather than children of it: a button nested inside a
+ * button is invalid markup, and in practice the inner one stops firing. They sit
+ * above it on the z-axis and never appear together, because in selection mode
+ * the toolbar's bulk delete is the one that applies.
  */
 export function GenerationCard({
   generation,
@@ -24,12 +35,20 @@ export function GenerationCard({
   selectable = false,
   selected = false,
   onToggleSelect,
+  onDelete,
 }: {
   generation: GenerationWithAssets
   onOpen: (generation: GenerationWithAssets) => void
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: (generation: GenerationWithAssets) => void
+  /**
+   * Asks the owner to confirm and perform a delete. The card never deletes
+   * anything itself — it has no idea which grid it is in or what should happen
+   * to the row afterwards, and two grids would otherwise each need their own
+   * confirmation dialog.
+   */
+  onDelete?: (generation: GenerationWithAssets) => void
 }) {
   const { ref, handlers } = useHoverPlayback()
 
@@ -80,6 +99,28 @@ export function GenerationCard({
           )}
         </div>
       </button>
+
+      {/*
+        Hidden until hover or keyboard focus, so a wall of thumbnails is not a
+        wall of delete buttons — but `group-focus-within` means it is reachable
+        by Tab, not mouse-only. A running job has no delete: the service refuses
+        one while a provider still holds the work.
+      */}
+      {!selectable && onDelete && isTerminal(generation.status) && (
+        <button
+          type="button"
+          onClick={() => onDelete(generation)}
+          aria-label={`Delete ${truncate(label, 80)}`}
+          className={cn(
+            'absolute right-2.5 top-2.5 z-20 flex size-7 items-center justify-center rounded-md',
+            'border border-border bg-background/80 text-muted-foreground backdrop-blur',
+            'opacity-0 transition-[opacity,color,border-color] hover:border-destructive/50 hover:text-danger',
+            'group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100',
+          )}
+        >
+          <Trash2 className="size-3.5" aria-hidden />
+        </button>
+      )}
 
       {selectable && (
         <button
