@@ -27,7 +27,10 @@ import presetCatalogue from '../../../data/presets.json'
 
 const STATS = [
   { value: String(MODELS.length), label: 'models in the registry' },
-  { value: String(PROVIDERS.length), label: 'providers you can connect' },
+  // "vendors", not "providers": the hero counts the three that can run a
+  // generation, and one page using the same word for two different numbers
+  // reads as a mistake even when both are true.
+  { value: String(PROVIDERS.length), label: 'vendors you can connect' },
   { value: String(presetCatalogue.length), label: 'cinematic presets' },
   { value: String(SIGNUP_CREDIT_GRANT), label: 'credits at signup' },
 ]

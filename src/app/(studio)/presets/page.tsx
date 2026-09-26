@@ -28,6 +28,15 @@ export default function PresetsPage() {
             prompt and the model settings that make the look land — pick one and the composer
             configures itself.
           </p>
+          {/*
+            Said once, here, rather than on thirty-six cards. The thumbnails are
+            reference photography chosen to suggest the look; none of them was
+            produced by running the preset. A card that implied otherwise would
+            be promising a specific result.
+          */}
+          <p className="mt-2 max-w-xl text-xs text-muted-foreground">
+            Thumbnails are reference photography, not output from the preset.
+          </p>
         </div>
 
         <Button asChild>

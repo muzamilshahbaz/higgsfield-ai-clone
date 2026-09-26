@@ -112,3 +112,29 @@ export function stockUrl(photo: StockPhoto, ratio = '16:9'): string {
 
 /** Where the credit line points. */
 export const UNSPLASH_CREDIT_URL = 'https://unsplash.com'
+
+const STOCK_KEYS = Object.keys(STOCK) as StockKey[]
+
+/**
+ * A stable photograph for an arbitrary key.
+ *
+ * Deterministic, so a preset shows the same frame on every render, on the
+ * server and the client, and the grid does not reshuffle when a page
+ * revalidates. FNV-1a because it is four lines and the distribution over
+ * thirty-six slugs is good enough for picking a picture.
+ */
+export function stockFor(seed: string, ratio = '16:9'): string {
+  let hash = 2166136261
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  const key = STOCK_KEYS[Math.abs(hash) % STOCK_KEYS.length]!
+  return stockUrl(STOCK[key], ratio)
+}
+
+/** True for the animated SVG placeholders bundled under public/samples. */
+export function isBundledPlaceholder(url: string | null | undefined): boolean {
+  return Boolean(url?.startsWith('/samples/'))
+}

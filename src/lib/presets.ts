@@ -1,4 +1,5 @@
 import { creditCostFor, type ModelEntry } from '@/lib/ai/registry'
+import { isBundledPlaceholder, stockFor } from '@/lib/marketing/stock'
 import type { PresetKind, PresetRow } from '@/types/database'
 
 /**
@@ -60,7 +61,16 @@ export function toPresetSummary(row: PresetRow): PresetSummary {
     modelId: row.model_id,
     params: isRecord(row.params) ? row.params : {},
     previewUrl: row.preview_video_url,
-    posterUrl: row.preview_poster_url ?? row.preview_video_url,
+    // A preset whose stored preview is still one of the bundled SVG
+    // placeholders gets reference photography instead — a gradient blob told a
+    // visitor nothing about what the preset does. Deterministic by slug, so the
+    // grid does not reshuffle between renders.
+    //
+    // The override disappears on its own: the moment a preset stores a real
+    // rendered preview, that is what shows. See lib/marketing/stock.ts.
+    posterUrl: isBundledPlaceholder(row.preview_poster_url ?? row.preview_video_url)
+      ? stockFor(row.slug)
+      : (row.preview_poster_url ?? row.preview_video_url),
     accent: row.accent,
     creditCost: row.credit_cost,
     isFeatured: row.is_featured,

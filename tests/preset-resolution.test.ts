@@ -156,7 +156,27 @@ describe('row mapping', () => {
   })
 
   it('falls back to the preview when a preset has no separate poster', () => {
-    expect(toPresetSummary(row).posterUrl).toBe('/samples/shot-01.svg')
+    // The fallback chain itself: poster, else the video frame. A stored URL
+    // that is not a bundled placeholder is passed through untouched.
+    const stored = { ...row, preview_poster_url: null, preview_video_url: 'https://cdn.test/a.mp4' }
+    expect(toPresetSummary(stored).posterUrl).toBe('https://cdn.test/a.mp4')
+  })
+
+  it('swaps a bundled SVG placeholder for reference photography', () => {
+    // A gradient blob told a visitor nothing about what the preset does. The
+    // override is deterministic, so the grid does not reshuffle per render.
+    const poster = toPresetSummary(row).posterUrl
+
+    expect(poster).not.toMatch(/^\/samples\//)
+    expect(poster).toMatch(/^https:\/\/images\.unsplash\.com\//)
+    expect(toPresetSummary(row).posterUrl).toBe(poster)
+  })
+
+  it('gives two different presets their own frame', () => {
+    const a = toPresetSummary({ ...row, slug: 'crash-zoom-in' }).posterUrl
+    const b = toPresetSummary({ ...row, slug: 'film-noir' }).posterUrl
+    expect(a).toBeTruthy()
+    expect(b).toBeTruthy()
   })
 
   it('narrows a non-object params column to an empty object', () => {
