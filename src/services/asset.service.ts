@@ -16,8 +16,17 @@ import type { AssetKind, AssetRow, GenerationRow } from '@/types/database'
  * copied into our own `generations` bucket before the asset row is written. The
  * row therefore always points at something that will still be there tomorrow.
  *
- * The one exception is a same-origin path (`/samples/...`), which the mock
- * driver returns: that is already served by us and has nothing to copy.
+ * Three shapes arrive here, and the difference matters:
+ *
+ *   https://...     a provider URL. Copied; if the copy fails we keep the
+ *                   provider URL, because media that works for an hour beats
+ *                   media the user never sees.
+ *   data:...        bytes a provider returned inline, which is how Hugging Face
+ *                   answers. Copied; a failure is fatal for that asset, because
+ *                   the alternative is writing a megabyte of base64 into a text
+ *                   column and calling it a URL.
+ *   /samples/...    same-origin, from the mock driver. Already served by us and
+ *                   has nothing to copy.
  */
 
 const EXTENSION_BY_MIME: Record<string, string> = {
@@ -41,16 +50,45 @@ function extensionFor(asset: RawAsset): string {
 }
 
 interface StoredMedia {
-  url: string
+  /** Null when the bytes could not be stored and there is no usable fallback. */
+  url: string | null
   storagePath: string | null
   sizeBytes: number | null
   mimeType: string | null
 }
 
+function isDataUrl(url: string): boolean {
+  return url.startsWith('data:')
+}
+
+/**
+ * Bytes and content type from a `data:` URL.
+ *
+ * Only base64 payloads: every provider that answers inline sends base64, and a
+ * percent-encoded variant would be a new shape worth failing loudly on rather
+ * than half-decoding.
+ */
+function decodeDataUrl(url: string): { bytes: Buffer; contentType: string } | null {
+  const match = /^data:([^;,]+)?(;base64)?,(.*)$/s.exec(url)
+  if (!match?.[2] || match[3] === undefined) return null
+
+  try {
+    return {
+      bytes: Buffer.from(match[3], 'base64'),
+      contentType: match[1] ?? 'application/octet-stream',
+    }
+  } catch {
+    return null
+  }
+}
+
 /**
  * Copies one provider asset into the generations bucket.
- * Falls back to the provider URL if the copy fails, because a generation the
- * user can see for an hour beats a generation they never see at all.
+ *
+ * A failed copy of a provider URL keeps that URL — the user sees their
+ * generation, for an hour, which beats never seeing it. A failed copy of inline
+ * bytes has no such fallback and returns a null url; the caller drops the asset
+ * and the generation service fails the job and refunds it.
  */
 async function copyIntoStorage(
   asset: RawAsset,
@@ -66,13 +104,28 @@ async function copyIntoStorage(
     }
   }
 
-  try {
-    const response = await fetch(asset.url)
-    if (!response.ok) throw new Error(`provider returned ${response.status}`)
+  const inline = isDataUrl(asset.url)
 
-    const buffer = await response.arrayBuffer()
-    const contentType =
-      asset.mimeType ?? response.headers.get('content-type') ?? 'application/octet-stream'
+  try {
+    let buffer: ArrayBuffer | Buffer
+    let contentType: string
+
+    if (inline) {
+      const decoded = decodeDataUrl(asset.url)
+      if (!decoded || decoded.bytes.byteLength === 0) {
+        throw new Error('the provider returned bytes this app could not decode')
+      }
+      buffer = decoded.bytes
+      contentType = asset.mimeType ?? decoded.contentType
+    } else {
+      const response = await fetch(asset.url)
+      if (!response.ok) throw new Error(`provider returned ${response.status}`)
+
+      buffer = await response.arrayBuffer()
+      contentType =
+        asset.mimeType ?? response.headers.get('content-type') ?? 'application/octet-stream'
+    }
+
     const path = `${generation.user_id}/${generation.id}/${index}-${asset.kind}.${extensionFor(asset)}`
 
     const admin = createAdminClient()
@@ -91,9 +144,19 @@ async function copyIntoStorage(
       mimeType: contentType,
     }
   } catch (cause) {
+    const reason = cause instanceof Error ? cause.message : String(cause)
+
+    if (inline) {
+      // Never fall back here. `asset.url` is the image itself, base64-encoded:
+      // storing it would put megabytes in a column the client renders into an
+      // `src`, and every list query would carry them.
+      console.error('[asset.service] could not store inline provider bytes:', reason)
+      return { url: null, storagePath: null, sizeBytes: null, mimeType: null }
+    }
+
     console.error(
       `[asset.service] could not copy ${asset.url} into storage, keeping the provider URL:`,
-      cause instanceof Error ? cause.message : cause,
+      reason,
     )
     return {
       url: asset.url,
@@ -165,20 +228,28 @@ export async function persistProviderAssets(
     rawAssets.map((asset, index) => copyIntoStorage(asset, generation, index)),
   )
 
-  const rows = rawAssets.map((asset, index) => ({
-    id: deterministicAssetId(generation.id, index),
-    generation_id: generation.id,
-    user_id: generation.user_id,
-    kind: asset.kind as AssetKind,
-    url: stored[index]!.url,
-    storage_path: stored[index]!.storagePath,
-    mime_type: stored[index]!.mimeType,
-    width: asset.width ?? null,
-    height: asset.height ?? null,
-    duration_ms: asset.durationMs ?? null,
-    size_bytes: stored[index]!.sizeBytes,
-    sort_order: index,
-  }))
+  const rows = rawAssets
+    .map((asset, index) => ({ asset, index, media: stored[index]! }))
+    // An asset with no url is one whose bytes could not be stored. Writing the
+    // row anyway would give the gallery a broken frame to render; dropping it
+    // lets the generation service see "nothing persisted" and refund.
+    .filter((entry) => entry.media.url !== null)
+    .map(({ asset, index, media }) => ({
+      id: deterministicAssetId(generation.id, index),
+      generation_id: generation.id,
+      user_id: generation.user_id,
+      kind: asset.kind as AssetKind,
+      url: media.url!,
+      storage_path: media.storagePath,
+      mime_type: media.mimeType,
+      width: asset.width ?? null,
+      height: asset.height ?? null,
+      duration_ms: asset.durationMs ?? null,
+      size_bytes: media.sizeBytes,
+      sort_order: index,
+    }))
+
+  if (rows.length === 0) return []
 
   // upsert, not insert: the loser of the race re-reads the winner's rows
   // rather than erroring or duplicating them.

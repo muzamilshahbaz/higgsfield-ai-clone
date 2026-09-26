@@ -6,7 +6,9 @@ import {
   defaultModelForTask,
   getModel,
   modelsForTask,
+  primaryProvider,
   requireModel,
+  routeFor,
   type ModelEntry,
 } from '@/lib/ai/registry'
 import { ASPECT_RATIOS, VIDEO_DURATIONS } from '@/lib/constants'
@@ -72,6 +74,66 @@ describe('model registry integrity', () => {
     }
   })
 
+  // The router walks `routes` and stops at the first provider it has a key
+  // for. An entry with no routes would be a model the composer offers and
+  // nothing can run.
+  it('gives every model at least one provider route', () => {
+    for (const model of MODELS) {
+      expect(model.routes.length, `${model.id} routes`).toBeGreaterThan(0)
+    }
+  })
+
+  it('never lists the same provider twice in one route list', () => {
+    for (const model of MODELS) {
+      const providers = model.routes.map((route) => route.provider)
+      expect(new Set(providers).size, `${model.id} routes`).toBe(providers.length)
+    }
+  })
+
+  it('never routes a model to the mock driver', () => {
+    // The mock is reachable only through AI_ALLOW_MOCK_FALLBACK, deliberately.
+    // A registry entry naming it would make stand-in media the normal path.
+    for (const model of MODELS) {
+      for (const route of model.routes) {
+        expect(route.provider, `${model.id}`).not.toBe('mock')
+      }
+    }
+  })
+
+  it('names a non-empty provider path on every route', () => {
+    for (const model of MODELS) {
+      for (const route of model.routes) {
+        expect(route.path.trim().length, `${model.id} -> ${route.provider}`).toBeGreaterThan(0)
+      }
+    }
+  })
+
+  it('attributes a model to the first provider in its route list', () => {
+    for (const model of MODELS) {
+      expect(primaryProvider(model), model.id).toBe(model.routes[0]!.provider)
+      expect(routeFor(model, primaryProvider(model))?.path, model.id).toBe(model.routes[0]!.path)
+    }
+  })
+
+  it('names the open-weight model behind every id', () => {
+    for (const model of MODELS) {
+      expect(model.family.trim().length, `${model.id} family`).toBeGreaterThan(0)
+    }
+  })
+
+  it('declares a frame rate on every route that has to convert a duration', () => {
+    // num_frames = duration x fps + 1. A route that takes frames but declares
+    // no rate would silently produce whatever length the model defaults to,
+    // which is not what the user was charged for.
+    for (const model of MODELS) {
+      for (const route of model.routes) {
+        if (route.videoFrameRate === undefined) continue
+        expect(model.task, `${model.id}`).not.toBe('text_to_image')
+        expect(route.videoFrameRate, `${model.id} -> ${route.provider}`).toBeGreaterThan(0)
+      }
+    }
+  })
+
   it('resolves a model for every task', () => {
     for (const task of TASKS) {
       expect(modelsForTask(task).length, task).toBeGreaterThan(0)
@@ -113,8 +175,8 @@ describe('creditCostFor', () => {
       label: 'Test',
       blurb: '',
       task: 'image_to_video',
-      provider: 'mock',
-      providerModelPath: 'test',
+      family: 'Test model',
+      routes: [{ provider: 'fal', path: 'test/model' }],
       credits,
       indicativeUsd: 0,
       avgLatencySec: 10,
@@ -163,9 +225,9 @@ describe('creditCostFor', () => {
 
   it('prices the real catalogue as expected', () => {
     expect(creditCostFor(requireModel('lumen-flash'))).toBe(1)
-    expect(creditCostFor(requireModel('motion-turbo'), 5)).toBe(18)
-    expect(creditCostFor(requireModel('motion-cine'), 5)).toBe(35)
-    expect(creditCostFor(requireModel('motion-cine'), 10)).toBe(70)
-    expect(creditCostFor(requireModel('motion-scene'), 6)).toBe(28)
+    expect(creditCostFor(requireModel('motion-turbo'), 5)).toBe(14)
+    expect(creditCostFor(requireModel('motion-cine'), 5)).toBe(30)
+    expect(creditCostFor(requireModel('motion-cine'), 10)).toBe(60)
+    expect(creditCostFor(requireModel('motion-cog'), 6)).toBe(16)
   })
 })

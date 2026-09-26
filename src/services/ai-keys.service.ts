@@ -4,6 +4,7 @@ import { getProvider } from '@/lib/ai/catalogue'
 import { fragmentsOf, maskKey, open, seal } from '@/lib/crypto/secret-box'
 import { env, isKeyVaultConfigured } from '@/lib/env'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isUnknownProviderEnumValue, PENDING_PROVIDER_MIGRATION } from '@/lib/supabase/errors'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { verifyProviderKey } from '@/services/ai/ai-router'
 import type { ProviderKeyStatus, ProviderName, UserProviderKeyRow } from '@/types/database'
@@ -136,6 +137,60 @@ export async function getUserProviderKey(
   return plaintext
 }
 
+/**
+ * The decrypted keys for several providers at once, for the generation path.
+ *
+ * A model can run on any of two or three providers (see `routes` in
+ * lib/ai/registry.ts) and the router needs to know which of them this user has
+ * before it picks one. One query rather than a lookup per candidate: the
+ * alternative is three round trips on the critical path of every Generate
+ * click, to answer one question.
+ *
+ * Same contract as `getUserProviderKey`, and for the same reasons: an explicit
+ * userId, keys marked invalid are skipped, and every failure resolves to an
+ * absent key rather than an exception.
+ */
+export async function getUserProviderKeys(
+  userId: string,
+  providers: ProviderName[],
+): Promise<Partial<Record<ProviderName, string>>> {
+  const found: Partial<Record<ProviderName, string>> = {}
+  if (providers.length === 0) return found
+  if (!isKeyVaultConfigured || !env.aiKeySecret) return found
+
+  const { data, error } = await createAdminClient()
+    .from('user_provider_keys')
+    .select('provider, ciphertext, status')
+    .eq('user_id', userId)
+    .in('provider', providers)
+
+  if (error) {
+    // Includes the pending-migration case, where the enum has no value for a
+    // provider this build routes to. Logged, not thrown: the caller's answer to
+    // every key-read failure is the same, and the insert that follows reports
+    // the migration properly.
+    console.error('[ai-keys.service] batch key read failed:', error.message)
+    return found
+  }
+
+  for (const row of data ?? []) {
+    // A key the vendor told us is dead is not worth a failed job and a refund.
+    if (row.status === 'invalid') continue
+
+    const plaintext = open(row.ciphertext, env.aiKeySecret)
+    if (!plaintext) {
+      console.error(
+        `[ai-keys.service] ciphertext for ${row.provider} would not open — AI_KEY_ENCRYPTION_SECRET may have changed.`,
+      )
+      continue
+    }
+
+    found[row.provider] = plaintext
+  }
+
+  return found
+}
+
 // ---------------------------------------------------------------------------
 // Write
 // ---------------------------------------------------------------------------
@@ -204,6 +259,13 @@ export async function saveProviderKey(input: {
 
   if (error || !saved) {
     console.error('[ai-keys.service] upsert failed:', error?.message)
+
+    // A provider this build knows and the enum does not: a pending migration,
+    // and the only database error here worth quoting to a person.
+    if (isUnknownProviderEnumValue(error)) {
+      return { ok: false, code: 'NOT_CONFIGURED', message: PENDING_PROVIDER_MIGRATION }
+    }
+
     return { ok: false, code: 'ERROR', message: 'Could not save that key.' }
   }
 

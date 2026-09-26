@@ -15,9 +15,13 @@ assets or branding.
 **Live demo — [kineticstudioai.vercel.app](https://kineticstudioai.vercel.app)** — the
 screenshot above links to it.
 
-Signing up grants 200 credits, no card. The deployment runs `AI_PROVIDER=mock`, so
-renders return bundled sample media and nothing is billed at any vendor — the credit
-system, the job feed, the library and the public feed are all real.
+Signing up grants 200 credits, no card. Generations run on real open-weight models —
+FLUX.1, SDXL, Wan 2.2, LTX-Video, CogVideoX, HunyuanVideo — through Hugging Face,
+fal.ai or Replicate. Connect your own key under **Settings → AI model keys** and jobs
+run on your quota; with no key available a job is refused with a message rather than
+faked. A free Hugging Face token is enough to generate with FLUX.1 [schnell]; the
+rest of the catalogue needs a fal.ai or Replicate key. See
+[`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
 > Full product analysis, architecture, schema and roadmap: [`docs/PLAN.md`](docs/PLAN.md)
 
@@ -31,7 +35,7 @@ system, the job feed, the library and the public feed are all real.
 | Auth | Supabase Auth (email/password + Google OAuth) |
 | Storage | Supabase Storage (`uploads`, `generations`) |
 | Realtime | Supabase Realtime — live job feed, no polling loop |
-| AI | Provider abstraction: `mock` (default), `fal`, `replicate` |
+| AI | Hugging Face · fal.ai · Replicate, behind one provider abstraction |
 | Deploy | Vercel |
 
 ## Getting started
@@ -56,9 +60,14 @@ npm install
 cp .env.example .env.local
 ```
 
-Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` and
-`SUPABASE_SERVICE_ROLE_KEY`. Leave `AI_PROVIDER=mock` — the app runs end to end
-with no model keys and no spend.
+Fill in `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY` and `AI_KEY_ENCRYPTION_SECRET` (any high-entropy string —
+`openssl rand -base64 48`). That last one seals the provider keys users connect, and
+without it nobody can connect an account, which means nobody can generate.
+
+Provider keys themselves are optional here: each user adds their own under
+**Settings → AI model keys**. Set `HUGGINGFACE_API_KEY`, `FAL_KEY` or
+`REPLICATE_API_TOKEN` only if you want a shared fallback for users who have not.
 
 The service-role key bypasses row level security. It is server-only: never prefix it
 with `NEXT_PUBLIC_`, never import it into a client component, never commit it.
@@ -83,6 +92,9 @@ Or paste each file in `supabase/migrations/` into the Supabase SQL editor, in or
 | `0005_realtime.sql` | Publishes `generations` to Realtime |
 | `0006_hardening.sql` | Restricts `toggle_like` to published work; adds the Explore sort index |
 | `0007_provider_keys.sql` | The bring-your-own-key vault behind **Settings → AI model keys** |
+| `0008_subscriptions.sql` | Plans, subscriptions and the transaction ledger |
+| `0009_billing_country.sql` | Billing country on the subscription |
+| `0010_huggingface_provider.sql` | Adds `huggingface` to the `provider_name` enum |
 
 ### 5. Seed the preset catalog
 

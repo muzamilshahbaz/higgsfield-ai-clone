@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 
-import { activeProviderName } from '@/lib/ai'
-import { isServiceRoleConfigured, isSupabaseConfigured } from '@/lib/env'
+import { isKeyVaultConfigured, isServiceRoleConfigured, isSupabaseConfigured } from '@/lib/env'
+import { generationProviders } from '@/services/ai/ai-router'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -26,7 +26,14 @@ interface Health {
     databaseReachable: boolean
     presetsSeeded: boolean
   }
-  provider: string
+  /**
+   * Reported beside `checks` rather than inside it, so neither one flips the
+   * 503. Generation depends on a key somebody connects at runtime, and a
+   * deployment with no keys yet is correctly configured, not unhealthy.
+   */
+  keyVaultConfigured: boolean
+  /** Providers this build can run a generation through. Names, never keys. */
+  generationProviders: string[]
   timestamp: string
 }
 
@@ -62,7 +69,8 @@ export async function GET() {
     ok,
     status: ok ? 'healthy' : 'degraded',
     checks,
-    provider: activeProviderName(),
+    keyVaultConfigured: isKeyVaultConfigured,
+    generationProviders: generationProviders(),
     timestamp: new Date().toISOString(),
   }
 

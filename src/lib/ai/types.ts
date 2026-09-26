@@ -23,6 +23,12 @@ export type ProviderJobStatus = 'queued' | 'running' | 'succeeded' | 'failed'
 
 export interface RawAsset {
   kind: 'image' | 'video' | 'poster'
+  /**
+   * Where the bytes are. Three shapes reach services/asset.service.ts:
+   * an absolute provider URL (copied into our bucket before it expires), a
+   * `data:` URL from a provider that answered with the bytes themselves, and a
+   * same-origin path for media this app already serves.
+   */
   url: string
   mimeType?: string
   width?: number
@@ -48,9 +54,24 @@ export interface ProviderPollResult {
   costUsd?: number
 }
 
+export interface SubmitResult {
+  providerJobId: string
+  /**
+   * The finished job, for a provider whose API has no queue.
+   *
+   * Hugging Face hosted inference answers one request with the image bytes:
+   * there is never a job to poll, and a driver that pretended otherwise would
+   * have to invent a handle and hold the bytes somewhere. So it returns the
+   * result here instead, and the service applies it through exactly the same
+   * code path a poll result takes — one place that persists media, flips the
+   * status and refunds a failure.
+   */
+  immediate?: ProviderPollResult
+}
+
 export interface AIProvider {
   readonly name: ProviderName
-  submit(request: GenerationRequest): Promise<{ providerJobId: string }>
+  submit(request: GenerationRequest): Promise<SubmitResult>
   poll(providerJobId: string, request?: GenerationRequest): Promise<ProviderPollResult>
   cancel?(providerJobId: string): Promise<void>
 }

@@ -15,6 +15,14 @@ import { syncMyJobs } from '@/services/generation.service'
  * The balance rides along so a refund shows up in the topbar without a
  * separate round trip.
  */
+
+/**
+ * One tick can poll up to twenty jobs, and a real provider poll is one or two
+ * HTTP calls each — fal answers a status endpoint and then a result endpoint.
+ * Well short of that in practice; this is the ceiling, not the expectation.
+ */
+export const maxDuration = 60
+
 export async function POST() {
   const user = await getCurrentUser()
   if (!user) {
