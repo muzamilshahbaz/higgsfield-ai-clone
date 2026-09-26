@@ -12,7 +12,8 @@
  *
  * Captures ONLY: user prompt text, final assistant text, UTC timestamp, model.
  * Excluded by construction: thinking blocks, tool_use, tool_result, sidechain
- * (subagent) traffic, attachments, system reminders, meta records.
+ * (subagent) traffic, attachments, system reminders, meta records, and the
+ * harness's own `<synthetic>` notices.
  */
 
 'use strict';
@@ -21,6 +22,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execFileSync } = require('child_process');
+
+// What Claude Code puts in `message.model` for an assistant record it generated
+// locally rather than received from the API. See `assistantText` below.
+const SYNTHETIC_MODEL = '<synthetic>';
 
 const PROJECT_DIR = path.resolve(__dirname, '..', '..');
 const LOG_DIR = path.join(PROJECT_DIR, '.agent-logs');
@@ -84,8 +89,18 @@ function promptText(rec) {
 }
 
 // Final visible answer only: text blocks, never thinking/tool_use.
+//
+// Records marked `<synthetic>` are dropped here too. Claude Code writes its own
+// local notices -- "You've hit your session limit", interrupt messages -- as
+// assistant records carrying that marker in place of a model id. They are
+// harness chrome, not an answer, and letting one through did two kinds of
+// damage: the notice was appended to the response body as though the model had
+// said it, and because `exchanges()` assigns the model last-write-wins, it
+// overwrote the real model id for the whole exchange -- which is how a PROMPT
+// entry ended up stamped `model: <synthetic>`.
 function assistantText(rec) {
   if (!rec || rec.type !== 'assistant' || rec.isSidechain) return null;
+  if (rec.message && rec.message.model === SYNTHETIC_MODEL) return null;
   const content = rec.message && rec.message.content;
   if (typeof content === 'string') return content;
   if (!Array.isArray(content)) return null;
