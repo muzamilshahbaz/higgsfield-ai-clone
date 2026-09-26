@@ -3,6 +3,7 @@
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'framer-motion'
 
 import type { ShowcaseModel } from '@/lib/marketing/showcase'
+import { stockUrl } from '@/lib/marketing/stock'
 
 /**
  * The floating frame collage beside the hero copy.
@@ -78,15 +79,15 @@ export function HeroCollage({ shots }: { shots: ShowcaseModel[] }) {
             >
               <div className="relative aspect-video w-full">
                 {/*
-                  A plain <img>, like GenerationMedia: the samples are SVG, and
-                  next/image refuses to optimise SVG unless dangerouslyAllowSVG
-                  is turned on — which is not a security setting worth flipping
-                  for three decorative frames.
+                  A plain <img> rather than next/image: Unsplash's CDN already
+                  crops and re-encodes from the query string, so the browser is
+                  sent exactly the pixels this frame uses. Running it through a
+                  second optimiser would buy nothing and add a hop.
                 */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={shot.preview}
-                  alt={`A sample shot generated with ${shot.name}`}
+                  src={stockUrl(shot.preview)}
+                  alt={shot.preview.alt}
                   loading="lazy"
                   className="size-full object-cover"
                 />

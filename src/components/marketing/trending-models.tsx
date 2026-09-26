@@ -4,6 +4,7 @@ import { ArrowRight, Coins, ImageIcon, TrendingUp, Video } from 'lucide-react'
 import { Reveal } from '@/components/marketing/reveal'
 import { Badge } from '@/components/ui/badge'
 import { creditsFor, TRENDING_MODELS } from '@/lib/marketing/showcase'
+import { stockUrl } from '@/lib/marketing/stock'
 
 /**
  * Trending models.
@@ -67,8 +68,11 @@ export function TrendingModels() {
                   <div className="relative aspect-video w-full overflow-hidden bg-surface">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={model.preview}
-                      alt={`A sample shot generated with ${model.name}`}
+                      src={stockUrl(model.preview)}
+                      // Reference imagery, not output: the alt says what the
+                      // photograph shows rather than claiming this model made
+                      // it. See lib/marketing/stock.ts.
+                      alt={model.preview.alt}
                       loading="lazy"
                       className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />

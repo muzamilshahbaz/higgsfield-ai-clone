@@ -5,31 +5,41 @@ import { GenerationMedia } from '@/components/gallery/generation-media'
 import { Reveal } from '@/components/marketing/reveal'
 import { Badge } from '@/components/ui/badge'
 import { authorNameOf, type ExploreItem } from '@/lib/explore'
+import { STOCK, stockUrl, UNSPLASH_CREDIT_URL, type StockPhoto } from '@/lib/marketing/stock'
 import { aspectStyle, truncate } from '@/lib/utils'
 
 /**
  * Creator showcase.
  *
  * Prefers the real public feed. When the feed is empty — a fresh deployment,
- * or a database that is not reachable — it falls back to the bundled sample
- * frames and says so in a badge, rather than the previous behaviour of
- * hiding the section entirely.
+ * or a database that is not reachable — it falls back to reference photographs
+ * and says so, rather than the previous behaviour of hiding the section.
  *
- * The distinction is the important part: a visitor is never shown a sample
- * frame captioned as somebody's published work. Real work carries a byline
- * and links to its permalink; samples carry the preset name and link nowhere.
+ * The distinction is the important part, and it got sharper when the fallback
+ * stopped being obvious gradients: a visitor must never be shown a photograph
+ * captioned as somebody's published work, under a heading that reads "Made
+ * with Kinetic". Real work carries a byline and links to its permalink. The
+ * fallback carries the word "reference", a credit to Unsplash, and links
+ * nowhere — because nothing in it was made here.
  */
 
-const SAMPLE_SHOTS = [
-  { src: '/samples/shot-01.svg', title: 'Crash Zoom', ratio: '16:9' },
-  { src: '/samples/shot-03.svg', title: 'Snorricam', ratio: '9:16' },
-  { src: '/samples/model-kling.svg', title: '360 Orbit', ratio: '16:9' },
-  { src: '/samples/shot-04.svg', title: 'Bullet Time', ratio: '1:1' },
-  { src: '/samples/model-luma.svg', title: 'Crane Up', ratio: '16:9' },
-  { src: '/samples/shot-02.svg', title: 'Dolly Zoom', ratio: '16:9' },
-  { src: '/samples/model-veo.svg', title: 'FPV Drone', ratio: '16:9' },
-  { src: '/samples/shot-06.svg', title: 'Golden Hour', ratio: '9:16' },
-] as const
+interface ReferenceShot {
+  photo: StockPhoto
+  /** The camera move this frame is meant to bring to mind. */
+  title: string
+  ratio: string
+}
+
+const REFERENCE_SHOTS: ReferenceShot[] = [
+  { photo: STOCK.forestPath, title: 'Crash Zoom', ratio: '16:9' },
+  { photo: STOCK.breakingWave, title: 'Snorricam', ratio: '9:16' },
+  { photo: STOCK.lakeReflection, title: '360 Orbit', ratio: '16:9' },
+  { photo: STOCK.oceanDusk, title: 'Bullet Time', ratio: '1:1' },
+  { photo: STOCK.mistCliffs, title: 'Crane Up', ratio: '16:9' },
+  { photo: STOCK.footbridge, title: 'Dolly Zoom', ratio: '16:9' },
+  { photo: STOCK.alpineCloud, title: 'FPV Drone', ratio: '16:9' },
+  { photo: STOCK.valleyHaze, title: 'Golden Hour', ratio: '9:16' },
+]
 
 export function CreatorShowcase({ items }: { items: ExploreItem[] }) {
   const usingSamples = items.length === 0
@@ -47,12 +57,12 @@ export function CreatorShowcase({ items }: { items: ExploreItem[] }) {
                 <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
                   Made with Kinetic
                 </h2>
-                {usingSamples && <Badge variant="outline">Sample output</Badge>}
+                {usingSamples && <Badge variant="outline">Reference imagery</Badge>}
               </div>
 
               <p className="mt-3 text-pretty text-muted-foreground">
                 {usingSamples
-                  ? 'Nothing has been published to the public feed yet, so these are the sample frames that ship with the app. Your work appears here the moment you publish it.'
+                  ? 'Nothing has been published to the public feed yet. These are reference photographs, not output from this app — they show the kind of frame each move is for. Your work replaces them the moment you publish it.'
                   : 'Published by people using the same presets you get on day one. Open any of them and hit remix.'}
               </p>
             </div>
@@ -74,8 +84,8 @@ export function CreatorShowcase({ items }: { items: ExploreItem[] }) {
         */}
         <div className="mt-10 columns-2 gap-4 sm:columns-3 lg:columns-4 [&>*]:mb-4">
           {usingSamples
-            ? SAMPLE_SHOTS.map((shot, index) => (
-                <Reveal key={shot.src} delay={Math.min(index, 5) * 0.05}>
+            ? REFERENCE_SHOTS.map((shot, index) => (
+                <Reveal key={shot.photo.id} delay={Math.min(index, 5) * 0.05}>
                   <figure className="overflow-hidden rounded-xl border border-border bg-card">
                     <div
                       className="relative w-full overflow-hidden bg-surface"
@@ -83,14 +93,14 @@ export function CreatorShowcase({ items }: { items: ExploreItem[] }) {
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={shot.src}
-                        alt={`A ${shot.title} sample frame`}
+                        src={stockUrl(shot.photo, shot.ratio)}
+                        alt={shot.photo.alt}
                         loading="lazy"
                         className="size-full object-cover"
                       />
                     </div>
                     <figcaption className="px-3 py-2 text-xs text-muted-foreground">
-                      {shot.title} · sample
+                      {shot.title} · reference
                     </figcaption>
                   </figure>
                 </Reveal>
@@ -122,6 +132,27 @@ export function CreatorShowcase({ items }: { items: ExploreItem[] }) {
                 )
               })}
         </div>
+
+        {/*
+          Attribution is not required by the Unsplash licence, but a page that
+          borrows photographs to illustrate itself should say where they came
+          from — and it is the second place a visitor is told these frames are
+          not this product's output.
+        */}
+        {usingSamples && (
+          <p className="mt-6 text-xs text-muted-foreground">
+            Reference photography from{' '}
+            <a
+              href={UNSPLASH_CREDIT_URL}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
+              Unsplash
+            </a>
+            . None of these frames were generated by this app.
+          </p>
+        )}
       </div>
     </section>
   )

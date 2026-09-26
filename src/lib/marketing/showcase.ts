@@ -1,4 +1,5 @@
 import { getModel } from '@/lib/ai/registry'
+import { STOCK, type StockPhoto } from '@/lib/marketing/stock'
 import type { ProviderName } from '@/types/database'
 
 /**
@@ -23,78 +24,84 @@ export interface ShowcaseModel {
   /** What someone would actually reach for it to do. */
   useCase: string
   kind: 'image' | 'video'
-  /** Animated SVG under public/samples. No binaries, no video decode. */
-  preview: string
+  /**
+   * Reference imagery for the card — a real photograph, not model output.
+   *
+   * Chosen to suggest the kind of shot the model is good at. See
+   * lib/marketing/stock.ts for why this is a curated photograph rather than
+   * something generated, and for how the page says so.
+   */
+  preview: StockPhoto
   /** Rough share of recent generations. Illustrative, not measured. */
   trend: string
 }
 
 export const TRENDING_MODELS: ShowcaseModel[] = [
   {
-    modelId: 'kling-v2-pro',
-    name: 'Kling 2.1 Pro',
-    vendor: 'kling',
+    modelId: 'lumen-flash',
+    name: 'Lumen Flash',
+    vendor: 'huggingface',
     description:
-      'Holds a face, an outfit and a lighting setup through an entire camera move. The one to use when continuity matters more than speed.',
-    useCase: 'Character-led shots',
-    kind: 'video',
-    preview: '/samples/model-kling.svg',
-    trend: 'Most used for motion',
-  },
-  {
-    modelId: 'runway-gen4',
-    name: 'Runway Gen-4',
-    vendor: 'runway',
-    description:
-      'The dependable image-to-video pass. Rarely spectacular, rarely a disaster — which is what you want on the fourth take.',
-    useCase: 'Image to video',
-    kind: 'video',
-    preview: '/samples/model-runway.svg',
-    trend: 'Best hit rate',
-  },
-  {
-    modelId: 'veo-3',
-    name: 'Google Veo 3',
-    vendor: 'google',
-    description:
-      'Text straight to an eight-second shot, with synchronised audio. No start frame, no storyboard, no second tool.',
-    useCase: 'Text to video with sound',
-    kind: 'video',
-    preview: '/samples/model-veo.svg',
-    trend: 'Newest',
-  },
-  {
-    modelId: 'luma-ray',
-    name: 'Luma Ray 2',
-    vendor: 'luma',
-    description:
-      'Reads camera language out of a prompt better than anything else here. Write "slow push in on a wet street" and it does that.',
-    useCase: 'Camera moves from text',
-    kind: 'video',
-    preview: '/samples/model-luma.svg',
-    trend: 'Best value',
-  },
-  {
-    modelId: 'flux-pro',
-    name: 'Flux 1.1 Pro',
-    vendor: 'flux',
-    description:
-      'Sharpest prompt adherence in the catalogue. What you asked for is what lands, including the awkward compositions.',
-    useCase: 'Start frames',
+      'FLUX.1 [schnell], four steps and Apache-2.0. Fast enough to iterate on a look before you commit a credit to the finished frame.',
+    useCase: 'Drafts and start frames',
     kind: 'image',
-    preview: '/samples/model-flux.svg',
+    preview: STOCK.alpineCloud,
     trend: 'Most used for stills',
   },
   {
-    modelId: 'imagen-4',
-    name: 'Google Imagen 4',
-    vendor: 'google',
+    modelId: 'lumen-pro',
+    name: 'Lumen Pro',
+    vendor: 'fal',
     description:
-      'Photographic realism and clean typography. The one that renders a sign in the background without inventing a language.',
-    useCase: 'Photoreal stills',
+      'FLUX.1 [dev]. Photoreal detail and composition that holds together. The default when the frame is the deliverable.',
+    useCase: 'Finished stills',
     kind: 'image',
-    preview: '/samples/model-imagen.svg',
-    trend: 'Rising',
+    preview: STOCK.lakeReflection,
+    trend: 'Best detail',
+  },
+  {
+    modelId: 'lumen-sdxl',
+    name: 'Lumen SDXL',
+    vendor: 'fal',
+    description:
+      'Stable Diffusion XL, the open workhorse. Broad style range and the cheapest pass in the catalogue.',
+    useCase: 'Style exploration',
+    kind: 'image',
+    preview: STOCK.stageLights,
+    trend: 'Best value',
+  },
+  {
+    modelId: 'motion-turbo',
+    name: 'Motion Turbo',
+    vendor: 'fal',
+    description:
+      'Wan 2.2 turbo, Apache-2.0. Quick motion passes while you dial in a camera move, before you pay for the long one.',
+    useCase: 'Image to video',
+    kind: 'video',
+    preview: STOCK.oceanDusk,
+    trend: 'Most used for motion',
+  },
+  {
+    modelId: 'motion-cine',
+    name: 'Motion Cine',
+    vendor: 'fal',
+    description:
+      'Wan 2.2 A14B. Holds a face, an outfit and a lighting setup through an entire camera move — continuity over speed.',
+    useCase: 'Character-led shots',
+    kind: 'video',
+    preview: STOCK.valleyHaze,
+    trend: 'Best continuity',
+  },
+  {
+    modelId: 'motion-scene',
+    name: 'Motion Scene',
+    vendor: 'fal',
+    description:
+      'Wan 2.2 text-to-video. Straight from a sentence to a moving shot, with no start frame and no storyboard.',
+    useCase: 'Text to video',
+    kind: 'video',
+    preview: STOCK.nightSky,
+    trend: 'Newest',
   },
 ]
 

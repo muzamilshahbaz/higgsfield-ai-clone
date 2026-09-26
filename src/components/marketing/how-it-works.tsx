@@ -24,7 +24,7 @@ const NODES = [
     kicker: 'AI model',
     title: 'Routed to the right engine',
     body: 'The composer picks the model, the router picks the provider and the key. Your own key wins when you have connected one.',
-    sample: 'Kling 2.1 Pro · 16:9 · 5s · seed 41273',
+    sample: 'Motion Cine · Wan 2.2 · 16:9 · 5s · seed 41273',
   },
   {
     icon: Film,

@@ -11,6 +11,13 @@ import { PROVIDERS } from '@/lib/ai/catalogue'
 import { MODELS } from '@/lib/ai/registry'
 import { TRENDING_MODELS } from '@/lib/marketing/showcase'
 
+/**
+ * Providers a generation can actually run through, not every vendor whose key
+ * can be stored. Counting all eleven would promise routing this build does not
+ * do — see `generationReady` in lib/ai/catalogue.ts.
+ */
+const GENERATION_PROVIDER_COUNT = PROVIDERS.filter((provider) => provider.generationReady).length
+
 const HERO_PRESETS = [
   { name: 'Crash Zoom', category: 'Camera' },
   { name: 'Bullet Time', category: 'VFX' },
@@ -47,20 +54,21 @@ export function Hero({ isSignedIn = false }: { isSignedIn?: boolean }) {
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur">
               <Sparkles className="size-3.5 text-accent" aria-hidden />
               <span>
-                {MODELS.length} models · {PROVIDERS.length} providers · bring your own keys
+                {MODELS.length} open models · {GENERATION_PROVIDER_COUNT} providers · bring your own
+                keys
               </span>
             </div>
 
             <h1 className="text-balance text-5xl font-semibold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl">
-              <span className="text-gradient">Every frontier model.</span>
+              <span className="text-gradient">Every open model.</span>
               <br />
               One cinematic studio.
             </h1>
 
             <p className="mx-auto mt-6 max-w-xl text-pretty text-lg leading-relaxed text-muted-foreground lg:mx-0">
-              Kling, Runway, Veo, Luma, Flux and Imagen behind a single composer. Pick a camera
-              move, drop in an image, and let Kinetic handle the prompt engineering, the model
-              routing and the render.
+              FLUX.1, SDXL, Wan 2.2, LTX-Video and HunyuanVideo behind a single composer. Pick a
+              camera move, drop in an image, and let Kinetic handle the prompt engineering, the
+              model routing and the render.
             </p>
 
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:justify-start">
