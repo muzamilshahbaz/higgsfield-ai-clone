@@ -19,7 +19,10 @@ function formatDate(iso: string | null | undefined): string | null {
   if (!iso) return null
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  // en-US to match the catalogue's currency: "September 26, 2026". A fixed
+  // locale rather than the reader's, so the renewal date a support conversation
+  // quotes is the one on their screen.
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 export function SubscriptionStatus({

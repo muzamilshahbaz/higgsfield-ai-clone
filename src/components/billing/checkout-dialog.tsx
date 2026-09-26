@@ -64,6 +64,27 @@ const PROCESSING_STEPS = [
 
 const DEMO_CARD = { number: '4242 4242 4242 4242', expiry: '12/30', cvv: '123' }
 
+/**
+ * The billing form at rest.
+ *
+ * ISO 3166-1 alpha-2, and `US` because the catalogue is priced in dollars —
+ * the country is what a real processor would use for tax and fraud checks, so
+ * it should start somewhere consistent with the currency rather than somewhere
+ * the first developer happened to live. The picker changes it in one click.
+ *
+ * One object rather than a literal in two places: this was written out twice,
+ * once as the initial state and once in the reset, which is how a field ends
+ * up defaulting differently depending on whether you opened the dialog or
+ * reopened it.
+ */
+const emptyForm = {
+  cardholderName: '',
+  cardNumber: '',
+  expiry: '',
+  cvv: '',
+  billingCountry: 'US',
+}
+
 export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: CheckoutDialogProps) {
   const [phase, setPhase] = React.useState<Phase>('form')
   const [step, setStep] = React.useState(0)
@@ -71,13 +92,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
   const [errors, setErrors] = React.useState<Partial<Record<FieldName, string>>>({})
   const [outcome, setOutcome] = React.useState<{ credits: number; reference?: string } | null>(null)
 
-  const [values, setValues] = React.useState({
-    cardholderName: '',
-    cardNumber: '',
-    expiry: '',
-    cvv: '',
-    billingCountry: 'GB',
-  })
+  const [values, setValues] = React.useState(emptyForm)
 
   const brand = detectBrand(values.cardNumber)
   const cvvLength = expectedCvvLength(brand)
@@ -90,7 +105,7 @@ export function CheckoutDialog({ plan, open, onOpenChange, onSuccess }: Checkout
       setDeclineMessage(null)
       setErrors({})
       setOutcome(null)
-      setValues({ cardholderName: '', cardNumber: '', expiry: '', cvv: '', billingCountry: 'GB' })
+      setValues(emptyForm)
     }, 200)
     return () => clearTimeout(t)
   }, [open])
