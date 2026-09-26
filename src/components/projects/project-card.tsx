@@ -33,7 +33,7 @@ export function ProjectCard({
     <div className="group relative">
       <Link
         href={`/projects/${project.id}`}
-        className="block overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-muted"
+        className="panel block overflow-hidden rounded-xl transition-colors hover:border-brand/40"
       >
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-surface">
           {project.previewUrl ? (
@@ -59,7 +59,7 @@ export function ProjectCard({
               />
             )
           ) : (
-            <div className="flex size-full items-center justify-center bg-surface-2/40">
+            <div className="blueprint flex size-full items-center justify-center opacity-70">
               <FolderOpen className="size-6 text-muted-foreground" aria-hidden />
             </div>
           )}
@@ -68,13 +68,15 @@ export function ProjectCard({
 
           {project.is_default && (
             <span className="absolute left-2.5 top-2.5">
-              <Badge variant="secondary">Default</Badge>
+              <Badge variant="secondary" onMedia>
+                Default
+              </Badge>
             </span>
           )}
         </div>
 
-        <div className="space-y-1.5 p-3.5">
-          <p className="truncate text-sm font-medium">{project.title}</p>
+        <div className="space-y-1.5 p-4">
+          <p className="truncate font-display text-[15px] font-medium">{project.title}</p>
 
           {project.description && (
             <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
@@ -82,10 +84,13 @@ export function ProjectCard({
             </p>
           )}
 
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 pt-1 font-mono text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-1 tabular-nums">
               <Images className="size-3" aria-hidden />
               {project.generationCount}
+              <span className="sr-only">
+                {project.generationCount === 1 ? ' shot' : ' shots'}
+              </span>
             </span>
             {project.lastActivityAt && (
               <RelativeTime value={project.lastActivityAt} className="ml-auto" />
@@ -98,7 +103,7 @@ export function ProjectCard({
         <DropdownMenu>
           <DropdownMenuTrigger
             aria-label={`Actions for ${project.title}`}
-            className="flex size-7 items-center justify-center rounded-lg border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:text-foreground"
+            className="flex size-7 items-center justify-center rounded-md border border-border bg-background/80 text-muted-foreground backdrop-blur transition-colors hover:border-muted hover:text-foreground"
           >
             <MoreVertical className="size-4" aria-hidden />
           </DropdownMenuTrigger>

@@ -24,11 +24,11 @@ export default function Error({
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-destructive/30 bg-destructive/10">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10">
           <TriangleAlert className="size-5 text-danger" aria-hidden />
         </div>
 
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight">Something went wrong</h1>
+        <h1 className="mt-6 font-display text-2xl font-semibold">Something went wrong</h1>
         <p className="mt-3 text-sm text-muted-foreground">
           That is on us, not you. Trying again usually clears it.
         </p>

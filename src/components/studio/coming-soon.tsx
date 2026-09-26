@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 
+import { PageHeader } from '@/components/studio/page-header'
 import { Button } from '@/components/ui/button'
 
 /**
@@ -23,22 +24,21 @@ export function ComingSoon({
 }) {
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
+      <PageHeader eyebrow="Workspace" title={title} description={description} className="mb-8" />
 
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border px-6 py-20 text-center">
-        <div className="flex size-11 items-center justify-center rounded-full border border-border bg-surface">
+      <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-border px-6 py-20 text-center">
+        <div className="blueprint pointer-events-none absolute inset-0 opacity-40" aria-hidden />
+
+        <div className="relative flex size-11 items-center justify-center rounded-xl border border-border bg-surface-2">
           <Icon className="size-5 text-muted-foreground" aria-hidden />
         </div>
 
-        <h2 className="mt-4 text-sm font-medium">Landing in {phase}</h2>
-        <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+        <h2 className="relative mt-4 font-display text-[15px] font-medium">Landing in {phase}</h2>
+        <p className="relative mt-1.5 max-w-sm text-sm text-muted-foreground">
           This surface is routed and styled, and fills in when {phase} ships.
         </p>
 
-        <Button asChild variant="outline" className="mt-6">
+        <Button asChild variant="outline" className="relative mt-6">
           <Link href="/dashboard">Back to the dashboard</Link>
         </Button>
       </div>

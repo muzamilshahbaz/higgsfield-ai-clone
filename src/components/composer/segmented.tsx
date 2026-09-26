@@ -91,13 +91,14 @@ export function Segmented<T extends string | number>({
             title={option.hint}
             onClick={() => onChange(option.value)}
             className={cn(
-              'rounded-lg border text-sm font-medium transition-colors',
-              size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3',
-              'focus-visible:border-ring focus-visible:outline-none',
+              'relative rounded-lg border font-medium transition-colors',
+              size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3.5 text-sm',
               'disabled:cursor-not-allowed disabled:opacity-40',
+              // Selected is cyan ink on a cyan tint with a cyan border: three
+              // signals, so the chosen option survives a greyscale screen.
               selected
-                ? 'border-primary/60 bg-primary/15 text-foreground'
-                : 'border-border bg-surface/50 text-muted-foreground hover:border-muted hover:text-foreground',
+                ? 'border-primary/50 bg-primary/15 text-brand'
+                : 'border-border bg-surface/40 text-muted-foreground hover:border-muted hover:bg-surface hover:text-foreground',
             )}
           >
             {option.label}

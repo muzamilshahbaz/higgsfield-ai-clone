@@ -58,7 +58,7 @@ export function PresetCard({
 
         {preset.isFeatured && (
           <span className="absolute left-2.5 top-2.5">
-            <Badge variant="default">
+            <Badge variant="default" onMedia>
               <Sparkles className="size-3" aria-hidden />
               Featured
             </Badge>
@@ -66,7 +66,7 @@ export function PresetCard({
         )}
 
         {selected && (
-          <span className="absolute right-2.5 top-2.5 flex size-6 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <span className="absolute right-2.5 top-2.5 flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Check className="size-3.5" aria-hidden />
             <span className="sr-only">Selected</span>
           </span>

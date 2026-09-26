@@ -31,11 +31,11 @@ export function ModelSelector({
   const selected = models.find((model) => model.id === value)
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-baseline justify-between">
-        <label className="text-xs font-medium text-muted-foreground" id="model-label">
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-xs font-medium text-muted-foreground" id="model-label">
           Model
-        </label>
+        </span>
         {selected && <ModelMeta model={selected} />}
       </div>
 
@@ -61,15 +61,23 @@ export function ModelSelector({
   )
 }
 
+/**
+ * The price and the wait, beside the label.
+ *
+ * Credits are in the credit colour and latency is muted: they are two different
+ * kinds of cost and only one of them comes out of a balance.
+ */
 function ModelMeta({ model }: { model: ModelEntry }) {
   return (
-    <span className="flex items-center gap-3 text-xs text-muted-foreground">
-      <span className="inline-flex items-center gap-1 tabular-nums">
+    <span className="flex shrink-0 items-center gap-3 text-xs">
+      <span className="inline-flex items-center gap-1 tabular-nums text-credit">
         <Coins className="size-3" aria-hidden />
         {model.credits}
+        <span className="sr-only"> {model.credits === 1 ? 'credit' : 'credits'}</span>
       </span>
-      <span className="inline-flex items-center gap-1 tabular-nums">
-        <Timer className="size-3" aria-hidden />~{model.avgLatencySec}s
+      <span className="inline-flex items-center gap-1 tabular-nums text-muted-foreground">
+        <Timer className="size-3" aria-hidden />
+        <span className="sr-only">about </span>~{model.avgLatencySec}s
       </span>
     </span>
   )

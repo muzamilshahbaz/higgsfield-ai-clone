@@ -18,8 +18,8 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       className={cn(
-        'flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-surface/60 px-3 text-sm',
-        'transition-colors hover:border-muted focus-visible:border-ring focus-visible:bg-surface',
+        'flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-surface/50 px-3 text-sm',
+        'transition-colors hover:border-muted focus-visible:border-ring focus-visible:bg-surface-2/50',
         'disabled:cursor-not-allowed disabled:opacity-50',
         "[&>span]:min-w-0 [&>span]:truncate [&>span]:text-left",
         className,
@@ -47,7 +47,7 @@ function SelectContent({
         position={position}
         sideOffset={6}
         className={cn(
-          'relative z-50 max-h-80 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-xl',
+          'relative z-50 max-h-80 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-popover text-popover-foreground shadow-lift',
           // `menu-pop` is defined in globals.css — tailwindcss-animate is not
           // a dependency, so the one enter animation we need lives there.
           'origin-[var(--radix-select-content-transform-origin)] menu-pop',

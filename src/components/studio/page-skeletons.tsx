@@ -20,13 +20,17 @@ import { cn } from '@/lib/utils'
  */
 export function HeaderSkeleton({ action = false, title }: { action?: boolean; title: string }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-4">
-      <div className="space-y-2">
+    <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="space-y-2.5">
         <h1 className="sr-only">{title}</h1>
         <p role="status" className="sr-only">
           Loading {title.toLowerCase()}…
         </p>
-        <Skeleton className="h-7 w-56" aria-hidden />
+        {/* Shaped like PageHeader: eyebrow, display title, description. A
+            skeleton that does not match the header it replaces is a layout
+            shift dressed up as a loading state. */}
+        <Skeleton className="h-3 w-20 rounded-md" aria-hidden />
+        <Skeleton className="h-9 w-56" aria-hidden />
         <Skeleton className="h-4 w-72" aria-hidden />
       </div>
       {action && <Skeleton className="h-10 w-40 rounded-lg" aria-hidden />}
@@ -42,7 +46,7 @@ export function StatsSkeleton({ count = 3 }: { count?: number }) {
         <Card key={i} className="flex items-center gap-4 p-5">
           <Skeleton className="size-10 shrink-0 rounded-lg" />
           <div className="w-full space-y-2">
-            <Skeleton className="h-5 w-16" />
+            <Skeleton className="h-6 w-16" />
             <Skeleton className="h-3 w-20" />
           </div>
         </Card>

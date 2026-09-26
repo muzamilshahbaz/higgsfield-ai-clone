@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import type { DrawerProject } from '@/components/gallery/generation-drawer'
 import { HistoryTable } from '@/components/gallery/history-table'
+import { PageHeader } from '@/components/studio/page-header'
 import { listMyGenerations } from '@/services/generation.service'
 import { listMyProjects } from '@/services/project.service'
 
@@ -33,12 +34,11 @@ export default async function HistoryPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">History</h1>
-        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          Every job you have run, newest first — what it used, what it cost, and what came back.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Content"
+        title="History"
+        description="Every job you have run, newest first — what it used, what it cost, and what came back."
+      />
 
       <HistoryTable
         initialGenerations={generations}

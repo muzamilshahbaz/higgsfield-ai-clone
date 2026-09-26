@@ -79,6 +79,7 @@ export function JobFeed({
   if (generations.length === 0) {
     return (
       <EmptyState
+        headingLevel={3}
         icon={Clapperboard}
         title="Nothing here yet"
         description={emptyHint ?? 'Write a prompt, pick a look, and your first shot lands here.'}
@@ -91,16 +92,25 @@ export function JobFeed({
     // width depends on whether the composer is beside it, so a viewport
     // breakpoint would give three cards 190px each on /create.
     <div className="@container space-y-4">
-      <div className="flex h-5 items-center gap-2 text-xs text-muted-foreground">
+      {/*
+        A live region, not just a line of text: a job moving from rendering to
+        ready is the one state change on this page a user might be waiting on
+        without watching, and `polite` announces it without stealing focus.
+      */}
+      <div
+        className="flex h-5 items-center gap-2 text-xs"
+        role="status"
+        aria-live="polite"
+      >
         {activeCount > 0 ? (
           <>
-            <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            <span>
+            <Loader2 className="size-3.5 animate-spin text-brand" aria-hidden />
+            <span className="text-brand">
               {activeCount} {activeCount === 1 ? 'job' : 'jobs'} running
             </span>
           </>
         ) : showCount ? (
-          <span>
+          <span className="text-muted-foreground">
             {generations.length} {generations.length === 1 ? 'generation' : 'generations'}
           </span>
         ) : null}

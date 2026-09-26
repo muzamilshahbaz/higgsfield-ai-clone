@@ -72,13 +72,13 @@ export function ImageDrop({
   const message = localError ?? error
 
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-medium text-muted-foreground">Start frame</label>
+    <div className="space-y-2">
+      <span className="block text-xs font-medium text-muted-foreground">Start frame</span>
 
       {value ? (
         <div className="relative overflow-hidden rounded-lg border border-border">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={value} alt="Start frame" className="h-36 w-full object-cover" />
+          <img src={value} alt="Start frame" className="h-40 w-full object-cover" />
           <Button
             type="button"
             variant="secondary"
@@ -108,11 +108,11 @@ export function ImageDrop({
             if (file) void upload(file)
           }}
           className={cn(
-            'flex h-36 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm transition-colors',
+            'flex h-40 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm transition-colors',
             'disabled:cursor-not-allowed disabled:opacity-60',
             dragging
-              ? 'border-primary bg-primary/10 text-foreground'
-              : 'border-border bg-surface/40 text-muted-foreground hover:border-muted hover:text-foreground',
+              ? 'border-primary bg-primary/10 text-brand'
+              : 'border-border bg-surface/30 text-muted-foreground hover:border-muted hover:bg-surface/60 hover:text-foreground',
             message && 'border-destructive/60',
           )}
         >

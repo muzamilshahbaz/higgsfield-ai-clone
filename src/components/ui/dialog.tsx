@@ -53,7 +53,7 @@ function DialogContent({
           // inside the panel instead of pushing the close button off screen.
           'fixed left-1/2 top-1/2 z-50 flex max-h-[min(90dvh,48rem)] w-[calc(100vw-2rem)] max-w-2xl',
           '-translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl',
-          'border border-border bg-popover text-popover-foreground shadow-2xl',
+          'border border-border bg-popover text-popover-foreground shadow-lift',
           'dialog-pop',
           className,
         )}
@@ -89,7 +89,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn('text-base font-medium tracking-tight', className)}
+      className={cn('font-display text-base font-medium', className)}
       {...props}
     />
   )

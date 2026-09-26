@@ -107,7 +107,7 @@ export function CountrySelect({
           // never wider than the viewport on a phone.
           className={cn(
             'z-[60] w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-lg',
-            'border border-border bg-popover text-popover-foreground shadow-2xl',
+            'border border-border bg-popover text-popover-foreground shadow-lift',
             'menu-pop',
           )}
         >

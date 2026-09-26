@@ -27,7 +27,7 @@ export default async function AuthCodeErrorPage({
           <TriangleAlert className="size-5 text-danger" />
         </div>
 
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight">That link did not work</h1>
+        <h1 className="mt-6 font-display text-2xl font-semibold">That link did not work</h1>
 
         <p className="mt-3 text-sm text-muted-foreground">
           {reason ?? 'We could not complete your sign-in.'}

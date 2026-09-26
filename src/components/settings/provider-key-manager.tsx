@@ -49,20 +49,42 @@ import type { ProviderKeyStatus } from '@/types/database'
  * one: a new vendor is a catalogue entry plus a driver, and this component
  * picks it up without being touched.
  *
- * Connection state is held locally and seeded from the server. Each action
- * also revalidates `/settings/keys`, so the optimistic list and the server
- * render converge — the local copy exists so a "Test" does not blank the
- * whole page while it waits on someone else's API.
+ * Connection state is held locally and seeded from the server. Each action also
+ * revalidates `/settings/keys`, so the optimistic list and the server render
+ * converge — the local copy exists so a "Test" does not blank the whole page
+ * while it waits on someone else's API.
+ *
+ * Laid out as a card grid split into two groups: the providers that can run a
+ * generation today, and the ones whose key can only be stored and verified.
+ * That split used to be a badge on a row in a single list, which put the three
+ * vendors that actually matter in amongst eight that do not — a visitor with a
+ * fal.ai account had to read every card to find theirs.
  */
 
 const STATUS_META: Record<
   ProviderKeyStatus,
-  { label: string; variant: 'success' | 'destructive' | 'warning' | 'secondary'; icon: typeof CheckCircle2 }
+  {
+    label: string
+    variant: 'success' | 'destructive' | 'warning' | 'secondary'
+    icon: typeof CheckCircle2
+    /** The dot beside the masked key. Colour only, so it is `aria-hidden`. */
+    dot: string
+  }
 > = {
-  valid: { label: 'Connected', variant: 'success', icon: CheckCircle2 },
-  invalid: { label: 'Rejected', variant: 'destructive', icon: XCircle },
-  unreachable: { label: 'Unchecked', variant: 'warning', icon: AlertTriangle },
-  unverified: { label: 'Stored', variant: 'secondary', icon: HelpCircle },
+  valid: { label: 'Connected', variant: 'success', icon: CheckCircle2, dot: 'bg-success' },
+  invalid: { label: 'Rejected', variant: 'destructive', icon: XCircle, dot: 'bg-destructive' },
+  unreachable: { label: 'Unchecked', variant: 'warning', icon: AlertTriangle, dot: 'bg-warning' },
+  unverified: { label: 'Stored', variant: 'secondary', icon: HelpCircle, dot: 'bg-muted-foreground' },
+}
+
+/**
+ * What each provider makes. Spelled out rather than capitalised from the id —
+ * `capitalize` on "both" turned into "Image And Video", with a capital A.
+ */
+const MEDIA_LABELS: Record<ProviderDescriptor['media'], string> = {
+  image: 'Image',
+  video: 'Video',
+  both: 'Image and video',
 }
 
 export function ProviderKeyManager({
@@ -123,9 +145,26 @@ export function ProviderKeyManager({
   }
 
   const connectedCount = connections.length
+  const ready = PROVIDERS.filter((provider) => provider.generationReady)
+  const storeOnly = PROVIDERS.filter((provider) => !provider.generationReady)
+
+  const groups = [
+    {
+      key: 'ready',
+      title: 'Runs generations',
+      hint: 'Connect one of these and your jobs run on your own account and quota.',
+      providers: ready,
+    },
+    {
+      key: 'store-only',
+      title: 'Store and verify only',
+      hint: 'The key is encrypted and checked against the vendor, but no model routes here yet.',
+      providers: storeOnly,
+    },
+  ]
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {!vaultReady && (
         <Card className="border-warning/40 bg-warning/5 p-4" role="status">
           <div className="flex gap-3">
@@ -143,26 +182,43 @@ export function ProviderKeyManager({
         </Card>
       )}
 
+      {groups.map((group) => (
+        <section key={group.key} aria-labelledby={`providers-${group.key}`}>
+          <div className="flex items-center gap-4">
+            <h3 id={`providers-${group.key}`} className="eyebrow text-muted-foreground">
+              {group.title}
+            </h3>
+            <span className="h-px flex-1 bg-border" aria-hidden />
+            <span className="eyebrow tabular-nums text-muted-foreground">
+              {group.providers.filter((provider) => byProvider.has(provider.id)).length}/
+              {group.providers.length}
+            </span>
+          </div>
+
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{group.hint}</p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {group.providers.map((provider) => (
+              <ProviderCard
+                key={provider.id}
+                provider={provider}
+                connection={byProvider.get(provider.id) ?? null}
+                busy={busy === provider.id}
+                disabled={!vaultReady}
+                onConnect={() => setEditing(provider)}
+                onTest={() => test(provider)}
+                onRemove={() => remove(provider)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+
       <p className="text-xs text-muted-foreground">
         {connectedCount === 0
           ? `${PROVIDERS.length} providers available. Nothing connected yet.`
           : `${connectedCount} of ${PROVIDERS.length} providers connected.`}
       </p>
-
-      <div className="space-y-3">
-        {PROVIDERS.map((provider) => (
-          <ProviderRow
-            key={provider.id}
-            provider={provider}
-            connection={byProvider.get(provider.id) ?? null}
-            busy={busy === provider.id}
-            disabled={!vaultReady}
-            onConnect={() => setEditing(provider)}
-            onTest={() => test(provider)}
-            onRemove={() => remove(provider)}
-          />
-        ))}
-      </div>
 
       <KeyDialog
         provider={editing}
@@ -176,7 +232,17 @@ export function ProviderKeyManager({
   )
 }
 
-function ProviderRow({
+/**
+ * One provider.
+ *
+ * A connected card is marked by a cyan top edge and its status badge, so the
+ * ones you have set up are findable at a glance in a grid of eleven.
+ *
+ * The masked key is the only thing here that could be mistaken for a secret, so
+ * it is presented as what it is: four real characters after a run of dots, in
+ * mono, with a title explaining that the rest was never stored in the clear.
+ */
+function ProviderCard({
   provider,
   connection,
   busy,
@@ -198,94 +264,113 @@ function ProviderRow({
   const MediaIcon = provider.media === 'image' ? ImageIcon : provider.media === 'video' ? Video : Plug
 
   return (
-    <Card className={cn('p-4 transition-colors', connection && 'border-muted')}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-surface">
-            <MediaIcon className="size-4 text-brand" aria-hidden />
-          </span>
+    <Card className={cn('relative flex h-full flex-col p-5', connection && 'border-brand/30')}>
+      {connection && (
+        <span className="absolute inset-x-0 top-0 z-10 h-[2px] bg-primary/70" aria-hidden />
+      )}
 
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-medium">{provider.label}</h3>
-              {meta && StatusIcon && (
-                <Badge variant={meta.variant}>
-                  <StatusIcon className="size-3" aria-hidden />
-                  {meta.label}
-                </Badge>
-              )}
-              {/*
-                Said on the row rather than in a footnote. A key that stores and
-                verifies but runs nothing is the exact thing a green tick would
-                misrepresent, so the row carries the caveat next to the name.
-              */}
-              {!provider.generationReady && <Badge variant="secondary">Verify only</Badge>}
-            </div>
+      <div className="flex items-start gap-3">
+        <span className="chip-brand flex size-10 shrink-0 items-center justify-center rounded-lg">
+          <MediaIcon className="size-[18px]" aria-hidden />
+        </span>
 
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{provider.blurb}</p>
-
-            {connection && (
-              <div className="mt-2 space-y-1">
-                <p className="font-mono text-xs text-foreground" title="Only the last four digits are stored in the clear">
-                  {connection.masked}
-                </p>
-                {connection.label && (
-                  <p className="text-xs text-muted-foreground">{connection.label}</p>
-                )}
-                {connection.status === 'valid' && connection.lastVerifiedAt ? (
-                  <p className="text-xs text-muted-foreground">
-                    Verified <RelativeTime value={connection.lastVerifiedAt} />
-                  </p>
-                ) : (
-                  connection.lastError && (
-                    <p className="text-xs text-warning">{connection.lastError}</p>
-                  )
-                )}
-              </div>
-            )}
-          </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="truncate font-display text-[15px] font-medium">{provider.label}</h4>
+          <p className="mt-0.5 text-xs text-muted-foreground">{MEDIA_LABELS[provider.media]}</p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          {connection ? (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={busy || disabled}
-                onClick={onTest}
-                aria-label={`Test the ${provider.label} key`}
-              >
-                {busy ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                Test
-              </Button>
-              <Button variant="outline" size="sm" disabled={busy || disabled} onClick={onConnect}>
-                Replace
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                disabled={busy || disabled}
-                onClick={onRemove}
-                aria-label={`Remove the ${provider.label} key`}
-              >
-                <Trash2 className="size-3.5 text-danger" aria-hidden />
-              </Button>
-            </>
+        {meta && StatusIcon && (
+          <Badge variant={meta.variant} className="shrink-0">
+            <StatusIcon className="size-3" aria-hidden />
+            {meta.label}
+          </Badge>
+        )}
+      </div>
+
+      <p className="mt-4 flex-1 text-xs leading-relaxed text-muted-foreground">{provider.blurb}</p>
+
+      {connection ? (
+        <div className="mt-4 rounded-lg border border-border bg-surface-2/40 p-3">
+          <div className="flex items-center gap-2">
+            <span className={cn('size-1.5 shrink-0 rounded-full', meta?.dot)} aria-hidden />
+            <p
+              className="min-w-0 flex-1 truncate font-mono text-xs text-foreground"
+              title="Only the last four characters are stored in the clear"
+            >
+              {connection.masked}
+            </p>
+          </div>
+
+          {connection.label && (
+            <p className="mt-1.5 truncate text-xs text-muted-foreground">{connection.label}</p>
+          )}
+
+          {connection.status === 'valid' && connection.lastVerifiedAt ? (
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Verified <RelativeTime value={connection.lastVerifiedAt} />
+            </p>
           ) : (
-            <>
-              <Button asChild variant="ghost" size="sm">
-                <a href={provider.consoleUrl} target="_blank" rel="noreferrer noopener">
-                  Get a key
-                  <ExternalLink className="size-3.5" aria-hidden />
-                </a>
-              </Button>
-              <Button size="sm" disabled={disabled} onClick={onConnect}>
-                Connect
-              </Button>
-            </>
+            connection.lastError && (
+              <p className="mt-1.5 text-xs leading-snug text-warning">{connection.lastError}</p>
+            )
           )}
         </div>
+      ) : (
+        <p className="mt-4 truncate rounded-lg border border-dashed border-border px-3 py-2.5 font-mono text-xs text-muted-foreground/70">
+          {provider.keyPlaceholder}
+        </p>
+      )}
+
+      <div className="mt-4 flex items-center gap-1.5 border-t border-border pt-4">
+        {connection ? (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              disabled={busy || disabled}
+              onClick={onTest}
+              aria-label={`Test the ${provider.label} key`}
+            >
+              {busy ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="size-3.5" />
+              )}
+              Test
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex-1"
+              disabled={busy || disabled}
+              onClick={onConnect}
+            >
+              Replace
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={busy || disabled}
+              onClick={onRemove}
+              aria-label={`Remove the ${provider.label} key`}
+            >
+              <Trash2 className="size-3.5 text-danger" aria-hidden />
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button size="sm" className="flex-1" disabled={disabled} onClick={onConnect}>
+              Connect
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <a href={provider.consoleUrl} target="_blank" rel="noreferrer noopener">
+                Get a key
+                <ExternalLink className="size-3.5" aria-hidden />
+              </a>
+            </Button>
+          </>
+        )}
       </div>
     </Card>
   )
@@ -359,7 +444,7 @@ function KeyDialog({
 
   return (
     <Dialog open={Boolean(provider)} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>Connect {provider?.label}</DialogTitle>
@@ -369,12 +454,13 @@ function KeyDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-1.5">
+          <div className="space-y-4 px-5 py-5">
+            <div className="space-y-2">
               <Label htmlFor="api-key">API key</Label>
               <Input
                 id="api-key"
                 type="password"
+                className="font-mono"
                 value={apiKey}
                 autoComplete="off"
                 spellCheck={false}
@@ -388,13 +474,16 @@ function KeyDialog({
                   {error}
                 </p>
               ) : (
-                <p id="api-key-hint" className={cn('text-xs', warning ? 'text-warning' : 'text-muted-foreground')}>
+                <p
+                  id="api-key-hint"
+                  className={cn('text-xs', warning ? 'text-warning' : 'text-muted-foreground')}
+                >
                   {warning ?? 'Pasted keys are trimmed, so a trailing newline is fine.'}
                 </p>
               )}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <Label htmlFor="key-label">Label (optional)</Label>
               <Input
                 id="key-label"

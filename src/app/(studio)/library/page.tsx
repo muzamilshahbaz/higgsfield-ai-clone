@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 
 import type { DrawerProject } from '@/components/gallery/generation-drawer'
 import { LibraryGrid } from '@/components/gallery/library-grid'
+import { PageHeader } from '@/components/studio/page-header'
 import { listMyGenerations } from '@/services/generation.service'
 import { listMyProjects } from '@/services/project.service'
 
@@ -32,13 +33,11 @@ export default async function LibraryPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Library</h1>
-        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          Every shot you own. Open one to see how it was made, download it, reuse it as a start
-          frame or move it to another project.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Content"
+        title="Library"
+        description="Every shot you own. Open one to see how it was made, download it, reuse it as a start frame or move it to another project."
+      />
 
       <LibraryGrid
         initialGenerations={generations}

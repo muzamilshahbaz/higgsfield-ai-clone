@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 
 import { ExploreFeed } from '@/components/explore/explore-feed'
+import { PageHeader } from '@/components/studio/page-header'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
 
@@ -27,13 +28,11 @@ export default async function ExplorePage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Explore</h1>
-        <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-          What the community is making. Like what lands, and hit remix to open any of it in
-          your own composer — same preset, same settings, your subject.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Community"
+        title="Explore"
+        description="What the community is making. Like what lands, and hit remix to open any of it in your own composer — same preset, same settings, your subject."
+      />
 
       <ExploreFeed initialItems={items} pageSize={PAGE_SIZE} signedIn={Boolean(user)} />
     </div>

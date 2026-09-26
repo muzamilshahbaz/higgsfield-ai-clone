@@ -1,16 +1,12 @@
 import Link from 'next/link'
-import { Clapperboard } from 'lucide-react'
 
-import { siteConfig } from '@/config/site'
+// The catalogue file, not the database: an auth page should not depend on
+// Supabase being reachable to render its own decoration.
+import presetCatalogue from '../../../data/presets.json'
 
-const MARQUEE = [
-  { name: 'Crash Zoom', category: 'Camera' },
-  { name: 'Bullet Time', category: 'VFX' },
-  { name: 'FPV Drone', category: 'Camera' },
-  { name: 'Golden Hour', category: 'Style' },
-  { name: '360 Orbit', category: 'Camera' },
-  { name: 'Film Noir', category: 'Style' },
-]
+import { KineticLogo } from '@/components/brand/logo'
+import { MODELS } from '@/lib/ai/registry'
+import { SIGNUP_CREDIT_GRANT } from '@/lib/constants'
 
 /**
  * Split auth shell: the form on the left, a strip of the product on the right.
@@ -20,17 +16,23 @@ const MARQUEE = [
  * layout previously used plain divs, which left the logo and the disclaimer
  * outside every landmark and the page with no `main` at all — so a screen
  * reader had no way to jump to the form.
+ *
+ * The right panel's chips are the real preset categories, counted from the
+ * catalogue, and the figures under the quote are computed. An auth page is the
+ * last place to put a number that could be wrong.
  */
+
+const PRESET_CATEGORIES = Array.from(
+  new Set(presetCatalogue.map((preset) => preset.category)),
+).slice(0, 8)
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <div className="flex flex-col px-4 py-8 sm:px-8">
         <header>
-          <Link href="/" className="inline-flex w-fit items-center gap-2.5">
-            <span className="flex size-7 items-center justify-center rounded-lg bg-primary">
-              <Clapperboard className="size-4 text-primary-foreground" />
-            </span>
-            <span className="text-sm font-semibold tracking-tight">{siteConfig.name}</span>
+          <Link href="/" className="inline-flex w-fit" aria-label="Kinetic Studio, home">
+            <KineticLogo markClassName="size-7" />
           </Link>
         </header>
 
@@ -44,32 +46,38 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* decorative panel */}
-      <aside className="relative hidden overflow-hidden border-l border-border/60 bg-surface/30 lg:block">
-        <div className="aurora opacity-50" aria-hidden />
+      <aside className="relative hidden overflow-hidden border-l border-border/70 bg-surface/30 lg:block">
+        <div className="light-wash pointer-events-none absolute inset-0" aria-hidden />
+        <div className="blueprint pointer-events-none absolute inset-0 opacity-50" aria-hidden />
 
         <div className="relative flex h-full flex-col justify-center px-12">
-          <blockquote className="max-w-md">
-            <p className="text-balance text-2xl font-semibold leading-snug tracking-tight">
-              &ldquo;Pick a camera move. Drop in an image. Get a shot, not a settings panel.&rdquo;
+          <p className="eyebrow text-brand">The workspace</p>
+
+          <blockquote className="mt-6 max-w-md">
+            <p className="text-balance font-display text-[1.75rem] font-semibold leading-snug tracking-tight">
+              Pick a camera move. Drop in an image. Get a shot, not a settings panel.
             </p>
-            <footer className="mt-4 text-sm text-muted-foreground">
-              36 presets · image and video models · 200 credits on signup
+            <footer className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <span className="tabular-nums">{presetCatalogue.length} presets</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{MODELS.length} models</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums text-credit">
+                {SIGNUP_CREDIT_GRANT} credits on signup
+              </span>
             </footer>
           </blockquote>
 
-          <div className="mt-12 flex flex-wrap gap-2" aria-hidden>
-            {MARQUEE.map((preset) => (
-              <span
-                key={preset.name}
-                className="rounded-full border border-border bg-surface/80 px-3 py-1.5 text-xs text-muted-foreground"
+          <ul className="mt-12 flex flex-wrap gap-2">
+            {PRESET_CATEGORIES.map((category) => (
+              <li
+                key={category}
+                className="rounded-md border border-border bg-surface/80 px-2.5 py-1.5 text-xs text-muted-foreground"
               >
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
-                  {preset.category}
-                </span>
-                <span className="ml-2 text-foreground">{preset.name}</span>
-              </span>
+                {category}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
       </aside>
     </div>

@@ -14,14 +14,12 @@ export default function NotFound() {
   return (
     <main className="flex min-h-dvh items-center justify-center px-4 py-16">
       <div className="w-full max-w-md text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-full border border-border bg-surface">
+        <div className="mx-auto flex size-12 items-center justify-center rounded-xl border border-border bg-surface-2">
           <MapPinOff className="size-5 text-muted-foreground" aria-hidden />
         </div>
 
-        <p className="mt-6 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-          404
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        <p className="eyebrow mt-6 text-brand">404</p>
+        <h1 className="mt-3 font-display text-2xl font-semibold">
           There is no shot at this address
         </h1>
         <p className="mt-3 text-sm text-muted-foreground">

@@ -17,8 +17,13 @@ import { isTerminal, type GenerationWithAssets } from '@/types/database'
 /**
  * One job in the live feed.
  *
- * The card is the same component from "queued" to "ready" so nothing jumps
- * when the status changes — only what is inside the frame swaps out.
+ * The card is the same component from "queued" to "ready" so nothing jumps when
+ * the status changes — only what is inside the frame swaps out. That is worth
+ * protecting: the feed is the one surface where a user is watching for a change,
+ * and a card that resizes as it settles makes the whole column jump under them.
+ *
+ * The progress bar sits on the bottom edge of the frame rather than under the
+ * caption, so it reads as belonging to the picture that is still arriving.
  */
 export function JobCard({
   generation,
@@ -37,9 +42,9 @@ export function JobCard({
   const failed = generation.status === 'failed' || generation.status === 'canceled'
 
   return (
-    <figure className="group overflow-hidden rounded-xl border border-border bg-card">
+    <figure className="panel group overflow-hidden rounded-xl transition-colors hover:border-muted">
       <div
-        className="relative isolate w-full overflow-hidden bg-surface"
+        className="relative isolate w-full overflow-hidden bg-surface-2"
         style={aspectStyle(generation.aspect_ratio)}
       >
         {generation.status === 'succeeded' && generation.assets.length > 0 ? (
@@ -56,30 +61,44 @@ export function JobCard({
         <div className="absolute left-2.5 top-2.5 z-10">
           <StatusBadge status={generation.status} />
         </div>
+
+        {pending && (
+          <Progress
+            value={generation.progress}
+            className="absolute inset-x-0 bottom-0 z-10 h-1 rounded-none"
+          />
+        )}
       </div>
 
-      <figcaption className="space-y-2.5 p-3.5">
+      <figcaption className="space-y-3 p-3.5">
         <p className="line-clamp-2 text-sm leading-snug text-foreground/90">
           {generation.prompt || <span className="text-muted-foreground">Preset only</span>}
         </p>
 
         {preset && (
-          <Badge variant="outline" className="max-w-full">
+          <Badge variant="outline">
             <Wand2 className="size-3 shrink-0" aria-hidden />
             <span className="truncate">{preset.title}</span>
           </Badge>
         )}
 
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground/70">{model?.label ?? generation.model_id}</span>
+        {/* The spec line. Mono for the values a user compares between cards. */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 font-mono text-[11px] text-muted-foreground">
+          <span className="truncate text-foreground/70">{model?.label ?? generation.model_id}</span>
+          <span aria-hidden>·</span>
           <span>{generation.aspect_ratio}</span>
-          {generation.duration_sec ? <span>{generation.duration_sec}s</span> : null}
-          <span className="inline-flex items-center gap-1 tabular-nums">
+          {generation.duration_sec ? (
+            <>
+              <span aria-hidden>·</span>
+              <span>{generation.duration_sec}s</span>
+            </>
+          ) : null}
+          <span className="inline-flex items-center gap-1 tabular-nums text-credit">
             <Coins className="size-3" aria-hidden />
             {generation.credit_cost}
             {failed && generation.credit_cost > 0 ? ' refunded' : ''}
           </span>
-          <RelativeTime value={generation.created_at} className="ml-auto" />
+          <RelativeTime value={generation.created_at} className="ml-auto shrink-0" />
         </div>
 
         {failed && generation.error_message && (
@@ -92,8 +111,6 @@ export function JobCard({
             Try again
           </Button>
         )}
-
-        {pending && <Progress value={generation.progress} className="mt-1" />}
       </figcaption>
     </figure>
   )
@@ -102,7 +119,7 @@ export function JobCard({
 function StatusBadge({ status }: { status: GenerationWithAssets['status'] }) {
   if (status === 'succeeded') {
     return (
-      <Badge variant="success">
+      <Badge variant="success" onMedia>
         <Check className="size-3" aria-hidden />
         {STATUS_LABELS[status]}
       </Badge>
@@ -111,7 +128,7 @@ function StatusBadge({ status }: { status: GenerationWithAssets['status'] }) {
 
   if (status === 'failed' || status === 'canceled') {
     return (
-      <Badge variant="destructive">
+      <Badge variant="destructive" onMedia>
         <AlertTriangle className="size-3" aria-hidden />
         {STATUS_LABELS[status]}
       </Badge>
@@ -119,14 +136,20 @@ function StatusBadge({ status }: { status: GenerationWithAssets['status'] }) {
   }
 
   return (
-    <Badge variant="secondary" className="backdrop-blur">
+    <Badge onMedia>
       <Loader2 className="size-3 animate-spin" aria-hidden />
       {STATUS_LABELS[status]}
     </Badge>
   )
 }
 
-/** The waiting state: a start frame when we have one, a shimmer when we do not. */
+/**
+ * The waiting state: a start frame when we have one, a blueprint when we do not.
+ *
+ * The percentage is stated as text as well as drawn as a bar. A progress bar on
+ * its own tells you roughly where you are; a number tells you whether it moved
+ * since the last time you looked, which is the actual question at 40%.
+ */
 function PendingFrame({ generation }: { generation: GenerationWithAssets }) {
   const percent = Math.round(generation.progress * 100)
 
@@ -137,16 +160,16 @@ function PendingFrame({ generation }: { generation: GenerationWithAssets }) {
         <img
           src={generation.input_image_url}
           alt=""
-          className="size-full scale-105 object-cover opacity-40 blur-[2px]"
+          className="size-full scale-105 object-cover opacity-35 blur-[2px]"
         />
       ) : (
-        /* `shimmer` is defined in globals.css; tailwindcss-animate is not a dependency. */
-        <div className="size-full bg-surface-2/40 shimmer" />
+        /* `shimmer` and `blueprint` are defined in globals.css. */
+        <div className="blueprint shimmer size-full opacity-60" />
       )}
 
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/30">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
-        <span className="text-xs tabular-nums text-muted-foreground">{percent}%</span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 bg-background/40">
+        <Loader2 className="size-5 animate-spin text-brand" aria-hidden />
+        <span className="font-mono text-xs tabular-nums text-muted-foreground">{percent}%</span>
       </div>
     </div>
   )

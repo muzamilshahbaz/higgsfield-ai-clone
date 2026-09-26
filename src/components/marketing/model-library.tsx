@@ -1,129 +1,144 @@
 import Link from 'next/link'
-import { ArrowRight, Coins, KeyRound, Timer } from 'lucide-react'
+import { ArrowRight, KeyRound } from 'lucide-react'
 
 import { Reveal } from '@/components/marketing/reveal'
+import { Section, SectionHeading } from '@/components/marketing/section-heading'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { MODELS } from '@/lib/ai/registry'
+import { getProvider } from '@/lib/ai/catalogue'
+import { MODELS, providersFor } from '@/lib/ai/registry'
 import { TASK_LABELS } from '@/lib/constants'
+import type { GenerationTask } from '@/types/database'
 
 /**
- * The model library.
+ * The supported-models roster.
  *
- * Reads `MODELS` straight out of the registry rather than a copy of it. That
- * is the whole point of the section: the marketing page and the composer are
- * showing the same catalogue, so a model added for the product appears here
- * with its real price, real latency and real capabilities, and a model
- * removed cannot linger in a marketing list nobody remembered to edit.
+ * A spec sheet, not a card grid. Cards would give six near-identical tiles per
+ * task and bury the one thing a reader is comparing — price against latency —
+ * inside a paragraph. Rows put the numbers in a column you can run your eye
+ * down, in mono, right-aligned, which is what makes this section legible at
+ * eighteen models and still legible at forty.
+ *
+ * Everything is read from the registry: label, family, routes, credits and
+ * latency. A model added for the product appears here with its real numbers,
+ * and a model removed cannot linger in a marketing list nobody remembered to
+ * edit. `providersFor` is the same function the router uses to choose one.
  */
 
-const TASK_ORDER = ['text_to_image', 'image_to_video', 'text_to_video'] as const
+const TASK_ORDER: GenerationTask[] = ['text_to_image', 'image_to_video', 'text_to_video']
 
 export function ModelLibrary() {
-  const grouped = TASK_ORDER.map((task) => ({
+  const groups = TASK_ORDER.map((task) => ({
     task,
     models: MODELS.filter((model) => model.task === task),
   })).filter((group) => group.models.length > 0)
 
   return (
-    <section
-      id="library"
-      className="relative scroll-mt-24 border-t border-border/60 bg-surface/30 py-24"
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal>
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div className="max-w-2xl">
-              <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-                The whole library, one composer
-              </h2>
-              <p className="mt-3 text-pretty text-muted-foreground">
-                {MODELS.length} open-weight models, every one of them served by Hugging Face,
-                fal.ai or Replicate. Connect whichever account you already have — the controls,
-                the credits and the job feed do not change underneath you.
-              </p>
+    <Section id="models">
+      <SectionHeading
+        index="03"
+        eyebrow="Supported models"
+        title="The whole roster, with the real numbers on it"
+        lead={`${MODELS.length} open-weight models served through Hugging Face, fal.ai or Replicate. Connect whichever account you already have — the controls, the credits and the job feed do not change underneath you.`}
+        action={
+          <Button asChild variant="outline">
+            <Link href="/settings/keys">
+              <KeyRound className="size-4" aria-hidden />
+              Connect your keys
+            </Link>
+          </Button>
+        }
+      />
+
+      <div className="mt-14 space-y-12">
+        {groups.map((group) => (
+          <div key={group.task}>
+            {/* group rule */}
+            <div className="flex items-center gap-4">
+              <h3 className="eyebrow text-brand">{TASK_LABELS[group.task]}</h3>
+              <span className="h-px flex-1 bg-border" aria-hidden />
+              <span className="eyebrow tabular-nums text-muted-foreground">
+                {String(group.models.length).padStart(2, '0')}
+              </span>
             </div>
 
-            <Button asChild variant="outline">
-              <Link href="/sign-up">
-                <KeyRound className="size-4" aria-hidden />
-                Connect your own keys
-              </Link>
-            </Button>
-          </div>
-        </Reveal>
+            <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {group.models.map((model, index) => {
+                const vendors = providersFor(model).map(
+                  (id) => getProvider(id)?.label ?? id,
+                )
 
-        <div className="mt-12 space-y-10">
-          {grouped.map((group, groupIndex) => (
-            <div key={group.task}>
-              <div className="flex items-center gap-3">
-                <h3 className="text-sm font-medium">{TASK_LABELS[group.task]}</h3>
-                <span className="h-px flex-1 bg-border" aria-hidden />
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {group.models.length}
-                </span>
-              </div>
-
-              <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
-                {group.models.map((model, index) => {
-                  return (
-                    <Reveal
-                      key={model.id}
-                      // Capped so a long list does not end with a card that
-                      // waits two seconds after it is already on screen.
-                      delay={Math.min(groupIndex * 0.05 + index * 0.04, 0.4)}
-                    >
-                      <div className="h-full bg-background p-5 transition-colors hover:bg-surface">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <h4 className="truncate text-[15px] font-medium">{model.label}</h4>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {model.family}
-                            </p>
-                          </div>
+                return (
+                  <Reveal key={model.id} delay={Math.min(index, 6) * 0.03}>
+                    <li className="grid gap-x-6 gap-y-3 bg-card/60 px-5 py-4 transition-colors hover:bg-surface-2/40 sm:grid-cols-12 sm:items-center sm:px-6">
+                      {/* name + family */}
+                      <div className="sm:col-span-4">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-display text-[15px] font-medium">{model.label}</h4>
                           {model.featured && (
-                            <Badge className="shrink-0">Popular</Badge>
+                            <Badge variant="outline" className="shrink-0">
+                              Recommended
+                            </Badge>
                           )}
                         </div>
-
-                        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                          {model.blurb}
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                          {model.family}
                         </p>
-
-                        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                          <span className="inline-flex items-center gap-1 tabular-nums text-credit">
-                            <Coins className="size-3" aria-hidden />
-                            {model.credits} {model.credits === 1 ? 'credit' : 'credits'}
-                          </span>
-                          <span className="inline-flex items-center gap-1 tabular-nums">
-                            <Timer className="size-3" aria-hidden />~{model.avgLatencySec}s
-                          </span>
-                          <span className="tabular-nums">
-                            {model.supports.aspectRatios.length} ratios
-                          </span>
-                        </div>
                       </div>
-                    </Reveal>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
 
-        <Reveal>
-          <p className="mt-10 text-center text-sm text-muted-foreground">
-            Adding a model is one entry in the registry.{' '}
-            <Link
-              href="/presets"
-              className="inline-flex items-center gap-1 font-medium text-foreground underline-offset-4 hover:underline"
-            >
-              See the presets built on them
-              <ArrowRight className="size-3.5" aria-hidden />
-            </Link>
-          </p>
-        </Reveal>
+                      {/* what it is for */}
+                      <p className="text-sm leading-relaxed text-muted-foreground sm:col-span-4">
+                        {model.blurb}
+                      </p>
+
+                      {/* where it runs */}
+                      <p className="text-xs text-muted-foreground sm:col-span-2">
+                        <span className="sr-only">Served by </span>
+                        {vendors.join(' · ')}
+                      </p>
+
+                      {/*
+                        The comparison column. Right-aligned and tabular from
+                        `sm` up so the prices form a straight edge; left-aligned
+                        below it, where there is no column to align to.
+                      */}
+                      <p className="flex items-baseline gap-3 text-sm tabular-nums sm:col-span-2 sm:justify-end">
+                        <span className="font-medium text-credit">
+                          {model.credits}
+                          <span className="sr-only">
+                            {' '}
+                            {model.credits === 1 ? 'credit' : 'credits'}
+                          </span>
+                          <span className="text-xs text-muted-foreground" aria-hidden>
+                            {' '}
+                            cr
+                          </span>
+                        </span>
+                        <span className="text-muted-foreground">
+                          <span className="sr-only">about </span>~{model.avgLatencySec}s
+                        </span>
+                      </p>
+                    </li>
+                  </Reveal>
+                )
+              })}
+            </ul>
+          </div>
+        ))}
       </div>
-    </section>
+
+      <Reveal>
+        <p className="mt-10 text-sm text-muted-foreground">
+          Prices and latencies are the live values from the registry the composer uses.{' '}
+          <Link
+            href="/presets"
+            className="inline-flex items-center gap-1 font-medium text-brand underline-offset-4 hover:underline"
+          >
+            See the presets built on them
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </p>
+      </Reveal>
+    </Section>
   )
 }

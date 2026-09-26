@@ -36,7 +36,7 @@ export function ExploreCard({
   const author = authorNameOf(item)
 
   return (
-    <figure className="group overflow-hidden rounded-xl border border-border bg-card">
+    <figure className="panel group overflow-hidden rounded-xl transition-colors hover:border-muted">
       <Link
         href={`/g/${item.id}`}
         aria-label={`Open ${truncate(label, 80)} by ${author}`}

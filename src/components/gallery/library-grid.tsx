@@ -155,8 +155,15 @@ export function LibraryGrid({
 
   return (
     <div className="@container space-y-5">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* The toolbar. Contained in a panel so the filters read as one control
+          surface rather than four chips floating above the grid. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface/40 p-2">
         <Segmented name="Media type" size="sm" value={type} options={TYPE_OPTIONS} onChange={chooseType} />
+
+        {/* Both groups open with an option called "All", so without a rule
+            between them the toolbar reads as one control with two of them. */}
+        <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden />
+
         <Segmented
           name="Job status"
           size="sm"
@@ -178,7 +185,7 @@ export function LibraryGrid({
             type="search"
             value={query.filters.search}
             placeholder="Search prompts"
-            className="h-8 pl-8 text-xs"
+            className="h-8 bg-background/60 pl-8 text-xs"
             onChange={(event) => setFilters({ search: event.target.value })}
           />
         </div>

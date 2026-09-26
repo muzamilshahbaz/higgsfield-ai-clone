@@ -23,7 +23,7 @@ export default async function SignInPage({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold">Welcome back</h1>
         <p className="text-sm text-muted-foreground">
           Sign in to pick up where your last shot left off.
         </p>

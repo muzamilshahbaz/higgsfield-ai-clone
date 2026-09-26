@@ -101,7 +101,7 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
       <SiteHeader isSignedIn={Boolean(user)} />
 
       <main className="mx-auto max-w-5xl px-4 pb-20 pt-28 sm:px-6 sm:pt-32 lg:px-8">
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="panel overflow-hidden rounded-2xl">
           <div
             className="relative w-full overflow-hidden bg-surface"
             style={aspectStyle(generation.aspect_ratio)}

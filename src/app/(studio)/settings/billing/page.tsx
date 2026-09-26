@@ -5,7 +5,7 @@ import { BillingManager } from '@/components/billing/billing-manager'
 import { PlanComparison } from '@/components/billing/plan-comparison'
 import { SubscriptionStatus } from '@/components/billing/subscription-status'
 import { TransactionHistory } from '@/components/billing/transaction-history'
-import { SettingsTabs } from '@/components/settings/settings-tabs'
+import { SettingsHeader, SettingsTabs } from '@/components/settings/settings-tabs'
 import { Card } from '@/components/ui/card'
 import { getBillingSnapshot } from '@/services/subscription.service'
 
@@ -29,28 +29,25 @@ export default async function BillingPage() {
   const { plan, subscription, transactions, credits, endingAt } = await getBillingSnapshot()
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Your profile and your credit ledger.</p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-8">
+      <SettingsHeader description="Your plan, your credits and your billing history." />
 
       <SettingsTabs />
 
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-medium">Plan &amp; billing</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="font-display text-lg font-medium">Plan &amp; billing</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
             Credits, not seats. Change plan, cancel or restart at any time.
           </p>
         </div>
 
-        <Card className="border-warning/30 bg-warning/5 p-4">
+        <Card className="border-accent/30 bg-accent/5 p-4">
           <div className="flex gap-3">
-            <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
+            <Info className="mt-0.5 size-4 shrink-0 text-accent" aria-hidden />
             <div className="text-sm">
               <p className="font-medium">Demonstration billing</p>
-              <p className="mt-1 text-muted-foreground">
+              <p className="mt-1 leading-relaxed text-muted-foreground">
                 This deployment has no payment provider connected. Checkout is simulated: no card
                 is charged, no card details are stored, and the subscriptions and receipts below
                 are real database records of a pretend transaction.
@@ -61,25 +58,35 @@ export default async function BillingPage() {
 
         <SubscriptionStatus plan={plan} subscription={subscription} credits={credits} />
 
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Change your plan</h3>
+        <section className="space-y-4">
+          <SettingsSection title="Change your plan" />
           <BillingManager currentPlanId={plan.id} endingAt={endingAt} />
-        </div>
+        </section>
 
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Compare plans</h3>
+        <section className="space-y-4">
+          <SettingsSection title="Compare plans" />
           <Card className="p-6">
             <PlanComparison currentPlanId={plan.id} />
           </Card>
-        </div>
+        </section>
 
-        <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Billing history</h3>
+        <section className="space-y-4">
+          <SettingsSection title="Billing history" />
           <Card className="p-6">
             <TransactionHistory transactions={transactions} />
           </Card>
-        </div>
+        </section>
       </div>
+    </div>
+  )
+}
+
+/** A titled rule, so the panels on this page share one rhythm. */
+function SettingsSection({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-4">
+      <h3 className="eyebrow text-muted-foreground">{title}</h3>
+      <span className="h-px flex-1 bg-border" aria-hidden />
     </div>
   )
 }

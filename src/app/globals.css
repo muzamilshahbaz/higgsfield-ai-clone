@@ -1,82 +1,134 @@
 @import 'tailwindcss';
 
 /*
-  Kinetic Studio — dark cinematic theme.
-  The product is dark-only by design: a light theme would halve the time we can
-  spend on the surfaces that actually sell the demo.
+  Kinetic Studio — the design system.
+
+  Three decisions drive everything below.
+
+  1. Graphite, not black. The canvas is oklch(0.175 …) at a faint blue cast:
+     dark enough to make footage glow, warm enough that a panel edge is
+     visible without a shadow. Pure black would force every border to fight
+     for contrast and make the product look like a terminal.
+
+  2. Cyan fills, coral marks. Electric cyan is the only colour that means
+     "do this" — buttons, focus, active nav, progress. Coral never fills a
+     primary button; it marks, counts and annotates. Two accents with one job
+     each is what keeps a dark UI from turning into a fruit salad.
+
+  3. Straight lines over glows. The signature texture is a blueprint grid, a
+     1px highlight along the top edge of a panel, and a linear light wash —
+     not radial blobs behind a headline. It costs no `filter: blur()`, which
+     is also why it scrolls at 60fps on a laptop.
+
+  Dark-only by design. A light theme is not half the work of this one, it is
+  all of it again, and nothing in the product asks for it.
 */
 
 @theme {
-  /* surfaces */
-  --color-background: oklch(0.145 0.012 280);
-  --color-foreground: oklch(0.97 0.004 280);
+  /* ------------------------------------------------------------ surfaces */
+  /* A five-step graphite ramp. Each step is ~0.04 L from the last, which is
+     the smallest gap that still reads as a separate plane on an OLED panel. */
+  --color-background: oklch(0.175 0.007 250);
+  --color-foreground: oklch(0.97 0.003 250);
 
-  --color-surface: oklch(0.185 0.014 280);
-  --color-surface-2: oklch(0.225 0.016 280);
+  --color-surface: oklch(0.215 0.008 250);
+  --color-surface-2: oklch(0.255 0.009 250);
 
-  --color-card: oklch(0.185 0.014 280);
-  --color-card-foreground: oklch(0.97 0.004 280);
+  --color-card: oklch(0.215 0.008 250);
+  --color-card-foreground: oklch(0.97 0.003 250);
 
-  --color-popover: oklch(0.175 0.016 280);
-  --color-popover-foreground: oklch(0.97 0.004 280);
+  --color-popover: oklch(0.225 0.009 250);
+  --color-popover-foreground: oklch(0.97 0.003 250);
 
-  --color-muted: oklch(0.245 0.014 280);
-  --color-muted-foreground: oklch(0.68 0.012 280);
+  --color-muted: oklch(0.285 0.009 250);
+  /* 6.8:1 on the canvas, 5.0:1 on surface-2 — passes AA as body text on every
+     plane in the ramp, which is the only reason to pick a value this exact. */
+  --color-muted-foreground: oklch(0.705 0.011 250);
 
-  /* brand */
-  /* Lightness is 0.57, not the 0.63 this started at: white-on-primary was
-     3.69:1, which fails WCAG AA for anything under 18.66px bold — and the
-     small primary buttons are 12px. 0.57 gives 4.78:1, so every primary
-     button passes at every size. The ring below deliberately keeps the
-     brighter value: a focus indicator is non-text and wants to be loud. */
-  --color-primary: oklch(0.57 0.205 293);
-  --color-primary-foreground: oklch(0.99 0 0);
-  --color-primary-soft: oklch(0.42 0.14 293);
+  /* --------------------------------------------------------------- brand */
+  /*
+    Electric cyan. Light enough (0.80 L) that it must carry dark ink, which is
+    the whole look: a cyan button with graphite text rather than white text on
+    a mid-tone. 8.6:1 under `primary-foreground`, and 8.7:1 as ink on the
+    canvas — so unlike most brand colours this one does not need a second
+    value for the two roles. `brand` exists anyway, one step brighter, for
+    where cyan is type sitting on a tinted chip.
+  */
+  --color-primary: oklch(0.8 0.135 200);
+  --color-primary-foreground: oklch(0.18 0.02 245);
+  --color-primary-soft: oklch(0.42 0.09 205);
+  --color-brand: oklch(0.83 0.14 200);
 
-  /* The same brand violet as ink rather than as a fill. A colour cannot be
-     both a background for white text and legible text on a near-black
-     background: the first wants darkness, the second wants light. `primary`
-     fills, `brand` writes — 6.6:1 on the page background, 5.7:1 on surface-2. */
-  --color-brand: oklch(0.69 0.19 293);
+  /*
+    Coral, the second voice. 6.0:1 as ink on the canvas and 5.7:1 under dark
+    ink as a fill, so it is safe either way — but by convention it never fills
+    a primary action. It marks the thing cyan is not already marking.
+  */
+  --color-accent: oklch(0.7 0.175 35);
+  --color-accent-foreground: oklch(0.18 0.02 40);
+  --color-accent-soft: oklch(0.4 0.11 35);
 
-  --color-accent: oklch(0.78 0.145 196);
-  --color-accent-foreground: oklch(0.16 0.02 280);
+  --color-secondary: oklch(0.275 0.011 250);
+  --color-secondary-foreground: oklch(0.95 0.003 250);
 
-  --color-secondary: oklch(0.26 0.02 280);
-  --color-secondary-foreground: oklch(0.95 0.004 280);
+  /* Credits are money, so they get their own warm channel — never cyan, which
+     would make a balance look like a button. */
+  --color-credit: oklch(0.83 0.145 88);
 
-  --color-credit: oklch(0.82 0.15 85);
-
-  /* Same fill/ink split as the brand pair above: white on the old 0.62 red was
-     3.92:1 and red-on-tint in a badge was 3.85:1, so both roles failed at once.
-     `destructive` fills (5.05:1 under white), `danger` writes (5.5:1 on a
-     tinted badge, 6.3:1 on a card). */
-  --color-destructive: oklch(0.56 0.21 25);
+  /* Fill/ink split, same reasoning as the brand pair: `destructive` is a
+     background under white text, `danger` is red type on a tint. */
+  --color-destructive: oklch(0.57 0.21 25);
   --color-destructive-foreground: oklch(0.99 0 0);
   --color-danger: oklch(0.72 0.21 25);
 
-  --color-success: oklch(0.74 0.17 155);
-  --color-warning: oklch(0.82 0.15 85);
+  --color-success: oklch(0.76 0.16 160);
+  --color-warning: oklch(0.83 0.145 88);
 
-  /* lines */
-  --color-border: oklch(0.28 0.016 280);
-  --color-input: oklch(0.3 0.018 280);
-  --color-ring: oklch(0.63 0.205 293);
+  /* ---------------------------------------------------------------- lines */
+  /*
+    Two line colours, because they do two different jobs under WCAG.
 
-  /* shape */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
-  --radius-2xl: 2rem;
+    `border` draws panel edges and separators. Those are decoration — nothing
+    identifies a control by them — so 1.4:1 against the canvas is fine and
+    anything louder turns a page of cards into a spreadsheet.
 
-  /* type */
+    `input` is the boundary of a text field, and that *is* what tells someone
+    a control is there, so 1.4.11 asks for 3:1. At 0.52 L it measures 3.45:1
+    on the canvas and 3.19:1 on a surface — both sides of where inputs sit.
+    It looks heavier than a designer's instinct; that is the requirement, not
+    an accident.
+  */
+  --color-border: oklch(0.305 0.01 250);
+  --color-input: oklch(0.52 0.014 250);
+  --color-ring: oklch(0.8 0.135 200);
+
+  /* ---------------------------------------------------------------- shape */
+  /* Medium. A 14px card and a 10px button read as engineered; the 24px
+     everything-is-a-pill look reads as a consumer app, which this is not. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+  --radius-3xl: 1.5rem;
+
+  /* ----------------------------------------------------------------- type */
   --font-sans:
     var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display:
+    var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', monospace;
 
-  /* motion */
+  /* ---------------------------------------------------------------- depth */
+  /* Soft and low-contrast. On graphite a hard shadow reads as a seam, so
+     depth comes mostly from the 1px top highlight on `.panel` instead. */
+  --shadow-panel: 0 1px 2px oklch(0 0 0 / 0.3), 0 8px 24px -16px oklch(0 0 0 / 0.5);
+  --shadow-lift: 0 2px 4px oklch(0 0 0 / 0.3), 0 16px 40px -20px oklch(0 0 0 / 0.6);
+  --shadow-glow: 0 0 0 1px oklch(0.8 0.135 200 / 0.25), 0 8px 32px -12px oklch(0.8 0.135 200 / 0.3);
+
+  /* --------------------------------------------------------------- motion */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -98,11 +150,27 @@
     text-rendering: optimizeLegibility;
   }
 
-  ::selection {
-    background-color: color-mix(in oklch, var(--color-primary) 40%, transparent);
+  /*
+    Space Grotesk everywhere a heading is a heading. Setting it on the elements
+    here rather than adding `font-display` to forty components is what keeps
+    the two typefaces from drifting apart page by page — and it means a heading
+    added later is correct without anyone remembering a class.
+  */
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
 
-  /* focus ring, consistent everywhere */
+  ::selection {
+    background-color: color-mix(in oklch, var(--color-primary) 30%, transparent);
+    color: var(--color-foreground);
+  }
+
+  /* One focus ring, everywhere, and it is cyan so it cannot be mistaken for a
+     border. Non-text, so it is allowed to be the loudest thing on screen. */
   :focus-visible {
     outline: 2px solid var(--color-ring);
     outline-offset: 2px;
@@ -126,51 +194,140 @@
 }
 
 @layer utilities {
-  /* headline treatment used across marketing and empty states */
-  .text-gradient {
-    background-image: linear-gradient(
-      100deg,
-      oklch(0.99 0 0) 0%,
-      oklch(0.85 0.06 293) 45%,
-      oklch(0.72 0.14 250) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /*
+    A panel. The 1px inset highlight along the top edge is the signature: it
+    reads as a lit surface under one light source above, which is why these
+    cards need almost no shadow to separate from the canvas.
+  */
+  .panel {
+    position: relative;
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-panel);
   }
 
-  /* subtle glass panel */
-  .glass {
-    background: color-mix(in oklch, var(--color-surface) 70%, transparent);
-    backdrop-filter: blur(16px) saturate(140%);
-  }
-
-  /* ambient light behind hero and composer */
-  .aurora {
+  .panel::before {
+    content: '';
     position: absolute;
-    inset: -40% -20% auto -20%;
-    height: 70vh;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--color-foreground) 12%, transparent) 20%,
+      color-mix(in oklch, var(--color-foreground) 12%, transparent) 80%,
+      transparent
+    );
     pointer-events: none;
-    background:
-      radial-gradient(
-        40% 50% at 20% 30%,
-        color-mix(in oklch, var(--color-primary) 35%, transparent) 0%,
-        transparent 70%
-      ),
-      radial-gradient(
-        35% 45% at 75% 25%,
-        color-mix(in oklch, var(--color-accent) 22%, transparent) 0%,
-        transparent 70%
-      );
-    filter: blur(60px);
   }
 
-  .grid-lines {
+  /* The same highlight for elements that cannot spare a pseudo-element. */
+  .hairline {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--color-foreground) 14%, transparent),
+      transparent
+    );
+  }
+
+  /* Section eyebrow: mono, uppercase, wide. Usually carries a section number. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  /*
+    Blueprint grid. Finer and fainter than a decorative grid usually is (32px,
+    border at 45%) so it reads as drafting paper rather than graph paper.
+  */
+  .blueprint {
     background-image:
-      linear-gradient(to right, color-mix(in oklch, var(--color-border) 55%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in oklch, var(--color-border) 55%, transparent) 1px, transparent 1px);
-    background-size: 64px 64px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 30%, transparent 75%);
+      linear-gradient(
+        to right,
+        color-mix(in oklch, var(--color-border) 45%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklch, var(--color-border) 45%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 32px 32px;
+  }
+
+  /* Fades the grid out before it reaches any text. */
+  .blueprint-fade {
+    mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, black 10%, transparent 70%);
+  }
+
+  /*
+    The light wash. Linear and directional — cyan entering from the top left,
+    coral answering from the right — rather than the radial glow blobs every
+    other AI product puts behind its headline. No `filter: blur()`: gradients
+    this soft do not need one, and a blurred full-height layer is the single
+    most expensive thing a hero can contain.
+  */
+  .light-wash {
+    background-image:
+      linear-gradient(
+        155deg,
+        color-mix(in oklch, var(--color-primary) 14%, transparent) 0%,
+        transparent 42%
+      ),
+      linear-gradient(
+        215deg,
+        color-mix(in oklch, var(--color-accent) 11%, transparent) 0%,
+        transparent 38%
+      );
+  }
+
+  /* Motion streaks: three rules of decreasing weight, the closest thing the
+     identity has to a logo texture. Used sparingly, at section seams. */
+  .streaks {
+    background-image:
+      linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in oklch, var(--color-primary) 55%, transparent) 60%,
+        transparent
+      ),
+      linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in oklch, var(--color-primary) 22%, transparent) 50%,
+        transparent
+      ),
+      linear-gradient(
+        90deg,
+        transparent,
+        color-mix(in oklch, var(--color-accent) 30%, transparent) 40%,
+        transparent
+      );
+    background-size:
+      100% 1px,
+      100% 1px,
+      100% 1px;
+    background-position:
+      0 0,
+      0 4px,
+      0 9px;
+    background-repeat: no-repeat;
+  }
+
+  /* Frosted bar for the fixed header. */
+  .glass {
+    background: color-mix(in oklch, var(--color-background) 78%, transparent);
+    backdrop-filter: blur(20px) saturate(160%);
+  }
+
+  /* Cyan type on a tinted chip, as one utility rather than three classes. */
+  .chip-brand {
+    background: color-mix(in oklch, var(--color-primary) 14%, transparent);
+    color: var(--color-brand);
   }
 
   /*
@@ -178,14 +335,14 @@
     -50%, so the second copy sits where the first started at the moment the
     loop restarts — no seam, and no JavaScript measuring anything.
 
-    Paused on hover so a reader can actually look at a card, and stopped
-    entirely under reduced motion: the global reduce rule below collapses the
-    duration, which would snap the track to its end state, so the animation is
-    removed rather than shortened.
+    Paused on hover so a reader can look at a card, and removed entirely under
+    reduced motion: the global reduce rule collapses durations, which would
+    snap the track to its end state, so the animation has to go rather than
+    be shortened.
   */
   .marquee {
     width: max-content;
-    animation: marquee 42s linear infinite;
+    animation: marquee 48s linear infinite;
   }
 
   .marquee:hover {
@@ -196,16 +353,6 @@
     .marquee {
       animation: none;
     }
-  }
-
-  /* A soft vignette for full-bleed showcase sections. */
-  .spotlight {
-    background:
-      radial-gradient(
-        60% 60% at 50% 0%,
-        color-mix(in oklch, var(--color-primary) 18%, transparent) 0%,
-        transparent 70%
-      );
   }
 
   /* Horizontal rails: snap each card, hide the bar, keep the keyboard flow. */
@@ -243,7 +390,7 @@
 @keyframes menu-pop {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(-2px);
+    transform: scale(0.97) translateY(-2px);
   }
   to {
     opacity: 1;
@@ -257,7 +404,7 @@
 }
 
 .dialog-pop[data-state='open'] {
-  animation: dialog-pop 180ms var(--ease-out-expo);
+  animation: dialog-pop 200ms var(--ease-out-quint);
 }
 
 @keyframes overlay-fade {

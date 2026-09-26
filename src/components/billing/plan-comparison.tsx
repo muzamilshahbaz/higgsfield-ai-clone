@@ -23,7 +23,7 @@ export function PlanComparison({ currentPlanId }: { currentPlanId?: PlanId }) {
         <caption className="sr-only">Feature comparison across plans</caption>
         <thead>
           <tr className="border-b border-border">
-            <th scope="col" className="py-3 pr-4 text-left font-medium text-muted-foreground">
+            <th scope="col" className="eyebrow py-3 pr-4 text-left text-muted-foreground">
               Feature
             </th>
             {PLAN_LIST.map((plan) => (

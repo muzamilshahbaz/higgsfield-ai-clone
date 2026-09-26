@@ -43,7 +43,7 @@ export function PresetPicker({
   const model = value ? getModel(value.modelId) : undefined
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-medium text-muted-foreground">Preset</span>
         {value ? (
@@ -65,18 +65,18 @@ export function PresetPicker({
         disabled={disabled}
         aria-label={value ? `Preset: ${value.title}. Choose a different one` : 'Browse presets'}
         onClick={() => setOpen(true)}
-        className="flex w-full items-center gap-3 rounded-lg border border-input bg-surface/60 p-2 text-left transition-colors hover:border-muted disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full items-center gap-3 rounded-lg border border-input bg-surface/50 p-2 text-left transition-colors hover:border-brand/50 hover:bg-surface-2/50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {value?.posterUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={value.posterUrl}
             alt=""
-            className="size-10 shrink-0 rounded-md object-cover"
+            className="size-10 shrink-0 rounded-md object-cover ring-1 ring-border"
           />
         ) : (
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2">
-            <Wand2 className="size-4 text-muted-foreground" aria-hidden />
+          <span className="chip-brand flex size-10 shrink-0 items-center justify-center rounded-md">
+            <Wand2 className="size-4" aria-hidden />
           </span>
         )}
 
@@ -118,6 +118,8 @@ export function PresetPicker({
             ) : (
               <PresetBrowser
                 presets={presets}
+                // Inside a dialog whose title is the h2 above it.
+                emptyHeadingLevel={3}
                 selectedId={value?.id ?? null}
                 initialKind={task === 'text_to_image' ? 'style' : 'motion'}
                 columns="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"

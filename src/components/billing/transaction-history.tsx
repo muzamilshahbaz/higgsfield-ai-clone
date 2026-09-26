@@ -27,6 +27,7 @@ export function TransactionHistory({ transactions }: { transactions: PaymentTran
   if (transactions.length === 0) {
     return (
       <EmptyState
+        headingLevel={4}
         icon={Receipt}
         title="No payments yet"
         description="Invoices and receipts appear here once you subscribe to a paid plan."
@@ -39,17 +40,17 @@ export function TransactionHistory({ transactions }: { transactions: PaymentTran
       <table className="w-full min-w-[32rem] border-collapse text-sm">
         <caption className="sr-only">Your payment history, newest first</caption>
         <thead>
-          <tr className="border-b border-border text-left text-xs text-muted-foreground">
-            <th scope="col" className="py-2.5 pr-4 font-medium">
+          <tr className="border-b border-border text-left">
+            <th scope="col" className="eyebrow py-3 pr-4 text-muted-foreground">
               Payment
             </th>
-            <th scope="col" className="px-4 py-2.5 font-medium">
+            <th scope="col" className="eyebrow px-4 py-3 text-muted-foreground">
               Card
             </th>
-            <th scope="col" className="px-4 py-2.5 text-right font-medium">
+            <th scope="col" className="eyebrow px-4 py-3 text-right text-muted-foreground">
               Amount
             </th>
-            <th scope="col" className="px-4 py-2.5 text-right font-medium">
+            <th scope="col" className="eyebrow px-4 py-3 text-right text-muted-foreground">
               When
             </th>
           </tr>
@@ -96,7 +97,7 @@ export function TransactionHistory({ transactions }: { transactions: PaymentTran
                   )}
                 </td>
 
-                <td className="px-4 py-3 text-right tabular-nums">
+                <td className="px-4 py-3 text-right font-medium tabular-nums">
                   {money(tx.amount_pence, tx.currency)}
                   {failed && (
                     <Badge variant="destructive" className="ml-2">

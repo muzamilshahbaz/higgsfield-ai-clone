@@ -40,7 +40,7 @@ export function SubscriptionStatus({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-medium">{plan.name}</h2>
+            <h2 className="font-display text-2xl font-semibold">{plan.name}</h2>
             <StatusBadge ending={ending} isPaid={isPaid} status={subscription?.status} />
           </div>
 
@@ -98,12 +98,12 @@ function Stat({
   value: string
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-surface/40 p-4">
+    <div className="rounded-xl border border-border bg-surface-2/40 p-4">
       <dt className="flex items-center gap-2 text-xs text-muted-foreground">
         {icon}
         {label}
       </dt>
-      <dd className="mt-1.5 text-xl font-semibold tabular-nums">{value}</dd>
+      <dd className="mt-2 font-display text-2xl font-semibold tabular-nums">{value}</dd>
     </div>
   )
 }

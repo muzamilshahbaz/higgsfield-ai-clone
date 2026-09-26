@@ -4,7 +4,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Coins, Loader2, Repeat2, Sparkles } from 'lucide-react'
+import { ChevronDown, Loader2, Repeat2, Sparkles } from 'lucide-react'
 
 import { ImageDrop } from '@/components/composer/image-drop'
 import { ModelSelector } from '@/components/composer/model-selector'
@@ -303,14 +303,32 @@ export function Composer({
   return (
     <form
       onSubmit={submit}
-      className="space-y-5 rounded-xl border border-border bg-card p-4 sm:p-5"
+      /*
+        A header strip, a scrolling body, and a pinned action bar.
+
+        The height cap is load-bearing, not styling. /create makes this panel
+        `position: sticky`, and a sticky element taller than its viewport slot
+        never scrolls: everything past the fold — including Generate — becomes
+        permanently unreachable once the results column is long enough to keep
+        the page scrolling. Capping the panel and scrolling its body instead
+        keeps the action bar on screen at every height. The cap is `lg:` only,
+        because below that the panel is not sticky and a nested scroll area
+        inside a page scroll is the worst of both.
+      */
+      className="panel flex max-h-none flex-col overflow-hidden rounded-2xl lg:max-h-[calc(100dvh-7rem)]"
     >
+      <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-surface-2/40 px-4 py-3">
+        <p className="eyebrow text-muted-foreground">Composer</p>
+        <span className="eyebrow truncate text-muted-foreground">{model.label}</span>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
       {initialRemix && (
         // Lineage is invisible otherwise: the form just looks pre-filled, and
         // the user has no way to tell they are about to credit someone else's
         // shot as the parent of theirs.
-        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-surface/50 p-2.5 text-xs">
-          <Repeat2 className="size-3.5 shrink-0 text-brand" aria-hidden />
+        <div className="flex items-center gap-2.5 rounded-lg border border-accent/30 bg-accent/5 p-3 text-xs">
+          <Repeat2 className="size-4 shrink-0 text-accent" aria-hidden />
           <span className="min-w-0 flex-1 text-muted-foreground">
             Remixing an existing shot. Swap anything you like.
           </span>
@@ -323,12 +341,15 @@ export function Composer({
         </div>
       )}
 
-      <Segmented
-        name="What to make"
-        value={state.task}
-        onChange={selectTask}
-        options={TASKS.map((task) => ({ value: task, label: TASK_LABELS[task] }))}
-      />
+      <div className="space-y-2">
+        <FieldLabel>What to make</FieldLabel>
+        <Segmented
+          name="What to make"
+          value={state.task}
+          onChange={selectTask}
+          options={TASKS.map((task) => ({ value: task, label: TASK_LABELS[task] }))}
+        />
+      </div>
 
       <PresetPicker
         task={state.task}
@@ -337,11 +358,9 @@ export function Composer({
         disabled={submitting}
       />
 
-      <div className="space-y-1.5">
+      <div className="space-y-2">
         <div className="flex items-baseline justify-between">
-          <label htmlFor="prompt" className="text-xs font-medium text-muted-foreground">
-            Prompt
-          </label>
+          <FieldLabel htmlFor="prompt">Prompt</FieldLabel>
           <span
             className={cn(
               'text-xs tabular-nums text-muted-foreground',
@@ -354,7 +373,8 @@ export function Composer({
 
         <Textarea
           id="prompt"
-          rows={4}
+          rows={5}
+          className="text-[15px]"
           value={state.prompt}
           aria-invalid={Boolean(errors.prompt)}
           aria-describedby={state.preset ? 'resolved-prompt' : undefined}
@@ -376,11 +396,9 @@ export function Composer({
         {state.preset && (
           <div
             id="resolved-prompt"
-            className="rounded-lg border border-border/60 bg-surface/50 p-2.5"
+            className="rounded-lg border-l-2 border-primary/50 bg-surface-2/40 py-2.5 pl-3 pr-2.5"
           >
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Sent to {model.label}
-            </p>
+            <p className="eyebrow text-muted-foreground">Sent to {model.label}</p>
             <p className="mt-1 text-xs leading-relaxed text-foreground/80">
               {state.prompt.trim() ? `${state.prompt.trim()}, ` : null}
               <span className="text-brand">{state.preset.promptFragment}</span>
@@ -404,8 +422,8 @@ export function Composer({
       <ModelSelector task={state.task} value={state.modelId} onChange={selectModel} />
       {errors.modelId && <p className="text-xs text-danger">{errors.modelId}</p>}
 
-      <div className="space-y-1.5">
-        <span className="text-xs font-medium text-muted-foreground">Aspect ratio</span>
+      <div className="space-y-2">
+        <FieldLabel>Aspect ratio</FieldLabel>
         <Segmented
           name="Aspect ratio"
           size="sm"
@@ -416,8 +434,8 @@ export function Composer({
       </div>
 
       {durationOptions.length > 0 && (
-        <div className="space-y-1.5">
-          <span className="text-xs font-medium text-muted-foreground">Duration</span>
+        <div className="space-y-2">
+          <FieldLabel>Duration</FieldLabel>
           <Segmented
             name="Duration"
             size="sm"
@@ -428,23 +446,29 @@ export function Composer({
         </div>
       )}
 
-      <div className="space-y-3 border-t border-border/60 pt-4">
+      <div className="space-y-3 border-t border-border pt-4">
         <button
           type="button"
           onClick={() => setAdvanced((open) => !open)}
-          className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="flex w-full items-center justify-between rounded-lg py-1 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
           aria-expanded={advanced}
+          aria-controls="composer-advanced"
         >
-          {advanced ? 'Hide advanced' : 'Advanced'}
+          Advanced settings
+          <ChevronDown
+            className={cn(
+              'size-4 transition-transform duration-200 ease-[var(--ease-out-quint)]',
+              advanced && 'rotate-180',
+            )}
+            aria-hidden
+          />
         </button>
 
         {advanced && (
-          <div className="space-y-3">
+          <div id="composer-advanced" className="space-y-4">
             {model.supports.negativePrompt && (
-              <div className="space-y-1.5">
-                <label htmlFor="negative" className="text-xs font-medium text-muted-foreground">
-                  Negative prompt
-                </label>
+              <div className="space-y-2">
+                <FieldLabel htmlFor="negative">Negative prompt</FieldLabel>
                 <Textarea
                   id="negative"
                   rows={2}
@@ -462,10 +486,8 @@ export function Composer({
               </div>
             )}
 
-            <div className="space-y-1.5">
-              <label htmlFor="seed" className="text-xs font-medium text-muted-foreground">
-                Seed
-              </label>
+            <div className="space-y-2">
+              <FieldLabel htmlFor="seed">Seed</FieldLabel>
               <Input
                 id="seed"
                 inputMode="numeric"
@@ -483,9 +505,9 @@ export function Composer({
             </div>
 
             {presetParams.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-xs font-medium text-muted-foreground">Preset parameters</span>
-                <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-lg border border-border/60 bg-surface/50 p-2.5 text-xs">
+              <div className="space-y-2">
+                <FieldLabel>Preset parameters</FieldLabel>
+                <dl className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1.5 rounded-lg border border-border bg-surface-2/40 p-3 text-xs">
                   {presetParams.map(([key, value]) => (
                     <React.Fragment key={key}>
                       <dt className="truncate font-mono text-muted-foreground">{key}</dt>
@@ -503,10 +525,8 @@ export function Composer({
       </div>
 
       {projects.length > 0 && (
-        <div className="space-y-1.5">
-          <label htmlFor="composer-project" className="text-xs font-medium text-muted-foreground">
-            Project
-          </label>
+        <div className="space-y-2">
+          <FieldLabel htmlFor="composer-project">Project</FieldLabel>
           <Select
             value={targetProjectId ?? undefined}
             onValueChange={setTargetProjectId}
@@ -527,12 +547,22 @@ export function Composer({
         </div>
       )}
 
-      <div className="space-y-2 border-t border-border/60 pt-4">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Cost</span>
-          <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
-            <Coins className={cn('size-4', affordable ? 'text-credit' : 'text-danger')} aria-hidden />
-            {cost} {cost === 1 ? 'credit' : 'credits'}
+      </div>
+
+      {/* action bar */}
+      <div className="shrink-0 space-y-3 border-t border-border bg-surface-2/40 p-4 sm:p-5">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="eyebrow text-muted-foreground">Cost</span>
+          <span
+            className={cn(
+              'inline-flex items-baseline gap-1.5 font-display text-2xl font-semibold tabular-nums',
+              affordable ? 'text-credit' : 'text-danger',
+            )}
+          >
+            {cost}
+            <span className="text-xs font-normal text-muted-foreground">
+              {cost === 1 ? 'credit' : 'credits'}
+            </span>
           </span>
         </div>
 
@@ -563,5 +593,30 @@ export function Composer({
         </p>
       </div>
     </form>
+  )
+}
+
+/**
+ * The composer's field label.
+ *
+ * Renders a real `<label>` when it is given an id to point at and a `<span>`
+ * when it is not — a `<label for>` aimed at a radio group or a Radix trigger
+ * points at nothing, and a label that labels nothing is worse than a span,
+ * because a screen reader announces it as though it worked.
+ */
+function FieldLabel({
+  htmlFor,
+  children,
+}: {
+  htmlFor?: string
+  children: React.ReactNode
+}) {
+  const className = 'block text-xs font-medium text-muted-foreground'
+  return htmlFor ? (
+    <label htmlFor={htmlFor} className={className}>
+      {children}
+    </label>
+  ) : (
+    <span className={className}>{children}</span>
   )
 }

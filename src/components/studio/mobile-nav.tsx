@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { usePathname } from 'next/navigation'
-import { Menu, X } from 'lucide-react'
+import Link from 'next/link'
+import { Menu, Plus, X } from 'lucide-react'
 
+import { KineticLogo } from '@/components/brand/logo'
 import { SidebarNav } from '@/components/studio/sidebar-nav'
 import { Button } from '@/components/ui/button'
 
@@ -97,7 +99,7 @@ export function MobileNav() {
       <Button
         ref={triggerRef}
         variant="ghost"
-        size="icon-sm"
+        size="icon"
         className="lg:hidden"
         aria-label="Open navigation"
         aria-expanded={open}
@@ -122,10 +124,12 @@ export function MobileNav() {
               role="dialog"
               aria-modal="true"
               aria-label="Navigation"
-              className="absolute inset-y-0 left-0 flex w-64 flex-col border-r border-border bg-background p-4"
+              className="absolute inset-y-0 left-0 flex w-[272px] flex-col gap-5 border-r border-border bg-background px-3 py-4 shadow-lift"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-semibold">Menu</span>
+              <div className="flex items-center justify-between pl-2">
+                <Link href="/" onClick={() => setOpen(false)} aria-label="Kinetic Studio, home">
+                  <KineticLogo markClassName="size-7" />
+                </Link>
                 <Button
                   variant="ghost"
                   size="icon-sm"
@@ -136,7 +140,17 @@ export function MobileNav() {
                 </Button>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              {/* The sidebar's primary action, which lives in the studio layout
+                  and so is not part of SidebarNav. Without it this menu is the
+                  only navigation on a phone and has no way to start a job. */}
+              <Button asChild className="w-full justify-start px-3">
+                <Link href="/create" onClick={() => setOpen(false)}>
+                  <Plus className="size-4" aria-hidden />
+                  New generation
+                </Link>
+              </Button>
+
+              <div className="min-h-0 flex-1 overflow-y-auto">
                 <SidebarNav onNavigate={() => setOpen(false)} />
               </div>
             </div>

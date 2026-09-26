@@ -89,18 +89,25 @@ export default async function CreatePage({
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Create</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <header>
+        <p className="eyebrow text-muted-foreground">Compose</p>
+        <h1 className="mt-2 font-display text-3xl font-semibold">Create</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
           Describe the shot, pick a model, and watch it render.
         </p>
-      </div>
+      </header>
 
       {!isServiceRoleConfigured && <ServiceRoleWarning />}
 
       <GenerationFeedProvider userId={user.id} initialGenerations={generations}>
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
-          <div className="lg:sticky lg:top-6">
+        {/*
+          The composer sticks below the topbar while the results scroll. 400px
+          is the narrowest the control column reads well at — below that the
+          aspect-ratio chips wrap to three lines and the panel stops looking
+          like an instrument.
+        */}
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,400px)_minmax(0,1fr)] lg:items-start">
+          <div className="lg:sticky lg:top-20">
             <Composer
               credits={profile?.credits ?? 0}
               projectId={projectId}
@@ -115,7 +122,18 @@ export default async function CreatePage({
             />
           </div>
 
-          <JobFeed />
+          <section aria-labelledby="results">
+            <div className="flex items-center gap-4">
+              <h2 id="results" className="eyebrow text-muted-foreground">
+                Results
+              </h2>
+              <span className="h-px flex-1 bg-border" aria-hidden />
+            </div>
+
+            <div className="mt-4">
+              <JobFeed />
+            </div>
+          </section>
         </div>
       </GenerationFeedProvider>
     </div>
@@ -125,7 +143,7 @@ export default async function CreatePage({
 function NotSignedIn() {
   return (
     <div className="mx-auto max-w-md py-24 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">Sign in to create</h1>
+      <h1 className="font-display text-2xl font-semibold">Sign in to create</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Generations are tied to your account and your credit balance.
       </p>
@@ -142,7 +160,7 @@ function NotSignedIn() {
  */
 function ServiceRoleWarning() {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm">
+    <div className="flex items-start gap-3 rounded-xl border border-warning/40 bg-warning/5 p-4 text-sm">
       <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
       <div>
         <p className="font-medium text-foreground">Generation is disabled</p>

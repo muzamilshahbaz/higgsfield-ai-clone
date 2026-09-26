@@ -63,7 +63,7 @@ function StripCard({
   const label = item.prompt.trim() || 'Preset-only shot'
 
   return (
-    <figure className="group overflow-hidden rounded-xl border border-border bg-card">
+    <figure className="panel group overflow-hidden rounded-xl">
       <Link
         href={`/g/${item.id}`}
         aria-label={`Open ${truncate(label, 60)} by ${authorNameOf(item)}`}

@@ -38,6 +38,7 @@ export function PresetBrowser({
   initialKind,
   columns = 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3',
   className,
+  emptyHeadingLevel = 2,
 }: {
   presets: PresetSummary[]
   selectedId?: string | null
@@ -47,6 +48,14 @@ export function PresetBrowser({
   initialKind?: KindFilter
   columns?: string
   className?: string
+  /**
+   * Heading level for the "no matches" panel.
+   *
+   * The browser has no heading of its own, so where its empty state sits in
+   * the outline depends entirely on the caller: directly under the page `h1`
+   * on /presets, and under the dialog's `h2` in the composer's picker.
+   */
+  emptyHeadingLevel?: 2 | 3
 }) {
   const [kind, setKind] = React.useState<KindFilter>(initialKind ?? ALL)
   const [category, setCategory] = React.useState<string>(ALL)
@@ -144,6 +153,7 @@ export function PresetBrowser({
 
       {visible.length === 0 ? (
         <EmptyState
+          headingLevel={emptyHeadingLevel}
           icon={SlidersHorizontal}
           title="No presets match"
           description="Nothing in the catalogue fits those filters. Widen the search or clear them."

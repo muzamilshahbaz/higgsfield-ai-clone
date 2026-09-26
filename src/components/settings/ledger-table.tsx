@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { ArrowDownLeft, ArrowUpRight, Gift, RefreshCw, Wrench } from 'lucide-react'
+import { ArrowUpRight } from 'lucide-react'
 
 import { EmptyState } from '@/components/studio/empty-state'
 import { Button } from '@/components/ui/button'
 import { RelativeTime } from '@/components/ui/relative-time'
+import { REASON_ICONS, REASON_LABELS } from '@/lib/credits'
 import { cn } from '@/lib/utils'
-import type { CreditLedgerRow, CreditReason } from '@/types/database'
+import type { CreditLedgerRow } from '@/types/database'
 
 /**
  * The credit ledger.
@@ -18,24 +19,6 @@ import type { CreditLedgerRow, CreditReason } from '@/types/database'
  * fetcher — this is a static list that only grows at the top, and a page of it
  * costs one query.
  */
-
-const REASON_LABELS: Record<CreditReason, string> = {
-  signup_grant: 'Welcome grant',
-  generation_debit: 'Generation',
-  generation_refund: 'Refund',
-  admin_adjust: 'Adjustment',
-  promo: 'Promo credit',
-  subscription_grant: 'Monthly credits',
-}
-
-const REASON_ICONS: Record<CreditReason, typeof Gift> = {
-  signup_grant: Gift,
-  generation_debit: ArrowUpRight,
-  generation_refund: ArrowDownLeft,
-  admin_adjust: Wrench,
-  promo: Gift,
-  subscription_grant: RefreshCw,
-}
 
 export function LedgerTable({
   entries,
@@ -52,6 +35,7 @@ export function LedgerTable({
   if (entries.length === 0) {
     return (
       <EmptyState
+        headingLevel={3}
         icon={ArrowUpRight}
         title="No credit movements yet"
         description="Your welcome grant and every generation you run will be listed here."

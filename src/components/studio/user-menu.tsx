@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTransition } from 'react'
-import { Loader2, LogOut, Settings, User } from 'lucide-react'
+import { ChevronDown, Loader2, LogOut, Settings, User } from 'lucide-react'
 
 import { signOut } from '@/app/(auth)/actions'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -28,14 +28,25 @@ export function UserMenu({ profile }: { profile: UserMenuProfile }) {
 
   return (
     <DropdownMenu>
+      {/*
+        The trigger carries the display name on wide screens. An avatar alone is
+        a guessing game when the fallback is two letters, and the name is the
+        one thing that tells a user which account they are signed into — which
+        matters here because the same browser is often used for a test account
+        and a real one.
+      */}
       <DropdownMenuTrigger
-        className="rounded-full outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex items-center gap-2 rounded-lg border border-transparent p-1 pr-1 text-sm outline-none transition-colors hover:border-border hover:bg-surface sm:pr-2.5"
         aria-label="Account menu"
       >
         <Avatar>
           {profile.avatarUrl && <AvatarImage src={profile.avatarUrl} alt="" />}
           <AvatarFallback>{profile.initials}</AvatarFallback>
         </Avatar>
+        <span className="hidden max-w-[10rem] truncate font-medium sm:block">
+          {profile.displayName}
+        </span>
+        <ChevronDown className="hidden size-3.5 shrink-0 text-muted-foreground sm:block" aria-hidden />
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56">

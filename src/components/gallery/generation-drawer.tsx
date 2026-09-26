@@ -284,7 +284,7 @@ export function GenerationDrawer({
               <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
                 {facts.map((fact) => (
                   <div key={fact.label} className="min-w-0">
-                    <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <dt className="eyebrow text-muted-foreground">
                       {fact.label}
                     </dt>
                     <dd className="mt-0.5 truncate text-xs tabular-nums text-foreground/85">
@@ -459,7 +459,7 @@ export function GenerationDrawer({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-1.5">
-      <h3 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <h3 className="eyebrow text-muted-foreground">
         {title}
       </h3>
       {children}

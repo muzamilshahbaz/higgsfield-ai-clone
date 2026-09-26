@@ -1,96 +1,86 @@
-import { ArrowRight, Cpu, Film, MessageSquareText } from 'lucide-react'
-
 import { Reveal } from '@/components/marketing/reveal'
+import { Section, SectionHeading } from '@/components/marketing/section-heading'
 
 /**
- * Prompt → AI model → result.
+ * How it works.
  *
- * Three nodes with connectors between them, laid out horizontally on desktop
- * and vertically on mobile — where the arrows rotate rather than disappear,
- * because the arrows are the content here. A flow diagram whose direction
- * indicators vanish at the breakpoint is three unrelated boxes.
+ * Four steps on a single rail — a 1px line that runs horizontally behind the
+ * markers on desktop and vertically down the left on mobile, so the sequence is
+ * carried by the layout instead of by four arrow glyphs that disappear at the
+ * breakpoint. The line is drawn once per orientation and the markers sit on it;
+ * nothing has to be measured.
+ *
+ * Each step ends in the artefact it produces, in mono. That is the detail that
+ * makes the diagram worth reading: a reader can see what they actually get back
+ * at each stage rather than four verbs.
  */
 
-const NODES = [
+const STEPS = [
   {
-    icon: MessageSquareText,
-    kicker: 'Prompt',
-    title: 'Say what you want',
-    body: 'A sentence and a preset. The preset adds the camera language and the negative prompt that make the move read on screen.',
-    sample: '"a lone figure on a wet rooftop, neon behind her"',
+    title: 'Describe the shot',
+    body: 'A sentence is enough. Add a reference image if you have one — the same panel takes both.',
+    artefact: 'prompt + reference.jpg',
   },
   {
-    icon: Cpu,
-    kicker: 'AI model',
-    title: 'Routed to the right engine',
-    body: 'The composer picks the model, the router picks the provider and the key. Your own key wins when you have connected one.',
-    sample: 'Motion Cine · Wan 2.2 · 16:9 · 5s · seed 41273',
+    title: 'Pick a move and a model',
+    body: 'A preset carries the camera language, the negative prompt and the parameters that make the move read. The model selector shows what each one costs.',
+    artefact: 'preset: slow push · Motion Cine',
   },
   {
-    icon: Film,
-    kicker: 'Result',
-    title: 'A shot, not a settings panel',
-    body: 'It streams from queued to rendering to playing. Download it, publish it, or remix it with one value changed.',
-    sample: 'shot-04.mp4 · 1920×1080 · ready in 62s',
+    title: 'Queue it',
+    body: 'Two jobs run at once on the free plan. The card streams from queued to rendering to ready without a refresh, and the credits leave your balance only once the job is accepted.',
+    artefact: 'job 8f21 · rendering · 41%',
+  },
+  {
+    title: 'Use it',
+    body: 'Download the original, file it into a project, publish it to Explore, or pull it back into the composer and change one value.',
+    artefact: 'shot-04.mp4 · 1920×1080',
   },
 ] as const
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="relative scroll-mt-24 border-t border-border/60 py-24">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <Reveal>
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-              Prompt, model, result
-            </h2>
-            <p className="mt-3 text-pretty text-muted-foreground">
-              Three moves between an idea and a finished shot. Everything else the platform does
-              is in service of not adding a fourth.
-            </p>
-          </div>
-        </Reveal>
+    <Section id="workflow" tinted>
+      <SectionHeading
+        index="04"
+        eyebrow="How it works"
+        title="Four steps, and the fourth one loops"
+        lead="Nothing here is a wizard you have to finish. Every stage is a control you can come back to, and every result remembers the settings that produced it."
+      />
 
-        <ol className="mt-14 flex flex-col items-stretch gap-4 lg:flex-row lg:items-center">
-          {NODES.map((node, index) => {
-            const Icon = node.icon
-            const last = index === NODES.length - 1
+      <ol className="relative mt-16 grid gap-10 lg:grid-cols-4 lg:gap-6">
+        {/* The rail. Vertical under `lg` (left of the markers), horizontal above
+            it (through them). Inset at both ends so it stops at the first and
+            last marker rather than running off into the padding. */}
+        <span
+          className="pointer-events-none absolute left-[15px] top-2 bottom-2 w-px bg-gradient-to-b from-primary/60 via-border to-border lg:inset-x-[12%] lg:inset-y-auto lg:top-[15px] lg:h-px lg:w-auto lg:bg-gradient-to-r"
+          aria-hidden
+        />
 
-            return (
-              <li key={node.kicker} className="contents">
-                <Reveal delay={index * 0.1} className="flex-1">
-                  <div className="h-full rounded-2xl border border-border bg-card p-6">
-                    <span className="inline-flex size-10 items-center justify-center rounded-xl bg-primary/15 ring-1 ring-primary/25">
-                      <Icon className="size-4 text-brand" aria-hidden />
-                    </span>
+        {STEPS.map((step, index) => (
+          <Reveal key={step.title} delay={index * 0.09}>
+            <li className="relative pl-12 lg:pl-0">
+              {/* marker */}
+              <span
+                className="absolute left-0 top-0 flex size-8 items-center justify-center rounded-lg border border-border bg-background font-mono text-xs font-medium text-brand lg:static lg:mb-6 lg:flex"
+                aria-hidden
+              >
+                {String(index + 1).padStart(2, '0')}
+              </span>
 
-                    <p className="mt-4 font-mono text-xs uppercase tracking-wider text-brand">
-                      {node.kicker}
-                    </p>
-                    <h3 className="mt-1 text-lg font-medium">{node.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                      {node.body}
-                    </p>
+              <h3 className="text-lg font-medium leading-snug">
+                <span className="sr-only">Step {index + 1}: </span>
+                {step.title}
+              </h3>
+              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">{step.body}</p>
 
-                    <p className="mt-4 truncate rounded-lg border border-border bg-surface px-3 py-2 font-mono text-[11px] text-muted-foreground">
-                      {node.sample}
-                    </p>
-                  </div>
-                </Reveal>
-
-                {!last && (
-                  <span
-                    className="flex shrink-0 justify-center text-muted-foreground lg:px-2"
-                    aria-hidden
-                  >
-                    <ArrowRight className="size-5 rotate-90 lg:rotate-0" />
-                  </span>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </div>
-    </section>
+              <p className="mt-4 truncate rounded-md border border-border bg-background px-3 py-2 font-mono text-[11px] text-muted-foreground">
+                {step.artefact}
+              </p>
+            </li>
+          </Reveal>
+        ))}
+      </ol>
+    </Section>
   )
 }

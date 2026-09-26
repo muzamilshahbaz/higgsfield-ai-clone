@@ -5,6 +5,10 @@ import { cn } from '@/lib/utils'
  *
  * `value` is 0..1 to match the `progress` column and the provider port, so no
  * caller has to remember which of the two scales this one uses.
+ *
+ * The fill is a cyan-to-coral gradient rather than flat cyan: at 8% a flat bar
+ * is a dot you cannot tell from a rounded corner, and the gradient gives the
+ * short end of the range something to read as direction.
  */
 export function Progress({
   value,
@@ -28,7 +32,7 @@ export function Progress({
       className={cn('h-1.5 w-full overflow-hidden rounded-full bg-surface-2', className)}
     >
       <div
-        className="h-full rounded-full bg-primary transition-[width] duration-500 ease-[var(--ease-out-expo)]"
+        className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-[width] duration-500 ease-[var(--ease-out-expo)]"
         style={{ width: `${percent}%` }}
       />
     </div>

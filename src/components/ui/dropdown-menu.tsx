@@ -23,7 +23,7 @@ function DropdownMenuContent({
         data-slot="dropdown-menu-content"
         sideOffset={sideOffset}
         className={cn(
-          'z-50 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-xl shadow-black/40',
+          'z-50 min-w-[12rem] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lift',
           // `menu-pop` is defined in globals.css — tailwindcss-animate is not
           // installed, so the enter animation is a plain keyframe of our own.
           'origin-[var(--radix-dropdown-menu-content-transform-origin)] menu-pop',
@@ -70,7 +70,7 @@ function DropdownMenuLabel({
   return (
     <DropdownMenuPrimitive.Label
       data-slot="dropdown-menu-label"
-      className={cn('px-2.5 py-1.5 text-xs font-medium text-muted-foreground', inset && 'pl-8', className)}
+      className={cn('px-2.5 py-1.5 text-xs text-muted-foreground', inset && 'pl-8', className)}
       {...props}
     />
   )
@@ -156,7 +156,7 @@ function DropdownMenuSubContent({
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"
       className={cn(
-        'z-50 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-xl shadow-black/40',
+        'z-50 min-w-[8rem] overflow-hidden rounded-xl border border-border bg-popover p-1.5 text-popover-foreground shadow-lift',
         className,
       )}
       {...props}

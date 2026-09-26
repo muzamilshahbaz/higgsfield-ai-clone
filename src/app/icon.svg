@@ -1,14 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Kinetic">
-  <title>Kinetic</title>
-  <defs>
-    <linearGradient id="k" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#8b5cf6"/>
-      <stop offset="1" stop-color="#22d3ee"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="#141419"/>
-  <!-- The same mark as the site header: a gradient chip on the dark surface. -->
-  <rect x="17" y="17" width="30" height="30" rx="9" fill="url(#k)"/>
-  <!-- A shutter notch, so the mark reads as a camera rather than a square. -->
-  <path d="M32 24 L42 32 L32 40 Z" fill="#141419" opacity="0.55"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Kinetic Studio">
+  <title>Kinetic Studio</title>
+  <!--
+    The same mark as components/brand/logo.tsx, with the token values resolved
+    to hex: a favicon is fetched outside the page, so it cannot read a CSS
+    variable. Keep the two in step — this is the only copy of the geometry.
+  -->
+  <rect width="32" height="32" rx="8" fill="#2f3339"/>
+  <g transform="skewX(-18) translate(4.5 0)">
+    <rect x="6" y="8" width="3.5" height="16" rx="1.75" fill="#4fd8ec"/>
+    <rect x="12" y="10" width="3.5" height="12" rx="1.75" fill="#4fd8ec" opacity="0.55"/>
+    <rect x="18" y="12.5" width="3.5" height="7" rx="1.75" fill="#f97c57"/>
+  </g>
 </svg>

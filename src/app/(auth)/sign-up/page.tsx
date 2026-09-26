@@ -23,7 +23,7 @@ export default async function SignUpPage({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+        <h1 className="font-display text-[1.75rem] font-semibold">Create your account</h1>
         <p className="text-sm text-muted-foreground">
           Your first shot is 200 credits away.
         </p>
