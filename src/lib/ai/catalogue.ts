@@ -69,7 +69,12 @@ export const PROVIDERS: ProviderDescriptor[] = [
     media: 'both',
     consoleUrl: 'https://fal.ai/dashboard/keys',
     keyPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:xxxxxxxx',
-    keyHint: { minLength: 20 },
+    // A fal key is two halves joined by a colon, and the dashboard presents
+    // them as separate-looking fields — so pasting only the secret is the
+    // obvious mistake to make. Without the colon fal answers 401 and the UI
+    // reports a rejected key, which sends someone to regenerate a key that was
+    // never wrong. A warning here costs nothing and names the actual problem.
+    keyHint: { minLength: 20, pattern: ':' },
     generationReady: true,
   },
   {

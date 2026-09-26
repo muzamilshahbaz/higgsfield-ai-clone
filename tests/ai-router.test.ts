@@ -434,3 +434,19 @@ describe('kling credentials', () => {
     expect(token).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/)
   })
 })
+
+describe('fal key shape', () => {
+  const fal = getProvider('fal')!
+
+  it('accepts the id:secret pair fal actually issues', () => {
+    expect(keyShapeWarning(fal, '0000000a-0000-4000-8000-00000000000b:abcdefabcdef')).toBeNull()
+  })
+
+  it('warns when only half the key was pasted', () => {
+    // The likely mistake, and the one that otherwise reads as "fal rejected
+    // your key" — sending someone to regenerate a key that was never wrong.
+    expect(keyShapeWarning(fal, '0000000a-0000-4000-8000-00000000000b')).toMatch(
+      /usually look like/i,
+    )
+  })
+})

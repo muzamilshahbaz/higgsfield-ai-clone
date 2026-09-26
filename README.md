@@ -1,7 +1,5 @@
 # Kinetic Studio
 
-[Kinetic Studio - HiggsField AI Clone - Walkthrough Video](https://go.screenpal.com/watch/cOQYqqnxfJ4)
-
 A cinematic AI creative studio — camera-move and film-style presets wrapped around
 image and video generation models, with a live job feed, projects, an asset library,
 a credits system, and a public feed you can publish to, like and remix from.
