@@ -151,7 +151,7 @@ export function MobileNav() {
               </Button>
 
               <div className="min-h-0 flex-1 overflow-y-auto">
-                <SidebarNav onNavigate={() => setOpen(false)} />
+                <SidebarNav inlineSettings onNavigate={() => setOpen(false)} />
               </div>
             </div>
           </div>,

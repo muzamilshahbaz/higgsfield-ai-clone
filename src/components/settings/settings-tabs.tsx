@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CreditCard, KeyRound, UserRound } from 'lucide-react'
-
+import { settingsNav } from '@/config/site'
 import { cn } from '@/lib/utils'
 
 /**
@@ -25,12 +24,6 @@ import { cn } from '@/lib/utils'
  * as a control, which is what it is.
  */
 
-const TABS = [
-  { href: '/settings', label: 'Profile', icon: UserRound },
-  { href: '/settings/keys', label: 'AI model keys', icon: KeyRound },
-  { href: '/settings/billing', label: 'Plan & billing', icon: CreditCard },
-] as const
-
 export function SettingsTabs() {
   const pathname = usePathname()
 
@@ -40,7 +33,7 @@ export function SettingsTabs() {
       className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       <div className="inline-flex gap-1 rounded-xl border border-border bg-surface/40 p-1">
-        {TABS.map((tab) => {
+        {settingsNav.map((tab) => {
           // Exact match, not startsWith: `/settings/keys` also starts with
           // `/settings`, which would light both tabs at once.
           const active = pathname === tab.href
@@ -59,7 +52,7 @@ export function SettingsTabs() {
               )}
             >
               <Icon className={cn('size-4', active && 'text-brand')} aria-hidden />
-              {tab.label}
+              {tab.title}
             </Link>
           )
         })}

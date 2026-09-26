@@ -1,12 +1,14 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   Clapperboard,
+  CreditCard,
   FolderOpen,
   Images,
+  KeyRound,
   LayoutDashboard,
   Compass,
   History,
-  Settings,
+  UserRound,
   Wand2,
 } from 'lucide-react'
 
@@ -80,8 +82,36 @@ export const studioNavGroups: NavGroup[] = [
   { label: 'Community', items: ['/explore'].map(navItem) },
 ]
 
-export const studioFooterNav: NavItem[] = [
-  { title: 'Settings', href: '/settings', icon: Settings },
+/**
+ * The settings sections.
+ *
+ * One list, two renderers: the tab bar on the settings pages and the dropdown
+ * behind Settings in the sidebar. They were never going to stay in step as two
+ * arrays — the tab bar already carried its own private copy, and a fourth
+ * section would have been added to one of them.
+ *
+ * `description` is what the dropdown shows under each title. The tab bar
+ * ignores it, because a tab that explains itself is a tab that is too wide.
+ */
+export const settingsNav: NavItem[] = [
+  {
+    title: 'Profile',
+    href: '/settings',
+    icon: UserRound,
+    description: 'Your name, handle and credit ledger',
+  },
+  {
+    title: 'AI model keys',
+    href: '/settings/keys',
+    icon: KeyRound,
+    description: 'Run generations on your own quota',
+  },
+  {
+    title: 'Plan & billing',
+    href: '/settings/billing',
+    icon: CreditCard,
+    description: 'Credits, plan and payment history',
+  },
 ]
 
 /**
