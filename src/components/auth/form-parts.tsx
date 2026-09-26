@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { useFormStatus } from 'react-dom'
 import { CircleAlert, CircleCheck, Loader2 } from 'lucide-react'
 
@@ -10,6 +11,42 @@ import { cn } from '@/lib/utils'
  * Small pieces shared by all four auth forms, so the spinner behaviour,
  * error styling and a11y wiring are identical everywhere.
  */
+
+/**
+ * Field errors that clear when the user fixes the field.
+ *
+ * A Server Action error is a snapshot of one submission. `useActionState` keeps
+ * that snapshot until the next submit, so a password rejected for "add an
+ * uppercase letter" goes on saying so while the user types a perfectly good
+ * password — and, since the live checklist beside it has already gone green,
+ * the form ends up contradicting itself.
+ *
+ * Dismissal is scoped to the state object that produced the error. A new
+ * submission is a new `state` identity, so its errors show again even for a
+ * field dismissed a moment earlier; nothing has to be reset by hand.
+ */
+export function useFieldErrors(state: { fieldErrors?: Record<string, string> }) {
+  const [dismissed, setDismissed] = React.useState<{
+    owner: typeof state
+    fields: ReadonlySet<string>
+  }>(() => ({ owner: state, fields: new Set() }))
+
+  const live = dismissed.owner === state ? dismissed.fields : EMPTY
+
+  return {
+    /** The error to render for a field, or undefined once it has been edited. */
+    errorFor: (name: string) => (live.has(name) ? undefined : state.fieldErrors?.[name]),
+    /** Call from the field's onChange. */
+    onEdit: (name: string) =>
+      setDismissed((prev) =>
+        prev.owner === state
+          ? { owner: state, fields: new Set(prev.fields).add(name) }
+          : { owner: state, fields: new Set([name]) },
+      ),
+  }
+}
+
+const EMPTY: ReadonlySet<string> = new Set()
 
 /** Submit button that disables and spins while the action is in flight. */
 export function SubmitButton({

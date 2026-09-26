@@ -88,6 +88,28 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
 
 // ---------------------------------------------------------------- sign up
 
+/**
+ * Whether to tell a visitor outright that an address already has an account.
+ *
+ * Supabase will not do this for you. With email confirmation on, signing up
+ * with an address that is already registered returns **200 with no error** and
+ * an obfuscated user carrying an empty `identities` array — verified against
+ * this project, where the profile count does not move, so no second account is
+ * ever created. GoTrue does that on purpose: an endpoint that answers "taken"
+ * is an endpoint a stranger can use to harvest which of their addresses have
+ * accounts here.
+ *
+ * Left off, which keeps sign-up consistent with the two other places that
+ * already refuse to be an oracle: `signIn` will not say which half was wrong,
+ * and `requestPasswordReset` gives the same answer whether or not it sent
+ * anything. The copy below is written to be true either way, so a visitor is
+ * never told a new account was created when one was not.
+ *
+ * Turning it on is a real trade, not a bug fix: better sign-up UX, at the cost
+ * of confirming account existence to anyone who asks.
+ */
+const REVEAL_EXISTING_ACCOUNTS = false
+
 export async function signUp(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const raw = {
     email: String(formData.get('email') ?? ''),
@@ -116,6 +138,8 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   })
 
   if (error) {
+    // Only reachable with email confirmation OFF. With it on, a duplicate is
+    // not an error at all — see REVEAL_EXISTING_ACCOUNTS above.
     const alreadyRegistered = /already registered|already been registered/i.test(error.message)
     return {
       error: alreadyRegistered
@@ -125,12 +149,37 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
     }
   }
 
-  // With email confirmation ON, Supabase returns a user but no session.
-  // The project has it OFF, but the app must not break if it is ever enabled.
+  // An empty `identities` array is GoTrue's tell that the address was already
+  // taken. `?? 0` rather than a truthiness check: an absent array must not be
+  // read as "this is a fresh account".
+  const addressAlreadyInUse = (data.user?.identities?.length ?? 0) === 0
+
+  if (REVEAL_EXISTING_ACCOUNTS && addressAlreadyInUse) {
+    return {
+      error: 'An account with that email already exists. Try signing in instead.',
+      values: { email: parsed.data.email, displayName: raw.displayName },
+    }
+  }
+
+  /*
+    The project has email confirmation ON, so this is the normal exit: Supabase
+    creates the user, returns no session, and sends a link that lands on
+    /auth/callback to be exchanged for one.
+
+    The branch still guards on `data.session` rather than assuming, because the
+    setting lives in the Supabase dashboard and nothing in this repo pins it —
+    turning it off should sign the user straight in, not strand them on a page
+    telling them to check an inbox that will stay empty.
+  */
   if (!data.session) {
     return {
+      // Deliberately true whether or not the address was already registered.
+      // The old wording promised a link unconditionally, which read as "a
+      // second account has been made" to anyone signing up twice — the one
+      // thing that never happens.
       success:
-        'Check your inbox to confirm your email address, then sign in to start creating.',
+        'If that address is new here, a confirmation link is on its way — click it to activate your account. If it already has an account, nothing has changed and no second account was created.',
+      values: { email: parsed.data.email },
     }
   }
 

@@ -4,7 +4,12 @@ import Link from 'next/link'
 import { useActionState } from 'react'
 
 import { signIn, type AuthState } from '@/app/(auth)/actions'
-import { FieldError, FormError, SubmitButton } from '@/components/auth/form-parts'
+import {
+  FieldError,
+  FormError,
+  SubmitButton,
+  useFieldErrors,
+} from '@/components/auth/form-parts'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -12,6 +17,7 @@ const INITIAL: AuthState = {}
 
 export function SignInForm({ next }: { next?: string }) {
   const [state, formAction] = useActionState(signIn, INITIAL)
+  const { errorFor, onEdit } = useFieldErrors(state)
 
   return (
     <form action={formAction} className="space-y-4">
@@ -28,11 +34,12 @@ export function SignInForm({ next }: { next?: string }) {
           autoComplete="email"
           placeholder="you@studio.com"
           defaultValue={state.values?.email}
-          aria-invalid={Boolean(state.fieldErrors?.email)}
-          aria-describedby={state.fieldErrors?.email ? 'email-error' : undefined}
+          onChange={() => onEdit('email')}
+          aria-invalid={Boolean(errorFor('email'))}
+          aria-describedby={errorFor('email') ? 'email-error' : undefined}
           required
         />
-        <FieldError id="email-error" message={state.fieldErrors?.email} />
+        <FieldError id="email-error" message={errorFor('email')} />
       </div>
 
       <div className="space-y-2">
@@ -50,12 +57,13 @@ export function SignInForm({ next }: { next?: string }) {
           name="password"
           type="password"
           autoComplete="current-password"
+          onChange={() => onEdit('password')}
           placeholder="••••••••"
-          aria-invalid={Boolean(state.fieldErrors?.password)}
-          aria-describedby={state.fieldErrors?.password ? 'password-error' : undefined}
+          aria-invalid={Boolean(errorFor('password'))}
+          aria-describedby={errorFor('password') ? 'password-error' : undefined}
           required
         />
-        <FieldError id="password-error" message={state.fieldErrors?.password} />
+        <FieldError id="password-error" message={errorFor('password')} />
       </div>
 
       <SubmitButton pendingLabel="Signing in…">Sign in</SubmitButton>

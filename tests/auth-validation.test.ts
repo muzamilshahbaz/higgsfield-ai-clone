@@ -81,17 +81,55 @@ describe('signUpSchema', () => {
   it('accepts a normal sign-up', () => {
     const result = signUpSchema.safeParse({
       email: 'ada@example.com',
-      password: 'longenough1',
+      password: 'Longenough1!',
       displayName: 'Ada Lovelace',
     })
     expect(result.success).toBe(true)
   })
 
   it('enforces the 8-character minimum the form advertises', () => {
-    const result = signUpSchema.safeParse({ email: 'a@b.co', password: 'short' })
+    const result = signUpSchema.safeParse({ email: 'a@b.co', password: 'Sh0rt!' })
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.error.issues[0]!.message).toMatch(/8 characters/)
+    }
+  })
+
+  /**
+   * These mirror the Supabase project's own password policy. If the two ever
+   * drift the form accepts something the server rejects, and the user gets a
+   * raw GoTrue message instead of a field error — which is the whole reason
+   * the rules are duplicated here rather than left to the server.
+   */
+  it.each([
+    ['PASSWORD1!', 'lowercase'],
+    ['password1!', 'uppercase'],
+    ['Password!!', 'number'],
+    ['Password11', 'symbol'],
+  ])('rejects %s for missing a %s', (password) => {
+    expect(signUpSchema.safeParse({ email: 'a@b.co', password }).success).toBe(false)
+  })
+
+  it('names the missing rule rather than saying the password is invalid', () => {
+    const result = signUpSchema.safeParse({ email: 'a@b.co', password: 'Password11' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues[0]!.message).toMatch(/symbol/i)
+    }
+  })
+
+  it('counts the symbols GoTrue counts, and not the ones it does not', () => {
+    for (const symbol of ['!', '@', '\\', '`', '~', '/', '"', '|', '<', '>']) {
+      expect(
+        signUpSchema.safeParse({ email: 'a@b.co', password: `Passwor1${symbol}` }).success,
+      ).toBe(true)
+    }
+    // Outside GoTrue's ASCII set: accepting these here would let the form pass
+    // something the server then refuses.
+    for (const notASymbol of [' ', '£', '€', 'é']) {
+      expect(
+        signUpSchema.safeParse({ email: 'a@b.co', password: `Passwor1${notASymbol}` }).success,
+      ).toBe(false)
     }
   })
 
@@ -101,13 +139,13 @@ describe('signUpSchema', () => {
   })
 
   it('treats a blank display name as acceptable', () => {
-    expect(signUpSchema.safeParse({ email: 'a@b.co', password: 'longenough1', displayName: '' }).success).toBe(true)
+    expect(signUpSchema.safeParse({ email: 'a@b.co', password: 'Longenough1!', displayName: '' }).success).toBe(true)
   })
 
   it('rejects a one-character display name', () => {
     const result = signUpSchema.safeParse({
       email: 'a@b.co',
-      password: 'longenough1',
+      password: 'Longenough1!',
       displayName: 'A',
     })
     expect(result.success).toBe(false)
@@ -124,16 +162,16 @@ describe('forgotPasswordSchema', () => {
 describe('resetPasswordSchema', () => {
   it('accepts two matching passwords', () => {
     const result = resetPasswordSchema.safeParse({
-      password: 'longenough1',
-      confirmPassword: 'longenough1',
+      password: 'Longenough1!',
+      confirmPassword: 'Longenough1!',
     })
     expect(result.success).toBe(true)
   })
 
   it('reports a mismatch against the confirm field, where the user can see it', () => {
     const result = resetPasswordSchema.safeParse({
-      password: 'longenough1',
-      confirmPassword: 'longenough2',
+      password: 'Longenough1!',
+      confirmPassword: 'Longenough2!',
     })
     expect(result.success).toBe(false)
     if (!result.success) {
@@ -143,8 +181,15 @@ describe('resetPasswordSchema', () => {
   })
 
   it('still enforces the length rule on the new password', () => {
-    expect(resetPasswordSchema.safeParse({ password: 'short', confirmPassword: 'short' }).success).toBe(
+    expect(resetPasswordSchema.safeParse({ password: 'Sh0rt!', confirmPassword: 'Sh0rt!' }).success).toBe(
       false,
     )
+  })
+
+  it('applies the same character rules a new account gets', () => {
+    expect(
+      resetPasswordSchema.safeParse({ password: 'password11', confirmPassword: 'password11' })
+        .success,
+    ).toBe(false)
   })
 })

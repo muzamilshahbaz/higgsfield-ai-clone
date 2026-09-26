@@ -15,14 +15,62 @@ const email = z
   .max(254, 'That email address is too long.')
 
 /**
- * Supabase enforces a 6-character minimum by default. We ask for 8 so the
- * server never rejects something the form accepted, and cap at 72 because
- * bcrypt silently truncates beyond that.
+ * The password rules, as data.
+ *
+ * These mirror the Supabase project's own settings — minimum 8, and one each
+ * of lowercase, uppercase, digit and symbol. They live here as a list rather
+ * than a regex so the sign-up form can tick them off live: with five rules, a
+ * single "that password is invalid" message makes the user guess, and a schema
+ * that reports one issue at a time turns signing up into five round trips.
+ *
+ * The symbol set is the one GoTrue uses for `lower_upper_letters_digits_symbols`
+ * rather than "any non-alphanumeric". A looser test here would accept a
+ * character Supabase then rejects, which is the exact failure this is meant to
+ * prevent — better to be marginally stricter than the server and say which
+ * characters count.
  */
+export const PASSWORD_MIN = 8
+/** bcrypt silently truncates beyond 72 bytes, so anything longer is a lie. */
+export const PASSWORD_MAX = 72
+
+const SYMBOL = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/
+
+export interface PasswordRule {
+  id: string
+  label: string
+  test: (value: string) => boolean
+}
+
+export const PASSWORD_RULES: PasswordRule[] = [
+  { id: 'length', label: `At least ${PASSWORD_MIN} characters`, test: (v) => v.length >= PASSWORD_MIN },
+  { id: 'lower', label: 'A lowercase letter', test: (v) => /[a-z]/.test(v) },
+  { id: 'upper', label: 'An uppercase letter', test: (v) => /[A-Z]/.test(v) },
+  { id: 'digit', label: 'A number', test: (v) => /[0-9]/.test(v) },
+  { id: 'symbol', label: 'A symbol, such as ! ? @ or #', test: (v) => SYMBOL.test(v) },
+]
+
+/**
+ * The first rule a password fails, or null. The form uses this for the single
+ * error message; the checklist beside it shows all five at once.
+ */
+export function firstPasswordFailure(value: string): PasswordRule | null {
+  return PASSWORD_RULES.find((rule) => !rule.test(value)) ?? null
+}
+
 const password = z
   .string()
-  .min(8, 'Use at least 8 characters.')
-  .max(72, 'Use 72 characters or fewer.')
+  .max(PASSWORD_MAX, `Use ${PASSWORD_MAX} characters or fewer.`)
+  .superRefine((value, ctx) => {
+    const failed = firstPasswordFailure(value)
+    if (!failed) return
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        failed.id === 'length'
+          ? `Use at least ${PASSWORD_MIN} characters.`
+          : `Add ${failed.label.replace(/^A /, 'a ').toLowerCase()}.`,
+    })
+  })
 
 export const signInSchema = z.object({
   email,
