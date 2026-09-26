@@ -13,6 +13,7 @@ import { Workflow } from '@/components/marketing/workflow'
 import { isSupabaseConfigured } from '@/lib/env'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
+import { listMedia, listMediaMix } from '@/services/media.service'
 
 const SHOWCASE_COUNT = 8
 
@@ -26,30 +27,42 @@ const SHOWCASE_COUNT = 8
  * sections share a layout or a background.
  *
  * The showcase reads the real public feed, so the page is never lying about
- * what the product has made. That read can fail on a fresh or unreachable
- * database, which is why it is caught here and the section falls back to the
- * bundled sample frames — labelled as samples — instead of the page 500ing.
+ * what the product has made. When nothing has been published it falls back to
+ * reference photography — read from `media_assets`, labelled as reference, and
+ * credited — rather than to anything pretending to be output.
+ *
+ * Both reads resolve to an empty array on a fresh or unreachable database, so
+ * a landing page missing its decoration still renders instead of 500ing.
  */
 export default async function LandingPage() {
   const user = isSupabaseConfigured ? await getCurrentUser() : null
   const isSignedIn = Boolean(user)
 
-  const showcase = isSupabaseConfigured
-    ? await listPublicGenerations({ limit: SHOWCASE_COUNT, sort: 'top' })
-    : []
+  const [showcase, heroMedia, trendingMedia, showcaseMedia] = isSupabaseConfigured
+    ? await Promise.all([
+        listPublicGenerations({ limit: SHOWCASE_COUNT, sort: 'top' }),
+        // The hero gets landscape only: the three frames are small, overlap,
+        // and a cropped face at that size reads as a mistake.
+        listMedia({ categories: ['landscape'], limit: 3 }),
+        listMedia({ limit: 6 }),
+        // The showcase grid is the one that should look like a body of work,
+        // so it takes a spread across people, animals, cities and landscape.
+        listMediaMix(SHOWCASE_COUNT),
+      ])
+    : [[], [], [], []]
 
   return (
     <div className="relative min-h-dvh">
       <SiteHeader isSignedIn={isSignedIn} />
 
       <main>
-        <Hero isSignedIn={isSignedIn} />
-        <TrendingModels />
+        <Hero isSignedIn={isSignedIn} media={heroMedia} />
+        <TrendingModels media={trendingMedia} />
         <HowItWorks />
         <Features />
         <ModelLibrary />
         <Workflow />
-        <CreatorShowcase items={showcase} />
+        <CreatorShowcase items={showcase} media={showcaseMedia} />
         <Pricing />
         <SocialProof />
         <FinalCta isSignedIn={isSignedIn} />

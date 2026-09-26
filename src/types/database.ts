@@ -42,6 +42,51 @@ export type ProviderName =
   | 'luma'
   | 'pika'
 
+/**
+ * What is in a reference photograph.
+ *
+ * Keep in step with the `media_category` enum in migration 0011.
+ */
+export type MediaCategory =
+  | 'landscape'
+  | 'person'
+  | 'animal'
+  | 'urban'
+  | 'abstract'
+  | 'still_life'
+
+/**
+ * Reference imagery the marketing page and the preset grid render.
+ *
+ * Never generated output: see migration 0011 and services/media.service.ts.
+ *
+ * Deliberately NOT registered in the `Database` map below. Adding an eleventh
+ * table tips supabase-js's type machinery past an instantiation limit and the
+ * whole client generic silently degrades to `never` — every other table's
+ * `rpc` and row types break with it. Reproduced with a two-field row and with
+ * the column types simplified, so it is the table count, not this shape.
+ *
+ * services/media.service.ts therefore reads this one table through a narrowed
+ * client and maps the result back onto this interface, which keeps the
+ * looseness in one file instead of across the schema.
+ */
+export interface MediaAssetRow {
+  id: string
+  slug: string
+  category: MediaCategory
+  url: string
+  alt: string
+  width: number | null
+  height: number | null
+  credit_name: string | null
+  credit_url: string | null
+  tags: string[]
+  sort_order: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 /** Outcome of the last time we asked a vendor whether a stored key works. */
 export type ProviderKeyStatus = 'unverified' | 'valid' | 'invalid' | 'unreachable'
 export type GenerationTask = 'text_to_image' | 'text_to_video' | 'image_to_video'

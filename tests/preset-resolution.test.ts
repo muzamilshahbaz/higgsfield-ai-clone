@@ -162,21 +162,12 @@ describe('row mapping', () => {
     expect(toPresetSummary(stored).posterUrl).toBe('https://cdn.test/a.mp4')
   })
 
-  it('swaps a bundled SVG placeholder for reference photography', () => {
-    // A gradient blob told a visitor nothing about what the preset does. The
-    // override is deterministic, so the grid does not reshuffle per render.
-    const poster = toPresetSummary(row).posterUrl
-
-    expect(poster).not.toMatch(/^\/samples\//)
-    expect(poster).toMatch(/^https:\/\/images\.unsplash\.com\//)
-    expect(toPresetSummary(row).posterUrl).toBe(poster)
-  })
-
-  it('gives two different presets their own frame', () => {
-    const a = toPresetSummary({ ...row, slug: 'crash-zoom-in' }).posterUrl
-    const b = toPresetSummary({ ...row, slug: 'film-noir' }).posterUrl
-    expect(a).toBeTruthy()
-    expect(b).toBeTruthy()
+  it('passes the stored preview through without rewriting it', () => {
+    // There used to be a render-time override here that swapped bundled
+    // placeholders for photographs. It is gone: scripts/seed-media.ts repoints
+    // the rows themselves, so the database is the single source of truth and
+    // no component second-guesses what it holds.
+    expect(toPresetSummary(row).posterUrl).toBe(row.preview_poster_url ?? row.preview_video_url)
   })
 
   it('narrows a non-object params column to an empty object', () => {

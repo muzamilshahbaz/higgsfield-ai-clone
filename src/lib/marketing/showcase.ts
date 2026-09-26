@@ -1,5 +1,4 @@
 import { getModel } from '@/lib/ai/registry'
-import { STOCK, type StockPhoto } from '@/lib/marketing/stock'
 import type { ProviderName } from '@/types/database'
 
 /**
@@ -24,14 +23,6 @@ export interface ShowcaseModel {
   /** What someone would actually reach for it to do. */
   useCase: string
   kind: 'image' | 'video'
-  /**
-   * Reference imagery for the card — a real photograph, not model output.
-   *
-   * Chosen to suggest the kind of shot the model is good at. See
-   * lib/marketing/stock.ts for why this is a curated photograph rather than
-   * something generated, and for how the page says so.
-   */
-  preview: StockPhoto
   /** Rough share of recent generations. Illustrative, not measured. */
   trend: string
 }
@@ -45,7 +36,6 @@ export const TRENDING_MODELS: ShowcaseModel[] = [
       'FLUX.1 [schnell], four steps and Apache-2.0. Fast enough to iterate on a look before you commit a credit to the finished frame.',
     useCase: 'Drafts and start frames',
     kind: 'image',
-    preview: STOCK.alpineCloud,
     trend: 'Most used for stills',
   },
   {
@@ -56,7 +46,6 @@ export const TRENDING_MODELS: ShowcaseModel[] = [
       'FLUX.1 [dev]. Photoreal detail and composition that holds together. The default when the frame is the deliverable.',
     useCase: 'Finished stills',
     kind: 'image',
-    preview: STOCK.lakeReflection,
     trend: 'Best detail',
   },
   {
@@ -67,7 +56,6 @@ export const TRENDING_MODELS: ShowcaseModel[] = [
       'Stable Diffusion XL, the open workhorse. Broad style range and the cheapest pass in the catalogue.',
     useCase: 'Style exploration',
     kind: 'image',
-    preview: STOCK.stageLights,
     trend: 'Best value',
   },
   {
@@ -78,7 +66,6 @@ export const TRENDING_MODELS: ShowcaseModel[] = [
       'Wan 2.2 turbo, Apache-2.0. Quick motion passes while you dial in a camera move, before you pay for the long one.',
     useCase: 'Image to video',
     kind: 'video',
-    preview: STOCK.oceanDusk,
     trend: 'Most used for motion',
   },
   {
@@ -89,7 +76,6 @@ export const TRENDING_MODELS: ShowcaseModel[] = [
       'Wan 2.2 A14B. Holds a face, an outfit and a lighting setup through an entire camera move — continuity over speed.',
     useCase: 'Character-led shots',
     kind: 'video',
-    preview: STOCK.valleyHaze,
     trend: 'Best continuity',
   },
   {
@@ -100,7 +86,6 @@ export const TRENDING_MODELS: ShowcaseModel[] = [
       'Wan 2.2 text-to-video. Straight from a sentence to a moving shot, with no start frame and no storyboard.',
     useCase: 'Text to video',
     kind: 'video',
-    preview: STOCK.nightSky,
     trend: 'Newest',
   },
 ]

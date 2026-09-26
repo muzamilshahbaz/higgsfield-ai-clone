@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { PROVIDERS } from '@/lib/ai/catalogue'
 import { MODELS } from '@/lib/ai/registry'
 import { TRENDING_MODELS } from '@/lib/marketing/showcase'
+import type { MediaAsset } from '@/services/media.service'
 
 /**
  * Providers a generation can actually run through, not every vendor whose key
@@ -42,7 +43,14 @@ const HERO_PRESETS = [
  * Every number on screen is computed — model count, provider count, preset
  * count — so the page cannot claim a catalogue the build does not have.
  */
-export function Hero({ isSignedIn = false }: { isSignedIn?: boolean }) {
+export function Hero({
+  isSignedIn = false,
+  media = [],
+}: {
+  isSignedIn?: boolean
+  /** Reference photography from `media_assets`, for the collage. */
+  media?: MediaAsset[]
+}) {
   return (
     <section className="relative overflow-hidden pt-28 pb-16 sm:pt-36 sm:pb-24">
       <div className="aurora" aria-hidden />
@@ -91,7 +99,7 @@ export function Hero({ isSignedIn = false }: { isSignedIn?: boolean }) {
             </p>
           </div>
 
-          <HeroCollage shots={TRENDING_MODELS.slice(0, 3)} />
+          <HeroCollage media={media} shots={TRENDING_MODELS.slice(0, 3)} />
         </div>
 
         {/* preset marquee — target of the "Presets" link in the site header */}

@@ -4,7 +4,7 @@ import { ArrowRight, Coins, ImageIcon, TrendingUp, Video } from 'lucide-react'
 import { Reveal } from '@/components/marketing/reveal'
 import { Badge } from '@/components/ui/badge'
 import { creditsFor, TRENDING_MODELS } from '@/lib/marketing/showcase'
-import { stockUrl } from '@/lib/marketing/stock'
+import type { MediaAsset } from '@/services/media.service'
 
 /**
  * Trending models.
@@ -18,7 +18,12 @@ import { stockUrl } from '@/lib/marketing/stock'
  * It is a plain overflow container, so it scrolls with a trackpad, a swipe,
  * a shift-wheel and the keyboard, with no drag handler to get wrong.
  */
-export function TrendingModels() {
+export function TrendingModels({ media }: { media: MediaAsset[] }) {
+  // No reference imagery in the database yet — migration 0011 unapplied, or an
+  // unreachable read. The section is about the models, not the pictures, so it
+  // renders without them rather than not at all.
+  const hasMedia = media.length > 0
+
   return (
     <section id="models" className="relative scroll-mt-24 overflow-hidden border-t border-border/60 py-24">
       <div className="spotlight absolute inset-x-0 top-0 h-96" aria-hidden />
@@ -66,16 +71,18 @@ export function TrendingModels() {
               <Reveal key={model.modelId} delay={Math.min(index, 4) * 0.06}>
                 <article className="group flex h-full w-[280px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-muted sm:w-[320px]">
                   <div className="relative aspect-video w-full overflow-hidden bg-surface">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {hasMedia && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
-                      src={stockUrl(model.preview)}
+                      src={media[index % media.length]!.url}
                       // Reference imagery, not output: the alt says what the
                       // photograph shows rather than claiming this model made
-                      // it. See lib/marketing/stock.ts.
-                      alt={model.preview.alt}
+                      // it.
+                      alt={media[index % media.length]!.alt}
                       loading="lazy"
                       className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
+                    )}
 
                     <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-background/80 px-2.5 py-1 text-[11px] font-medium backdrop-blur">
                       <KindIcon className="size-3 text-accent" aria-hidden />

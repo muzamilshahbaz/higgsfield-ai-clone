@@ -3,7 +3,7 @@
 import { domAnimation, LazyMotion, m, useReducedMotion } from 'framer-motion'
 
 import type { ShowcaseModel } from '@/lib/marketing/showcase'
-import { stockUrl } from '@/lib/marketing/stock'
+import type { MediaAsset } from '@/services/media.service'
 
 /**
  * The floating frame collage beside the hero copy.
@@ -33,9 +33,11 @@ const PLACEMENTS = [
   { className: 'bottom-0 right-[6%] w-[54%] rotate-[2deg] z-30', drift: 9, delay: 1.6 },
 ] as const
 
-export function HeroCollage({ shots }: { shots: ShowcaseModel[] }) {
+export function HeroCollage({ shots, media }: { shots: ShowcaseModel[]; media: MediaAsset[] }) {
   const reduced = useReducedMotion()
-  const visible = shots.slice(0, PLACEMENTS.length)
+  // Only as many frames as there are photographs to put in them: an empty
+  // card with a caption reads as a broken image, not as decoration.
+  const visible = shots.slice(0, Math.min(PLACEMENTS.length, media.length))
 
   return (
     <div
@@ -86,8 +88,8 @@ export function HeroCollage({ shots }: { shots: ShowcaseModel[] }) {
                 */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={stockUrl(shot.preview)}
-                  alt={shot.preview.alt}
+                  src={media[index]!.url}
+                  alt={media[index]!.alt}
                   loading="lazy"
                   className="size-full object-cover"
                 />
