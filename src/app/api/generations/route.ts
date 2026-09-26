@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { RATE_LIMITS } from '@/lib/constants'
+import { clientKey, rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { createGenerationSchema, fieldErrors } from '@/lib/validation/generation'
 import { createGeneration, listMyGenerations } from '@/services/generation.service'
@@ -14,7 +16,31 @@ import type { GenerationStatus, GenerationTask } from '@/types/database'
  * second charge.
  */
 
+/**
+ * Long enough for a provider that has no queue.
+ *
+ * Hugging Face hosted inference generates on the request itself: FLUX.1
+ * [schnell] answers in a few seconds warm, but a cold model can take most of a
+ * minute to load its weights. fal.ai and Replicate both return a job handle
+ * immediately, so they never need this.
+ *
+ * If the platform kills the function before the provider answers, the row is
+ * left `running` with no provider job id and the sweeper fails and refunds it
+ * fifteen seconds later — a refund and a clear card, never a silent charge.
+ */
+export const maxDuration = 60
+
 export async function POST(request: Request) {
+  // Authentication is re-checked inside createGeneration, which is the only
+  // place that may decide a job is allowed. This read is here so the rate limit
+  // counts against a user rather than a shared NAT address.
+  const user = await getCurrentUser()
+
+  const quota = rateLimit(clientKey(request, user?.id), RATE_LIMITS.generations)
+  if (!quota.ok) {
+    return tooManyRequests(quota, 'That is a lot of generations at once. Give it a minute.')
+  }
+
   let body: unknown
   try {
     body = await request.json()

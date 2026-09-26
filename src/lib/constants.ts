@@ -19,10 +19,9 @@ export type AspectRatio = (typeof ASPECT_RATIOS)[number]['value']
  */
 export const VIDEO_DURATIONS = [
   { value: 5, label: '5s' },
+  // CogVideoX-5B's only length: 49 frames at 8fps is six seconds exactly, so
+  // this is a real option rather than a rounding of "about five".
   { value: 6, label: '6s' },
-  // Veo 3's only length. It produces exactly eight seconds and nothing else,
-  // so this is a real option rather than a rounding of "about ten".
-  { value: 8, label: '8s' },
   { value: 10, label: '10s' },
 ] as const
 
@@ -68,6 +67,15 @@ export const RATE_LIMITS = {
   likes: { limit: 60, windowMs: 60 * 1000 },
   /** Well under MAX_PROJECTS, which is the real ceiling. */
   projects: { limit: 20, windowMs: 10 * 60 * 1000 },
+  /**
+   * The brake in front of a real provider account.
+   *
+   * Above `maxGenerationsPerHour` on every plan, deliberately: the plan limit
+   * is the one that decides whether a job may run, and it is enforced in
+   * Postgres where a cold start cannot forget it. This one only stops a hot
+   * loop from spending a round trip per iteration to be told the same thing.
+   */
+  generations: { limit: 60, windowMs: 10 * 60 * 1000 },
 } as const
 
 export const SIGNUP_CREDIT_GRANT = 200

@@ -43,24 +43,24 @@ export default async function ProviderKeysPage() {
           </p>
         </div>
 
-        {!routing.directProvidersEnabled && (
-          <Card className="p-4">
-            <div className="flex gap-3">
-              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-              <div className="text-sm">
-                <p className="font-medium">Direct provider routing is off in this deployment</p>
-                <p className="mt-1 text-muted-foreground">
-                  You can store and verify keys now, and the router already prefers yours over the
-                  shared one. Until an operator sets{' '}
-                  <code className="font-mono text-xs">AI_ENABLE_DIRECT_PROVIDERS=1</code>,
-                  generations still run through the{' '}
-                  <span className="font-medium text-foreground">{routing.aggregatorDefault}</span>{' '}
-                  driver — said plainly here rather than implied by a green tick.
-                </p>
-              </div>
+        <Card className="p-4">
+          <div className="flex gap-3">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+            <div className="text-sm">
+              <p className="font-medium">A key here is what runs a generation</p>
+              <p className="mt-1 text-muted-foreground">
+                Generations run on{' '}
+                <span className="font-medium text-foreground">
+                  {routing.generationProviderLabels.join(', ')}
+                </span>
+                . Your own key is always preferred; without one, a job falls back to this
+                deployment&apos;s shared key, and with neither it is refused with a message rather
+                than quietly faked. Every other provider below can be stored and verified, but no
+                model routes to it yet.
+              </p>
             </div>
-          </Card>
-        )}
+          </div>
+        </Card>
 
         <ProviderKeyManager connections={connections} vaultReady={isKeyVaultConfigured} />
       </div>

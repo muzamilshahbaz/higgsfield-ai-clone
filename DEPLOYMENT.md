@@ -10,7 +10,7 @@ Work top to bottom. The walkthrough at the end is the acceptance test.
 
 ## 1. Supabase — before the first deploy
 
-- [ ] **Apply the migrations.** `supabase/migrations/0001` → `0006`, in order,
+- [ ] **Apply the migrations.** `supabase/migrations/0001` → `0010`, in order,
       either with `npx supabase db push` against a linked project or by pasting
       each file into the SQL editor.
 
@@ -42,13 +42,20 @@ Work top to bottom. The walkthrough at the end is the acceptance test.
       | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same page |
       | `SUPABASE_SERVICE_ROLE_KEY` | same page — **server only, never `NEXT_PUBLIC_`** |
       | `NEXT_PUBLIC_SITE_URL` | the deployment's own URL, no trailing slash |
-      | `AI_PROVIDER` | `mock` |
+      | `AI_KEY_ENCRYPTION_SECRET` | `openssl rand -base64 48` — **required for generation** |
       | `CRON_SECRET` | any long random string |
 
-      `FAL_KEY` and `REPLICATE_API_TOKEN` are only needed if `AI_PROVIDER` is
-      changed. The app falls back to `mock` when the selected provider's key is
-      missing, so a wrong value degrades rather than breaks. (Today it falls
-      back to `mock` regardless — see [Known gaps](#known-gaps).)
+      `AI_KEY_ENCRYPTION_SECRET` seals the provider keys users connect. Without
+      it the AI model keys tab is read-only, nobody can connect an account, and
+      therefore nobody can generate. Changing it does **not** re-encrypt what is
+      already stored: every existing key stops opening and users have to
+      reconnect, so treat it like a database password.
+
+      `HUGGINGFACE_API_KEY`, `FAL_KEY` and `REPLICATE_API_TOKEN` are optional
+      shared fallbacks, used only for users who have not connected their own. A
+      job with no user key and no shared key is refused with a message naming
+      what to connect — it is never faked. See
+      [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
 
 - [ ] **Set them before the first build, and redeploy after any change.**
       The three `NEXT_PUBLIC_*` values are substituted into the browser bundle
@@ -113,15 +120,21 @@ No console errors at any step.
 - **Vercel Hobby caps cron at once a day**, so `/api/cron/sweep` is a backstop,
   not a heartbeat. The client ticker and the page-load sweep are what actually
   advance jobs. On Pro, change the schedule in `vercel.json` to `* * * * *`.
-- **`AI_PROVIDER=mock` returns bundled sample media, and it is the only driver
-  that exists.** `src/lib/ai/providers/` contains `mock.ts` and nothing else;
-  the `fal` and `replicate` branches of `resolveProvider()` are written but
-  their `new FalProvider(...)` / `new ReplicateProvider(...)` lines are still
-  commented out, so both fall through to the mock and log a warning. Setting
-  `AI_PROVIDER=fal` and a valid `FAL_KEY` in Vercel therefore changes nothing
-  observable — the deployment still renders sample media.
-
-  Real generation needs a driver implemented against the `AIProvider`
-  interface in `src/lib/ai/types.ts` and wired into the matching `case` in
-  `src/lib/ai/index.ts`. That is the only code change required: presets,
-  services and schema already route through the registry.
+- **Generation needs a key, from somebody.** Three providers ship real drivers
+  — Hugging Face, fal.ai and Replicate — and a job runs on the user's own key
+  first, then the deployment's shared one. With neither, the job is refused
+  before it is charged. That is deliberate: a generation that did not happen
+  must not look like one that did. A UI walkthrough with no keys at all can set
+  `AI_ALLOW_MOCK_FALLBACK=1`, which renders bundled sample media instead; it is
+  off by default and should stay off anywhere real.
+- **Eight vendors can be verified but not generated with.** Flux (BFL direct),
+  Stability, OpenAI, Google, Kling, Runway, Luma and Pika have live
+  key-verification probes and no generation driver, so no model routes to them.
+  Their row in the settings tab is labelled **Verify only**. Adding one is a
+  `createDriver` on its module plus a `route` on each model — the five steps at
+  the end of [`docs/PROVIDERS.md`](docs/PROVIDERS.md).
+- **Hugging Face generates on the request itself.** It has no queue, so
+  `/api/generations` sets `maxDuration = 60`: a cold model can take most of a
+  minute to load its weights. If the platform kills the function first, the
+  sweeper fails and refunds the job fifteen seconds later. fal.ai and Replicate
+  return a handle immediately and never need the headroom.

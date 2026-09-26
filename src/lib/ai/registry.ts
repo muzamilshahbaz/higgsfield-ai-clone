@@ -3,28 +3,76 @@ import type { GenerationTask, ProviderName } from '@/types/database'
 /**
  * The model registry.
  *
- * Presets and the UI reference models by `id` only. Swapping the model behind an
- * id — or moving it to a different provider — is a single edit here and touches
- * no preset, no service and no database row.
+ * Presets and the UI reference models by `id` only. Swapping the model behind
+ * an id — or moving it to a different provider — is a single edit here and
+ * touches no preset, no service and no database row.
  *
- * `provider` names the real service that would serve the model. The ACTIVE
- * driver is chosen separately by resolveProvider() from AI_PROVIDER, so with
- * AI_PROVIDER=mock every entry below is served by the mock driver and no key
- * is required.
+ * Every entry is an open-weight model, and every entry carries `routes`: the
+ * providers that can serve it, in the order the router should try them.
+ * services/ai/ai-router.ts walks that list and picks the first provider the
+ * caller has a usable key for, so one model id runs on Hugging Face for a user
+ * who connected a Hugging Face token and on fal.ai for the user beside them,
+ * with no second entry here and no branch in the composer.
+ *
+ * Order within `routes` is the product decision. Hugging Face first where it
+ * can serve at all, because a free token is the shortest path to a first
+ * generation; fal.ai next, because its queue is the fastest of the three for
+ * video; Replicate last, because it is the broadest but not the cheapest.
+ *
+ * Only FLUX.1 [schnell] carries a Hugging Face route. Hugging Face stopped
+ * hosting these models itself and now routes to partners, and the partners that
+ * serve FLUX.1 [dev] and SDXL through it — fal.ai, Replicate, wavespeed — do
+ * not expose the one request shape its driver speaks. Those two models talk to
+ * fal.ai and Replicate directly instead, which this app already does properly.
+ * Verified against the live Hub mapping; see docs/PROVIDERS.md.
  *
  * `indicativeUsd` is a rough per-generation cost used to sanity-check credit
- * pricing. Re-check it against the provider's dashboard before charging anyone
+ * pricing. Re-check it against the provider dashboard before charging anyone
  * real money; it is not a quote.
  */
+
+export interface ModelRoute {
+  provider: ProviderName
+  /** The identifier this provider API expects. Never shown to a user. */
+  path: string
+  /**
+   * Provider-specific input merged over everything the driver computed, for
+   * where a vendor parameter name differs from everyone else's. Applied last,
+   * so it is also the escape hatch for one awkward model.
+   */
+  input?: Record<string, unknown>
+  /**
+   * How this endpoint wants a frame size expressed.
+   *
+   * Only Replicate needs it, and only because its models have hand-written
+   * input schemas that reject a key they do not declare: the FLUX models take
+   * an `aspect_ratio` string, SDXL takes `width` and `height`, and sending the
+   * wrong one is a 422 charged to the user. Hugging Face and fal each have one
+   * house style, so their drivers do not read this.
+   */
+  sizing?: 'aspect_ratio' | 'dimensions' | 'none'
+  /**
+   * The model's native frame rate, where it takes a frame count rather than a
+   * duration in seconds.
+   *
+   * `num_frames = duration × fps + 1` is the diffusers convention (latents come
+   * in groups of four plus the first frame), and it is how a 5s request becomes
+   * Wan's 81 frames or LTX's 121. Absent means the endpoint takes seconds, or
+   * that its length is fixed and must not be overridden.
+   */
+  videoFrameRate?: number
+}
+
 export interface ModelEntry {
   id: string
   label: string
   /** One-line pitch shown in the model selector. */
   blurb: string
   task: GenerationTask
-  provider: ProviderName
-  /** Path the driver passes to the provider SDK. */
-  providerModelPath: string
+  /** The open-weight model this id actually is, for the docs and the UI. */
+  family: string
+  /** Providers that can serve it, most preferred first. Never empty. */
+  routes: ModelRoute[]
   credits: number
   indicativeUsd: number
   avgLatencySec: number
@@ -34,39 +82,52 @@ export interface ModelEntry {
     imageInput: boolean
     negativePrompt: boolean
   }
+  /** Model defaults, merged under preset params by lib/presets.ts. */
   defaults?: Record<string, unknown>
   /** Surfaced as a "recommended" chip in the selector. */
   featured?: boolean
 }
 
 const ALL_ASPECTS = ['16:9', '9:16', '1:1', '4:5', '21:9']
+const VIDEO_ASPECTS = ['16:9', '9:16', '1:1']
 
 export const MODELS: ModelEntry[] = [
   // ---------------------------------------------------------------- images
+  //
+  // FLUX.1 [schnell] is Apache-2.0 and four steps, which is why it is the
+  // default: a first generation should be fast and nearly free.
   {
     id: 'lumen-flash',
     label: 'Lumen Flash',
-    blurb: 'Fast drafts. Great for iterating on a look before you commit.',
+    blurb: 'FLUX.1 [schnell]. Fast drafts — iterate on a look before you commit.',
     task: 'text_to_image',
-    provider: 'fal',
-    providerModelPath: 'fal-ai/flux/schnell',
+    family: 'FLUX.1 [schnell]',
+    routes: [
+      { provider: 'huggingface', path: 'black-forest-labs/FLUX.1-schnell' },
+      { provider: 'fal', path: 'fal-ai/flux/schnell' },
+      { provider: 'replicate', path: 'black-forest-labs/flux-schnell', sizing: 'aspect_ratio' },
+    ],
     credits: 1,
     indicativeUsd: 0.003,
-    avgLatencySec: 4,
+    avgLatencySec: 6,
     supports: { aspectRatios: ALL_ASPECTS, imageInput: false, negativePrompt: false },
+    // schnell is distilled: trained for four steps and guidance-free.
     defaults: { num_inference_steps: 4 },
     featured: true,
   },
   {
     id: 'lumen-pro',
     label: 'Lumen Pro',
-    blurb: 'Photoreal detail and dependable composition. The default for finals.',
+    blurb: 'FLUX.1 [dev]. Photoreal detail and dependable composition.',
     task: 'text_to_image',
-    provider: 'fal',
-    providerModelPath: 'fal-ai/flux/dev',
+    family: 'FLUX.1 [dev]',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/flux/dev' },
+      { provider: 'replicate', path: 'black-forest-labs/flux-dev', sizing: 'aspect_ratio' },
+    ],
     credits: 4,
     indicativeUsd: 0.025,
-    avgLatencySec: 9,
+    avgLatencySec: 14,
     supports: { aspectRatios: ALL_ASPECTS, imageInput: false, negativePrompt: true },
     defaults: { num_inference_steps: 28, guidance_scale: 3.5 },
     featured: true,
@@ -74,30 +135,62 @@ export const MODELS: ModelEntry[] = [
   {
     id: 'lumen-portrait',
     label: 'Lumen Portrait',
-    blurb: 'Tuned for faces, skin and fashion editorial lighting.',
+    blurb: 'FLUX.1 [dev], tuned for faces, skin and editorial lighting.',
     task: 'text_to_image',
-    provider: 'fal',
-    providerModelPath: 'fal-ai/flux/dev',
+    family: 'FLUX.1 [dev]',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/flux/dev' },
+      { provider: 'replicate', path: 'black-forest-labs/flux-dev', sizing: 'aspect_ratio' },
+    ],
     credits: 5,
     indicativeUsd: 0.03,
-    avgLatencySec: 11,
-    supports: { aspectRatios: ['1:1', '4:5', '9:16', '16:9'], imageInput: false, negativePrompt: true },
+    avgLatencySec: 16,
+    supports: {
+      aspectRatios: ['1:1', '4:5', '9:16', '16:9'],
+      imageInput: false,
+      negativePrompt: true,
+    },
     defaults: { num_inference_steps: 32, guidance_scale: 4 },
+  },
+  {
+    id: 'lumen-sdxl',
+    label: 'Lumen SDXL',
+    blurb: 'Stable Diffusion XL. The open workhorse — broad styles, cheap passes.',
+    task: 'text_to_image',
+    family: 'Stable Diffusion XL 1.0',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/fast-sdxl' },
+      { provider: 'replicate', path: 'stability-ai/sdxl', sizing: 'dimensions' },
+    ],
+    credits: 3,
+    indicativeUsd: 0.012,
+    avgLatencySec: 11,
+    supports: { aspectRatios: ALL_ASPECTS, imageInput: false, negativePrompt: true },
+    defaults: { num_inference_steps: 30, guidance_scale: 7.5 },
   },
 
   // ---------------------------------------------------------------- video
+  //
+  // No Hugging Face route on any of these. HF hosted inference serves images
+  // as raw bytes over one documented request; its video models are routed on
+  // to partner providers under a per-provider request shape that is not stable
+  // enough to charge a user quota against. So video runs on fal.ai or
+  // Replicate, both of which expose a real job queue. See docs/PROVIDERS.md.
   {
     id: 'motion-turbo',
     label: 'Motion Turbo',
-    blurb: 'Quick motion passes. Best value while you dial in a camera move.',
+    blurb: 'Wan 2.2 turbo. Quick motion passes while you dial in a camera move.',
     task: 'image_to_video',
-    provider: 'fal',
-    providerModelPath: 'fal-ai/kling-video/v2/standard/image-to-video',
-    credits: 18,
-    indicativeUsd: 0.18,
-    avgLatencySec: 65,
+    family: 'Wan 2.2 I2V (turbo)',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/wan/v2.2-a14b/image-to-video/turbo' },
+      { provider: 'replicate', path: 'wan-video/wan-2.2-i2v-fast', videoFrameRate: 16 },
+    ],
+    credits: 14,
+    indicativeUsd: 0.1,
+    avgLatencySec: 70,
     supports: {
-      aspectRatios: ['16:9', '9:16', '1:1'],
+      aspectRatios: VIDEO_ASPECTS,
       durations: [5],
       imageInput: true,
       negativePrompt: true,
@@ -107,15 +200,18 @@ export const MODELS: ModelEntry[] = [
   {
     id: 'motion-cine',
     label: 'Motion Cine',
-    blurb: 'The cinematic one. Holds character and lighting through the move.',
+    blurb: 'Wan 2.2 A14B. The cinematic one — holds character through the move.',
     task: 'image_to_video',
-    provider: 'fal',
-    providerModelPath: 'fal-ai/kling-video/v2/pro/image-to-video',
-    credits: 35,
-    indicativeUsd: 0.35,
-    avgLatencySec: 110,
+    family: 'Wan 2.2 I2V A14B',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/wan/v2.2-a14b/image-to-video' },
+      { provider: 'replicate', path: 'wan-video/wan-2.2-i2v-a14b', videoFrameRate: 16 },
+    ],
+    credits: 30,
+    indicativeUsd: 0.25,
+    avgLatencySec: 120,
     supports: {
-      aspectRatios: ['16:9', '9:16', '1:1', '21:9'],
+      aspectRatios: VIDEO_ASPECTS,
       durations: [5, 10],
       imageInput: true,
       negativePrompt: true,
@@ -125,171 +221,84 @@ export const MODELS: ModelEntry[] = [
   {
     id: 'motion-scene',
     label: 'Motion Scene',
-    blurb: 'Text straight to video when you have no start frame.',
+    blurb: 'Wan 2.2 text-to-video. Straight to motion with no start frame.',
     task: 'text_to_video',
-    provider: 'fal',
-    providerModelPath: 'fal-ai/minimax/hailuo-02/standard/text-to-video',
-    credits: 28,
-    indicativeUsd: 0.28,
-    avgLatencySec: 95,
+    family: 'Wan 2.2 T2V A14B',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/wan/v2.2-a14b/text-to-video' },
+      { provider: 'replicate', path: 'wan-video/wan-2.2-t2v-fast', videoFrameRate: 16 },
+    ],
+    credits: 24,
+    indicativeUsd: 0.2,
+    avgLatencySec: 100,
     supports: {
       aspectRatios: ['16:9', '9:16'],
-      durations: [6],
+      durations: [5],
       imageInput: false,
-      negativePrompt: false,
+      negativePrompt: true,
     },
-  },
-  // ------------------------------------------------- direct vendor: images
-  // Everything below names a vendor a user can connect in
-  // Settings -> AI model keys. `provider` is what the router looks up, so
-  // these entries need no other wiring.
-  //
-  // APPENDED, never prepended: defaultModelForTask() returns the first
-  // featured model for a task, so inserting a featured entry above
-  // `lumen-flash` would silently change what every composer opens with.
-  {
-    id: 'flux-pro',
-    label: 'Flux 1.1 Pro',
-    blurb: 'Black Forest Labs, direct. Sharpest prompt adherence in the catalogue.',
-    task: 'text_to_image',
-    provider: 'flux',
-    providerModelPath: 'flux-pro-1.1',
-    credits: 5,
-    indicativeUsd: 0.04,
-    avgLatencySec: 10,
-    supports: { aspectRatios: ALL_ASPECTS, imageInput: false, negativePrompt: false },
-    defaults: { safety_tolerance: 2 },
+    featured: true,
   },
   {
-    id: 'stable-diffusion-35',
-    label: 'Stable Diffusion 3.5',
-    blurb: 'Stability AI. The open workhorse — broad styles, predictable output.',
-    task: 'text_to_image',
-    provider: 'stability',
-    providerModelPath: 'sd3.5-large',
-    credits: 4,
-    indicativeUsd: 0.035,
-    avgLatencySec: 9,
-    supports: { aspectRatios: ALL_ASPECTS, imageInput: false, negativePrompt: true },
-    defaults: { cfg_scale: 4 },
-  },
-  {
-    id: 'openai-image',
-    label: 'OpenAI Image',
-    blurb: 'The one to reach for when the shot has to contain readable text.',
-    task: 'text_to_image',
-    provider: 'openai',
-    providerModelPath: 'gpt-image-1',
-    credits: 6,
-    indicativeUsd: 0.05,
-    avgLatencySec: 14,
-    supports: { aspectRatios: ['1:1', '16:9', '9:16'], imageInput: false, negativePrompt: false },
-    defaults: { quality: 'high' },
-  },
-  {
-    id: 'imagen-4',
-    label: 'Google Imagen 4',
-    blurb: 'Photographic realism and clean typography, straight from Google AI.',
-    task: 'text_to_image',
-    provider: 'google',
-    providerModelPath: 'imagen-4.0-generate-001',
-    credits: 5,
-    indicativeUsd: 0.04,
-    avgLatencySec: 11,
+    id: 'motion-ltx',
+    label: 'Motion LTX',
+    blurb: 'LTX-Video 13B distilled. The cheapest way to see an idea move.',
+    task: 'text_to_video',
+    family: 'LTX-Video 13B (distilled)',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/ltx-video-13b-distilled' },
+      { provider: 'replicate', path: 'lightricks/ltx-video', videoFrameRate: 24 },
+    ],
+    credits: 10,
+    indicativeUsd: 0.06,
+    avgLatencySec: 45,
     supports: {
-      aspectRatios: ['1:1', '16:9', '9:16', '4:5'],
+      aspectRatios: ['16:9', '9:16'],
+      durations: [5],
       imageInput: false,
       negativePrompt: true,
     },
   },
-
-  // -------------------------------------------------- direct vendor: video
   {
-    id: 'kling-v2-pro',
-    label: 'Kling 2.1 Pro',
-    blurb: 'Direct from Kling. Character and lighting survive the whole move.',
-    task: 'image_to_video',
-    provider: 'kling',
-    providerModelPath: 'kling-v2-1-pro',
-    credits: 38,
-    indicativeUsd: 0.38,
-    avgLatencySec: 115,
-    supports: {
-      aspectRatios: ['16:9', '9:16', '1:1'],
-      durations: [5, 10],
-      imageInput: true,
-      negativePrompt: true,
-    },
-  },
-  {
-    id: 'runway-gen4',
-    label: 'Runway Gen-4',
-    blurb: 'The dependable image-to-video pass. Rarely surprises you badly.',
-    task: 'image_to_video',
-    provider: 'runway',
-    providerModelPath: 'gen4_turbo',
-    credits: 32,
-    indicativeUsd: 0.3,
+    id: 'motion-cog',
+    label: 'Motion Cog',
+    blurb: 'CogVideoX-5B. Steady six-second shots with unusually clean motion.',
+    task: 'text_to_video',
+    family: 'CogVideoX-5B',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/cogvideox-5b' },
+      { provider: 'replicate', path: 'lucataco/cogvideox-5b', videoFrameRate: 8 },
+    ],
+    credits: 16,
+    indicativeUsd: 0.12,
     avgLatencySec: 90,
     supports: {
-      aspectRatios: ['16:9', '9:16', '1:1', '4:5'],
-      durations: [5, 10],
-      imageInput: true,
-      negativePrompt: false,
+      aspectRatios: ['16:9'],
+      durations: [6],
+      imageInput: false,
+      negativePrompt: true,
     },
   },
   {
-    id: 'luma-ray',
-    label: 'Luma Ray 2',
-    blurb: 'Reads camera language from the prompt better than anything else here.',
-    task: 'image_to_video',
-    provider: 'luma',
-    providerModelPath: 'ray-2',
-    credits: 26,
-    indicativeUsd: 0.25,
-    avgLatencySec: 85,
-    supports: {
-      aspectRatios: ['16:9', '9:16', '1:1', '21:9'],
-      durations: [5],
-      imageInput: true,
-      negativePrompt: false,
-    },
-  },
-  {
-    id: 'veo-3',
-    label: 'Google Veo 3',
-    blurb: 'Text to video with synchronised audio. Fixed eight-second shots.',
+    id: 'motion-hunyuan',
+    label: 'Motion Hunyuan',
+    blurb: 'HunyuanVideo. The largest open video model here — slow, worth it.',
     task: 'text_to_video',
-    provider: 'google',
-    providerModelPath: 'veo-3.0-generate-001',
-    credits: 60,
-    indicativeUsd: 0.6,
-    avgLatencySec: 140,
+    family: 'HunyuanVideo',
+    routes: [
+      { provider: 'fal', path: 'fal-ai/hunyuan-video' },
+      { provider: 'replicate', path: 'tencent/hunyuan-video', videoFrameRate: 24 },
+    ],
+    credits: 34,
+    indicativeUsd: 0.3,
+    avgLatencySec: 150,
     supports: {
       aspectRatios: ['16:9', '9:16'],
-      durations: [8],
-      imageInput: false,
-      negativePrompt: true,
-    },
-  },
-  {
-    id: 'pika-scene',
-    label: 'Pika 2.2',
-    blurb: 'Stylised short-form motion and the effect looks Pika is known for.',
-    task: 'text_to_video',
-    provider: 'pika',
-    providerModelPath: 'pika-2.2',
-    credits: 24,
-    indicativeUsd: 0.22,
-    avgLatencySec: 80,
-    supports: {
-      aspectRatios: ['16:9', '9:16', '1:1'],
       durations: [5],
       imageInput: false,
       negativePrompt: true,
     },
   },
-
 ]
 
 const MODELS_BY_ID = new Map(MODELS.map((model) => [model.id, model]))
@@ -314,6 +323,27 @@ export function defaultModelForTask(task: GenerationTask): ModelEntry {
   const fallback = featured ?? candidates[0]
   if (!fallback) throw new Error(`No model registered for task: ${task}`)
   return fallback
+}
+
+/**
+ * The vendor a model is attributed to in the UI.
+ *
+ * The first route, which is also the first one the router tries — so the badge
+ * on a card and the account that gets billed agree by construction rather than
+ * by a second field somebody has to remember to update.
+ */
+export function primaryProvider(model: ModelEntry): ProviderName {
+  return model.routes[0]?.provider ?? 'mock'
+}
+
+/** How this provider names the model, or undefined if it cannot serve it. */
+export function routeFor(model: ModelEntry, provider: ProviderName): ModelRoute | undefined {
+  return model.routes.find((route) => route.provider === provider)
+}
+
+/** Every provider that could run this model, in preference order. */
+export function providersFor(model: ModelEntry): ProviderName[] {
+  return model.routes.map((route) => route.provider)
 }
 
 /**

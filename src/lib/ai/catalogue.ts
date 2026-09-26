@@ -33,27 +33,44 @@ export interface ProviderDescriptor {
    */
   keyHint: { minLength: number; pattern?: string }
   /**
-   * True when this build can actually run a generation through the vendor.
-   * False means the key is stored and verified but generation still routes to
-   * the configured fallback — honest in the UI beats a silent no-op.
+   * True when this build can actually run a generation through the vendor —
+   * that is, when its module in services/ai/providers/ exports `createDriver`
+   * and at least one model in the registry names it.
+   *
+   * False means the key is stored and verified, and nothing more: no model
+   * routes to that vendor yet. The settings row says so in as many words,
+   * because a stored key that silently never runs anything is worse than no
+   * row at all.
    */
   generationReady: boolean
 }
 
 /**
- * Aggregators come first: they serve many models under one key, so they are
- * the cheapest thing for a new user to connect.
+ * The three aggregators come first, in the order the router tries them: they
+ * serve many models under one key, so they are the cheapest thing for a new
+ * user to connect, and they are the only entries in here that can currently
+ * run a generation.
  */
 export const PROVIDERS: ProviderDescriptor[] = [
   {
+    id: 'huggingface',
+    label: 'Hugging Face',
+    blurb: 'One token serves FLUX.1 and SDXL. A free account is enough to start.',
+    media: 'image',
+    consoleUrl: 'https://huggingface.co/settings/tokens',
+    keyPlaceholder: 'hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+    keyHint: { minLength: 20, pattern: '^hf_' },
+    generationReady: true,
+  },
+  {
     id: 'fal',
     label: 'fal.ai',
-    blurb: 'Aggregator. One key serves Flux, Kling, Hailuo and most of the catalogue.',
+    blurb: 'Aggregator. One key serves FLUX, Wan, LTX, CogVideoX and Hunyuan.',
     media: 'both',
     consoleUrl: 'https://fal.ai/dashboard/keys',
     keyPlaceholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx:xxxxxxxx',
     keyHint: { minLength: 20 },
-    generationReady: false,
+    generationReady: true,
   },
   {
     id: 'replicate',
@@ -63,7 +80,7 @@ export const PROVIDERS: ProviderDescriptor[] = [
     consoleUrl: 'https://replicate.com/account/api-tokens',
     keyPlaceholder: 'r8_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     keyHint: { minLength: 20, pattern: '^r8_' },
-    generationReady: false,
+    generationReady: true,
   },
 
   // ------------------------------------------------------------- image

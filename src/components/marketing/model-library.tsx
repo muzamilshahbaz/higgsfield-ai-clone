@@ -4,7 +4,6 @@ import { ArrowRight, Coins, KeyRound, Timer } from 'lucide-react'
 import { Reveal } from '@/components/marketing/reveal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { getProvider, PROVIDERS } from '@/lib/ai/catalogue'
 import { MODELS } from '@/lib/ai/registry'
 import { TASK_LABELS } from '@/lib/constants'
 
@@ -39,9 +38,9 @@ export function ModelLibrary() {
                 The whole library, one composer
               </h2>
               <p className="mt-3 text-pretty text-muted-foreground">
-                {MODELS.length} models across {PROVIDERS.length} providers. Switch vendor from a
-                dropdown — the controls, the credits and the job feed do not change underneath
-                you.
+                {MODELS.length} open-weight models, every one of them served by Hugging Face,
+                fal.ai or Replicate. Connect whichever account you already have — the controls,
+                the credits and the job feed do not change underneath you.
               </p>
             </div>
 
@@ -67,8 +66,6 @@ export function ModelLibrary() {
 
               <div className="mt-4 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
                 {group.models.map((model, index) => {
-                  const vendor = getProvider(model.provider)
-
                   return (
                     <Reveal
                       key={model.id}
@@ -81,7 +78,7 @@ export function ModelLibrary() {
                           <div className="min-w-0">
                             <h4 className="truncate text-[15px] font-medium">{model.label}</h4>
                             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {vendor?.label ?? model.provider}
+                              {model.family}
                             </p>
                           </div>
                           {model.featured && (

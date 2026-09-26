@@ -1,16 +1,17 @@
 import 'server-only'
 
 import { MockProvider } from '@/lib/ai/providers/mock'
-import { getModel, type ModelEntry } from '@/lib/ai/registry'
+import { getModel, providersFor, type ModelEntry } from '@/lib/ai/registry'
 import { getProvider } from '@/lib/ai/catalogue'
 import type { AIProvider } from '@/lib/ai/types'
-import { env, serverProviderKey } from '@/lib/env'
+import { serverProviderKey } from '@/lib/env'
 import type { ProviderName } from '@/types/database'
 
 import type { ProviderDriverModule, VerifyResult } from './providers/base'
 import fal from './providers/fal'
 import flux from './providers/flux'
 import google from './providers/google'
+import huggingface from './providers/huggingface'
 import kling from './providers/kling'
 import luma from './providers/luma'
 import openai from './providers/openai'
@@ -23,25 +24,30 @@ import stability from './providers/stability'
  * The AI router.
  *
  * One question, asked in one place: given the model a user picked, which
- * driver runs the job and whose credential pays for it?
+ * provider runs the job and whose credential pays for it?
  *
- *   1. The model names its vendor      (lib/ai/registry.ts)
- *   2. The user's own key for that vendor, if they connected one
- *   3. The operator's shared key for that vendor, if one is configured
- *   4. The mock driver
+ * A model does not name one vendor. It names an ordered list of providers that
+ * can serve it (`routes` in lib/ai/registry.ts), and this walks that list:
  *
- * Steps 2 and 3 only matter when a real driver for the vendor exists in this
- * build. A vendor whose module has no `createDriver` cannot run a job however
- * many valid keys point at it, so the router reports that honestly rather
- * than routing into a throw.
+ *   for each provider the model can run on, in preference order
+ *     1. a real generation driver for it must exist in this build
+ *     2. the user's own key for that provider, if they connected one
+ *     3. the operator's shared key for that provider, if one is configured
+ *
+ * The first provider that clears all three runs the job. If none does, the
+ * answer is a refusal with a sentence naming what to connect — not a mock
+ * render. A generation that did not happen must never look like one that did,
+ * which is why `routeGeneration` can fail and why the caller checks before it
+ * debits a single credit.
  *
  * Everything in here is a pure function of its arguments plus the environment.
- * Fetching the user's key is the caller's job (services/ai-keys.service.ts),
+ * Fetching the user's keys is the caller's job (services/ai-keys.service.ts),
  * which keeps this module free of Supabase and therefore unit-testable.
  */
 
 const MODULES: Record<ProviderName, ProviderDriverModule | null> = {
   mock: null,
+  huggingface,
   fal,
   replicate,
   flux,
@@ -59,37 +65,51 @@ const mock = new MockProvider()
 /** Where the credential that will run this job came from. */
 export type KeySource = 'user_key' | 'server_key' | 'none'
 
-export interface RouteDecision {
+export interface RouteSuccess {
+  ok: true
   driver: AIProvider
   /** Recorded on the generation row, so history says who actually ran it. */
   providerName: ProviderName
-  /** The vendor the model wanted, which may differ from `providerName`. */
-  intendedProvider: ProviderName
   keySource: KeySource
-  /** Present when the job fell back; written to the log, not to the user. */
+  /** Set only when this is the mock driver standing in deliberately. */
   fallbackReason?: string
 }
 
+export interface RouteFailure {
+  ok: false
+  code: 'UNKNOWN_MODEL' | 'NO_PROVIDER_KEY'
+  /** Shown to the user verbatim, so it says what to do next. */
+  message: string
+  /** The providers that could have run it, for the log and the UI hint. */
+  candidates: ProviderName[]
+}
+
+export type RouteDecision = RouteSuccess | RouteFailure
+
 /**
- * Direct-vendor drivers are opt-in.
+ * The mock driver, off by default.
  *
- * None of the per-vendor generation drivers in this build have been exercised
- * against a live account, and a wrong request shape does not fail politely —
- * it fails after the credit debit, on a user's own quota. Default off means
- * the worst case is a mock render; an operator who wants to wire a vendor up
- * sets AI_ENABLE_DIRECT_PROVIDERS=1 and takes that on deliberately.
+ * It renders a bundled sample instead of calling a provider, which is exactly
+ * what this app must not do silently — a generation history full of stand-ins
+ * is worse than an empty one. It stays in the build because it is what the
+ * automated tests run against and what a UI walkthrough with no keys needs, and
+ * an operator who wants that turns it on knowingly.
  */
-const directProvidersEnabled = process.env.AI_ENABLE_DIRECT_PROVIDERS === '1'
+const mockFallbackEnabled = process.env.AI_ALLOW_MOCK_FALLBACK === '1'
 
 /** The verification module for a vendor, or null if it has none. */
 export function driverModuleFor(provider: ProviderName): ProviderDriverModule | null {
   return MODULES[provider] ?? null
 }
 
-/** Can this build run a real job through this vendor? */
+/** Can this build run a real job through this provider? */
 export function canGenerateWith(provider: ProviderName): boolean {
-  if (!directProvidersEnabled) return false
   return typeof MODULES[provider]?.createDriver === 'function'
+}
+
+/** Every provider this build can actually generate through, in catalogue order. */
+export function generationProviders(): ProviderName[] {
+  return (Object.keys(MODULES) as ProviderName[]).filter(canGenerateWith)
 }
 
 /**
@@ -124,94 +144,126 @@ export async function verifyProviderKey(
 export interface RouteInput {
   /** Registry id the user picked in the composer. */
   modelId: string
-  /** The user's decrypted key for the model's vendor, when they have one. */
-  userKey?: string | null
+  /**
+   * The caller's decrypted keys, by provider. Only providers present here are
+   * considered as the user's own; everything else falls to the shared key.
+   */
+  keys?: Partial<Record<ProviderName, string | null>>
+  /**
+   * Pins the decision to one provider, for advancing a job that was already
+   * submitted somewhere. Without this, a user connecting a new key mid-job
+   * would move the poll to a provider that never saw the submission.
+   */
+  only?: ProviderName
 }
 
-/**
- * Picks the driver for one job.
- *
- * Always returns something runnable. There is no failure mode here: a model
- * with no reachable vendor renders through the mock driver rather than
- * refusing, which is what keeps a fresh clone with an empty .env.local a
- * working product instead of a dead Generate button.
- */
-export function routeGeneration({ modelId, userKey }: RouteInput): RouteDecision {
+export function routeGeneration({ modelId, keys, only }: RouteInput): RouteDecision {
   const model = getModel(modelId)
 
   if (!model) {
+    if (mockFallbackEnabled) {
+      return {
+        ok: true,
+        driver: mock,
+        providerName: 'mock',
+        keySource: 'none',
+        fallbackReason: `unknown model ${modelId}`,
+      }
+    }
+
     return {
-      driver: mock,
-      providerName: 'mock',
-      intendedProvider: 'mock',
-      keySource: 'none',
-      fallbackReason: `unknown model ${modelId}`,
+      ok: false,
+      code: 'UNKNOWN_MODEL',
+      message: 'That model no longer exists. Pick another one.',
+      candidates: [],
     }
   }
 
-  return routeForModel(model, userKey)
+  if (only === 'mock') {
+    return { ok: true, driver: mock, providerName: 'mock', keySource: 'none' }
+  }
+
+  return routeForModel(model, keys ?? {}, only)
 }
 
-function routeForModel(model: ModelEntry, userKey?: string | null): RouteDecision {
-  const intended = model.provider
+function routeForModel(
+  model: ModelEntry,
+  keys: Partial<Record<ProviderName, string | null>>,
+  only?: ProviderName,
+): RouteDecision {
+  const candidates = providersFor(model).filter((provider) => !only || provider === only)
 
-  const base = { intendedProvider: intended } as const
+  for (const provider of candidates) {
+    const create = MODULES[provider]?.createDriver
+    if (!create) continue
 
-  if (!canGenerateWith(intended)) {
-    return {
-      ...base,
-      driver: mock,
-      providerName: 'mock',
-      keySource: 'none',
-      fallbackReason: directProvidersEnabled
-        ? `no generation driver for ${intended}`
-        : 'direct providers disabled (AI_ENABLE_DIRECT_PROVIDERS)',
+    // The user's own key first. Their quota, their rate limit, their bill.
+    const userKey = keys[provider]?.trim()
+    if (userKey) {
+      return { ok: true, driver: create(userKey), providerName: provider, keySource: 'user_key' }
+    }
+
+    const shared = serverProviderKey(provider)
+    if (shared) {
+      return { ok: true, driver: create(shared), providerName: provider, keySource: 'server_key' }
     }
   }
 
-  const driverModule = MODULES[intended]
-  const create = driverModule?.createDriver
-  if (!create) {
-    // Unreachable given canGenerateWith, but narrowing here beats a non-null
-    // assertion that a later edit could quietly invalidate.
+  if (mockFallbackEnabled) {
     return {
-      ...base,
+      ok: true,
       driver: mock,
       providerName: 'mock',
       keySource: 'none',
-      fallbackReason: `no generation driver for ${intended}`,
+      fallbackReason: `no key available for ${candidates.join(', ') || model.id}`,
     }
-  }
-
-  // The user's own key first. Their quota, their rate limit, their bill.
-  const trimmedUserKey = userKey?.trim()
-  if (trimmedUserKey) {
-    return { ...base, driver: create(trimmedUserKey), providerName: intended, keySource: 'user_key' }
-  }
-
-  const shared = serverProviderKey(intended)
-  if (shared) {
-    return { ...base, driver: create(shared), providerName: intended, keySource: 'server_key' }
   }
 
   return {
-    ...base,
-    driver: mock,
-    providerName: 'mock',
-    keySource: 'none',
-    fallbackReason: `no key available for ${intended}`,
+    ok: false,
+    code: 'NO_PROVIDER_KEY',
+    message: connectKeyMessage(model, candidates),
+    candidates,
   }
 }
 
 /**
- * The vendors a user could usefully connect, given what this build can do.
+ * The sentence a user reads when nothing can run their job.
  *
- * Exposed so the settings tab can explain why connecting a key does not yet
- * change where a job runs, instead of implying it does.
+ * It names the model they chose and the accounts that would serve it, because
+ * "no provider configured" tells someone with a fal.ai key nothing about the
+ * fact that they are two clicks from a working generation.
+ */
+function connectKeyMessage(model: ModelEntry, candidates: ProviderName[]): string {
+  const runnable = candidates.filter(canGenerateWith)
+
+  if (runnable.length === 0) {
+    return `${model.label} cannot run in this deployment yet. Pick another model.`
+  }
+
+  const labels = runnable.map((provider) => getProvider(provider)?.label ?? provider)
+  const list =
+    labels.length === 1
+      ? labels[0]
+      : `${labels.slice(0, -1).join(', ')} or ${labels[labels.length - 1]}`
+
+  return `${model.label} needs an API key. Add a ${list} key in Settings → AI model keys, then try again.`
+}
+
+/**
+ * What this deployment can do, for the settings page to state plainly.
+ *
+ * Derived from the modules themselves rather than from a flag, so the page
+ * cannot claim a capability the build does not have.
  */
 export function routingSummary() {
+  const providers = generationProviders()
+
   return {
-    directProvidersEnabled,
-    aggregatorDefault: env.aiProvider,
+    generationProviders: providers,
+    generationProviderLabels: providers.map(
+      (provider) => getProvider(provider)?.label ?? provider,
+    ),
+    mockFallbackEnabled,
   }
 }

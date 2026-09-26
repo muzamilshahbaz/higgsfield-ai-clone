@@ -33,9 +33,6 @@ export const env = {
   supabaseAnonKey: clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
   supabaseServiceRoleKey: clean(process.env.SUPABASE_SERVICE_ROLE_KEY),
   siteUrl: clean(process.env.NEXT_PUBLIC_SITE_URL) ?? 'http://localhost:3000',
-  aiProvider: (clean(process.env.AI_PROVIDER) ?? 'mock') as 'mock' | 'fal' | 'replicate',
-  falKey: clean(process.env.FAL_KEY),
-  replicateToken: clean(process.env.REPLICATE_API_TOKEN),
   cronSecret: clean(process.env.CRON_SECRET),
   /** Seals the provider keys users store. Without it, the vault is read-only. */
   aiKeySecret: clean(process.env.AI_KEY_ENCRYPTION_SECRET),
@@ -43,11 +40,12 @@ export const env = {
 } as const
 
 /**
- * The shared fallback key for a vendor, when the operator has configured one.
+ * The shared fallback key for a provider, when the operator has configured one.
  *
- * This is the third and last step of the routing chain in
- * services/ai/ai-router.ts: a user's own key wins, this is what covers
- * everyone else, and the mock driver catches the rest.
+ * This is the second and last step of the routing chain in
+ * services/ai/ai-router.ts: a user's own key wins, and this is what covers
+ * everyone who has not connected one. With neither, the job is refused with a
+ * message naming what to connect — it is never quietly mocked.
  *
  * A full switch rather than `process.env[`${NAME}_API_KEY`]` for the reason
  * at the top of this file — and because an exhaustive switch means adding a
@@ -56,6 +54,8 @@ export const env = {
  */
 export function serverProviderKey(provider: ProviderName): string | undefined {
   switch (provider) {
+    case 'huggingface':
+      return clean(process.env.HUGGINGFACE_API_KEY)
     case 'fal':
       return clean(process.env.FAL_KEY)
     case 'replicate':

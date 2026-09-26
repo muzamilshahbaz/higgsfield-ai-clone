@@ -1,9 +1,14 @@
 import 'server-only'
 
-import { getModel, type GenerationRequest } from '@/lib/ai'
-import { MockProvider } from '@/lib/ai/providers/mock'
-import { routeGeneration, type RouteDecision } from '@/services/ai/ai-router'
-import { getUserProviderKey } from '@/services/ai-keys.service'
+import {
+  getModel,
+  providersFor,
+  ProviderRequestError,
+  type GenerationRequest,
+  type ProviderPollResult,
+} from '@/lib/ai'
+import { routeGeneration } from '@/services/ai/ai-router'
+import { getUserProviderKeys } from '@/services/ai-keys.service'
 import { planForUser } from '@/services/subscription.service'
 import { LIMITS } from '@/lib/constants'
 import { isServiceRoleConfigured } from '@/lib/env'
@@ -16,6 +21,7 @@ import {
   resolvePrompt,
 } from '@/lib/presets'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isUnknownProviderEnumValue, PENDING_PROVIDER_MIGRATION } from '@/lib/supabase/errors'
 import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import type { CreateGenerationInput } from '@/lib/validation/generation'
 import {
@@ -53,6 +59,7 @@ export type CreateFailure =
   | { code: 'UNAUTHENTICATED'; status: 401 }
   | { code: 'NOT_CONFIGURED'; status: 503 }
   | { code: 'UNKNOWN_MODEL'; status: 400 }
+  | { code: 'NO_PROVIDER_KEY'; status: 400 }
   | { code: 'TOO_MANY_ACTIVE'; status: 429 }
   | { code: 'RATE_LIMITED'; status: 429 }
   | { code: 'INSUFFICIENT_CREDITS'; status: 402; required: number; balance: number }
@@ -115,14 +122,31 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
 
   const generationId = crypto.randomUUID()
 
-  // Route before the row is written, so `provider` records who actually ran
-  // the job rather than who we hoped would. The user's own key is preferred,
-  // then the operator's shared one, then the mock driver — see
-  // services/ai/ai-router.ts.
+  // Route before anything is written or charged.
+  //
+  // Two reasons, in order of importance. First, a job with nowhere to run must
+  // cost nothing and leave no row: no credit debit, no failed card to explain,
+  // just a sentence telling the user which key to add. Second, `provider` on
+  // the row then records who actually ran the job rather than who we hoped
+  // would. See services/ai/ai-router.ts for the order it tries.
   const route = await routeForUser(user.id, model.id)
-  if (route.fallbackReason && route.intendedProvider !== 'mock') {
+
+  if (!route.ok) {
     console.info(
-      `[generation.service] ${model.id} routed to ${route.providerName}: ${route.fallbackReason}`,
+      `[generation.service] ${model.id} has no runnable provider (${route.candidates.join(', ') || 'none'})`,
+    )
+
+    return {
+      ok: false,
+      code: route.code === 'UNKNOWN_MODEL' ? 'UNKNOWN_MODEL' : 'NO_PROVIDER_KEY',
+      status: 400,
+      message: route.message,
+    }
+  }
+
+  if (route.fallbackReason) {
+    console.warn(
+      `[generation.service] ${model.id} is running on the mock driver: ${route.fallbackReason}`,
     )
   }
 
@@ -166,6 +190,20 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
       }
     }
     console.error('[generation.service] insert failed:', insertError?.message)
+
+    // The one database failure with an instruction attached: the router picked
+    // a provider whose name the enum does not have yet. Nothing was charged —
+    // the debit comes after this — so the honest answer is "run the migration",
+    // not a 500.
+    if (isUnknownProviderEnumValue(insertError)) {
+      return {
+        ok: false,
+        code: 'NOT_CONFIGURED',
+        status: 503,
+        message: PENDING_PROVIDER_MIGRATION,
+      }
+    }
+
     return { ok: false, code: 'ERROR', status: 500, message: 'Could not start that generation.' }
   }
 
@@ -199,46 +237,73 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
   // 6. Submit. A throw here refunds and leaves a visible failed card rather
   //    than a silent charge.
   try {
-    const { providerJobId } = await route.driver.submit(toProviderRequest(inserted))
-
-    const { data: running } = await admin
-      .from('generations')
-      .update({
-        provider_job_id: providerJobId,
-        status: 'running',
-        started_at: new Date().toISOString(),
-      })
-      .eq('id', generationId)
-      .select('*')
-      .single()
+    const submitted = await route.driver.submit(toProviderRequest(inserted))
+    const startedAt = new Date().toISOString()
 
     // Lineage is recorded after the job is accepted, so a submission the
     // provider rejected does not inflate the parent's remix count.
     if (input.parentId) await noteRemix(input.parentId)
 
+    let settled: GenerationRow
+
+    if (submitted.immediate) {
+      // A provider with no queue — Hugging Face — has already finished by the
+      // time submit returns. The job id and the terminal state go down in ONE
+      // write, which is the whole point of this branch.
+      //
+      // Marking it `running` first and settling it second opened a window that
+      // a concurrent sweep could land in: the ticker polls every three seconds,
+      // `syncMyJobs` picks up anything queued or running that carries a job id,
+      // and a synchronous driver has no job left to poll — so it answered
+      // SYNC_RESULT_LOST and refunded a generation that had in fact succeeded.
+      // Observed in QA: a finished 1MB image sitting under a card that said
+      // Failed, refunded. Until the id is persisted there is nothing for a
+      // sweep to poll, and `queued` with a null job id is explicitly a no-op
+      // for the first fifteen seconds (see syncGenerationRow).
+      settled = await applyPollResult(inserted, submitted.immediate, {
+        provider_job_id: submitted.providerJobId,
+        started_at: startedAt,
+      })
+    } else {
+      // A real queue: the job id is what the ticker needs to advance it, so it
+      // is written immediately and the row waits in `running`.
+      const { data: running } = await admin
+        .from('generations')
+        .update({
+          provider_job_id: submitted.providerJobId,
+          status: 'running',
+          started_at: startedAt,
+        })
+        .eq('id', generationId)
+        .select('*')
+        .single()
+
+      settled = running ?? inserted
+    }
+
     return {
       ok: true,
-      generation: await withAssets(running ?? inserted),
+      generation: await withAssets(settled),
       deduped: false,
       balance: spend.balance,
     }
   } catch (cause) {
-    const message = cause instanceof Error ? cause.message : 'The provider rejected the job.'
-    console.error('[generation.service] submit failed:', message)
+    const failure = describeProviderFailure(cause)
+    console.error('[generation.service] submit failed:', failure.message)
 
     const balance = await refundCredits({
       userId: user.id,
       amount: creditCost,
       generationId,
-      note: 'Provider rejected the submission',
+      note: `Refund · ${failure.code}`,
     })
 
     const { data: failed } = await admin
       .from('generations')
       .update({
         status: 'failed',
-        error_code: 'SUBMIT_FAILED',
-        error_message: message,
+        error_code: failure.code,
+        error_message: failure.message,
         completed_at: new Date().toISOString(),
       })
       .eq('id', generationId)
@@ -252,6 +317,24 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
       balance: balance ?? spend.balance,
     }
   }
+}
+
+/**
+ * What to record when a driver throws.
+ *
+ * Drivers raise `ProviderRequestError` with a code and a sentence written for a
+ * person — "Hugging Face is loading this model", "fal.ai rejected the API key".
+ * Those are worth showing verbatim. Anything else is a bug in our own code and
+ * gets a generic message, because the alternative is putting a stack-trace
+ * fragment on a card in someone's library.
+ */
+function describeProviderFailure(cause: unknown): { code: string; message: string } {
+  if (cause instanceof ProviderRequestError) {
+    return { code: cause.code, message: cause.message }
+  }
+
+  console.error('[generation.service] unexpected driver failure:', cause)
+  return { code: 'SUBMIT_FAILED', message: 'The provider rejected the job. Nothing was charged.' }
 }
 
 // ---------------------------------------------------------------------------
@@ -268,8 +351,6 @@ export async function createGeneration(input: CreateGenerationInput): Promise<Cr
  */
 export async function syncGenerationRow(row: GenerationRow): Promise<GenerationRow> {
   if (isTerminal(row.status)) return row
-
-  const admin = createAdminClient()
 
   const ageMs = Date.now() - new Date(row.queued_at).getTime()
   if (ageMs > LIMITS.jobTimeoutMs) {
@@ -291,9 +372,22 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
     })
   }
 
-  let poll
+  const driver = await driverForRow(row)
+
+  if (!driver) {
+    // The provider that ran this job is no longer reachable: the key it used is
+    // gone and no shared one replaced it. Nothing will ever answer about this
+    // job, so failing it now refunds instead of spinning to the timeout.
+    return finish(row, {
+      status: 'failed',
+      error_code: 'PROVIDER_DISCONNECTED',
+      error_message: `The ${row.provider} key this job was running on is no longer connected.`,
+    })
+  }
+
+  let poll: ProviderPollResult
   try {
-    poll = await (await driverForRow(row)).poll(row.provider_job_id, toProviderRequest(row))
+    poll = await driver.poll(row.provider_job_id, toProviderRequest(row))
   } catch (cause) {
     console.error(
       '[generation.service] poll failed:',
@@ -301,6 +395,32 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
     )
     return row // transient: let the next tick try again
   }
+
+  return applyPollResult(row, poll)
+}
+
+/**
+ * Writes one provider answer onto the row.
+ *
+ * The single place a job changes state, whether the answer came from a poll or
+ * straight back from a submit (see SubmitResult.immediate). Everything that
+ * makes a finished job trustworthy lives here and therefore cannot be missed by
+ * one of the two callers: media is persisted before the status flips, a failure
+ * refunds, and a success that produced no storable media is a failure.
+ */
+async function applyPollResult(
+  row: GenerationRow,
+  poll: ProviderPollResult,
+  /**
+   * Extra columns to write in the SAME statement as the status.
+   *
+   * Exists for the synchronous providers: a job id written before the terminal
+   * state is a job id a concurrent sweep will try to poll. One write, or the
+   * race is back.
+   */
+  patch: Partial<Pick<GenerationRow, 'provider_job_id' | 'started_at'>> = {},
+): Promise<GenerationRow> {
+  const admin = createAdminClient()
 
   if (poll.status === 'queued' || poll.status === 'running') {
     const progress = clamp01(poll.progress ?? row.progress)
@@ -313,6 +433,7 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
         status,
         progress,
         started_at: row.started_at ?? new Date().toISOString(),
+        ...patch,
       })
       .eq('id', row.id)
       .select('*')
@@ -322,16 +443,32 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
   }
 
   if (poll.status === 'failed') {
-    return finish(row, {
-      status: 'failed',
-      error_code: poll.error?.code ?? 'PROVIDER_ERROR',
-      error_message: poll.error?.message ?? 'The provider could not finish this job.',
-    })
+    return finish(
+      row,
+      {
+        status: 'failed',
+        error_code: poll.error?.code ?? 'PROVIDER_ERROR',
+        error_message: poll.error?.message ?? 'The provider could not finish this job.',
+      },
+      patch,
+    )
   }
 
   // Succeeded: media is persisted BEFORE the status flips, so a card that says
   // "Ready" always has something to show.
-  await persistProviderAssets(row, poll.assets ?? [])
+  const expected = poll.assets ?? []
+  const persisted = await persistProviderAssets(row, expected)
+
+  if (expected.length > 0 && persisted.length === 0) {
+    // The provider generated something and we could not keep it. That is a
+    // failed generation from the user's side — the card would say "Ready" over
+    // an empty frame — so it fails and refunds rather than succeeding hollow.
+    return finish(row, {
+      status: 'failed',
+      error_code: 'STORAGE_FAILED',
+      error_message: 'The generation finished but its media could not be stored. Try again.',
+    })
+  }
 
   const { data } = await admin
     .from('generations')
@@ -340,6 +477,7 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
       progress: 1,
       provider_cost_usd: poll.costUsd ?? null,
       completed_at: new Date().toISOString(),
+      ...patch,
     })
     .eq('id', row.id)
     .select('*')
@@ -352,6 +490,7 @@ export async function syncGenerationRow(row: GenerationRow): Promise<GenerationR
 async function finish(
   row: GenerationRow,
   patch: { status: 'failed'; error_code: string; error_message: string },
+  extra: Partial<Pick<GenerationRow, 'provider_job_id' | 'started_at'>> = {},
 ): Promise<GenerationRow> {
   const admin = createAdminClient()
 
@@ -364,7 +503,7 @@ async function finish(
 
   const { data } = await admin
     .from('generations')
-    .update({ ...patch, progress: 1, completed_at: new Date().toISOString() })
+    .update({ ...patch, ...extra, progress: 1, completed_at: new Date().toISOString() })
     .eq('id', row.id)
     .select('*')
     .single()
@@ -759,53 +898,46 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, value))
 }
 
-/** Rebuilds the provider's view of a job from the stored row. */
-const mockDriver = new MockProvider()
-
 /**
- * Routes one job, fetching the user's own key for the model's vendor first.
+ * Routes one job, preferring the user's own keys.
  *
- * Split out from routeGeneration() so the router itself stays free of
- * Supabase and remains a pure function the unit tests can drive.
+ * A model names several providers it can run on, so this asks the vault for
+ * every one of them in a single query and lets the router pick. Split out from
+ * routeGeneration() so the router itself stays free of Supabase and remains a
+ * pure function the unit tests can drive.
  */
-async function routeForUser(userId: string, modelId: string): Promise<RouteDecision> {
+async function routeForUser(userId: string, modelId: string) {
   const model = getModel(modelId)
+  const candidates = model ? providersFor(model) : []
 
-  // Only ask the vault for a key the router could actually use. A lookup for
-  // a vendor this build cannot generate with is a decrypt and a query spent
-  // on an answer that is thrown away.
-  const userKey =
-    model && canUseUserKey(model.provider)
-      ? await getUserProviderKey(userId, model.provider)
-      : null
+  // Only ask the vault for keys the router could actually use.
+  const keys = await getUserProviderKeys(userId, candidates)
 
-  return routeGeneration({ modelId, userKey })
-}
-
-function canUseUserKey(provider: GenerationRow['provider']): boolean {
-  return provider !== 'mock'
+  return routeGeneration({ modelId, keys })
 }
 
 /**
  * The driver that can answer for a job already in flight.
  *
- * Keyed off the provider recorded on the row, not off current configuration:
- * a job submitted to the mock driver holds a mock job id, and flipping
- * AI_ENABLE_DIRECT_PROVIDERS while it is queued must not send that id to a
- * real vendor. Re-routing here also means a user who removed their key
- * mid-job still gets the job polled, because the row remembers the vendor.
+ * Pinned to the provider recorded on the row, never re-chosen: a job submitted
+ * to fal holds a fal request id, and a user who connects a Hugging Face token
+ * while it is queued must not have that id polled against Hugging Face. It
+ * also means removing a key mid-job still leaves the job pollable through the
+ * operator's shared key, because the row remembers where it went.
+ *
+ * Returns null when the provider that ran the job can no longer be reached —
+ * every key for it is gone. The caller fails the job and refunds rather than
+ * polling something that cannot answer until the timeout.
  */
 async function driverForRow(row: GenerationRow) {
-  if (row.provider === 'mock') return mockDriver
+  // A mock job's state lives entirely in its job id, so it needs no credential
+  // and must not cost a vault query.
+  const keys =
+    row.provider === 'mock' ? {} : await getUserProviderKeys(row.user_id, [row.provider])
 
-  const userKey = await getUserProviderKey(row.user_id, row.provider)
-  const route = routeGeneration({ modelId: row.model_id, userKey })
+  const route = routeGeneration({ modelId: row.model_id, keys, only: row.provider })
 
-  // If routing has since collapsed back to mock, the recorded job id is not a
-  // mock id and polling it would fail every tick until the timeout. Failing
-  // fast through the mock driver's malformed-id path is the same outcome,
-  // sooner, and it refunds.
-  return route.driver
+  return route.ok ? route.driver : null
 }
 
 function toProviderRequest(row: GenerationRow): GenerationRequest {

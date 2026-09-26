@@ -214,6 +214,12 @@ function ProviderRow({
                   {meta.label}
                 </Badge>
               )}
+              {/*
+                Said on the row rather than in a footnote. A key that stores and
+                verifies but runs nothing is the exact thing a green tick would
+                misrepresent, so the row carries the caveat next to the name.
+              */}
+              {!provider.generationReady && <Badge variant="secondary">Verify only</Badge>}
             </div>
 
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{provider.blurb}</p>

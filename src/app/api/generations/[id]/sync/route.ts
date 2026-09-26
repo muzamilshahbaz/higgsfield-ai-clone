@@ -9,6 +9,8 @@ import { syncGeneration } from '@/services/generation.service'
  * running jobs cost one round trip rather than N. This one exists for a single
  * card asking about itself.
  */
+export const maxDuration = 60
+
 export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params
 

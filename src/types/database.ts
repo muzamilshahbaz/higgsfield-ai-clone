@@ -19,13 +19,18 @@ export type PresetKind = 'motion' | 'style'
 /**
  * Every vendor the app can name on a generation row.
  *
- * `mock`, `fal` and `replicate` are aggregators selected by AI_PROVIDER. The
- * rest are direct vendor accounts a user connects with their own key in
- * Settings -> AI model keys; see lib/ai/catalogue.ts for what each one is.
- * Keep this list in step with the `provider_name` enum in migration 0007.
+ * `huggingface`, `fal` and `replicate` are the aggregators this build can
+ * actually run a job through — every model in the registry names at least one
+ * of them. The rest are direct vendor accounts a user can connect and verify
+ * in Settings -> AI model keys, but no generation driver ships for them yet;
+ * see lib/ai/catalogue.ts for what each one is.
+ *
+ * Keep this list in step with the `provider_name` enum in migrations 0007 and
+ * 0010.
  */
 export type ProviderName =
   | 'mock'
+  | 'huggingface'
   | 'fal'
   | 'replicate'
   | 'flux'
