@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { Coins, Sparkles, Wand2 } from 'lucide-react'
 
+import { CategoryChips, VisibilityBadge } from '@/components/explore/engagement'
 import { PermalinkActions } from '@/components/explore/permalink-actions'
 import { GenerationMedia } from '@/components/gallery/generation-media'
 import { SiteFooter } from '@/components/marketing/site-footer'
@@ -12,10 +13,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getModel } from '@/lib/ai/registry'
 import { TASK_LABELS } from '@/lib/constants'
-import { authorInitialsOf, authorNameOf } from '@/lib/explore'
+import { authorInitialsOf, authorNameOf, displayTitleOf } from '@/lib/explore'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { aspectStyle, formatRelativeTime, truncate } from '@/lib/utils'
-import { getPublicGeneration, listPublicGenerations } from '@/services/explore.service'
+import { getPublicGeneration, listRelatedGenerations } from '@/services/explore.service'
 import { getPreset } from '@/services/preset.service'
 import { PermalinkStrip } from '@/components/explore/permalink-strip'
 
@@ -49,7 +50,7 @@ export async function generateMetadata({
     return { title: 'Shot not found', robots: { index: false } }
   }
 
-  const title = truncate(generation.prompt.trim() || 'A shot made with Kinetic', 70)
+  const title = truncate(displayTitleOf(generation), 70)
   const author = authorNameOf(generation)
   const description = `${TASK_LABELS[generation.task]} by ${author}, made with Kinetic.`
 
@@ -89,11 +90,14 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
 
   const [preset, related] = await Promise.all([
     generation.preset_id ? getPreset(generation.preset_id) : Promise.resolve(null),
-    listPublicGenerations({ limit: RELATED_COUNT, excludeId: generation.id }),
+    // Prefers shots sharing a category over simply the newest anything, so
+    // "more from Explore" under a portrait is not a row of product shots.
+    listRelatedGenerations(generation, RELATED_COUNT),
   ])
 
   const model = getModel(generation.model_id)
-  const label = generation.prompt.trim()
+  const label = displayTitleOf(generation)
+  const prompt = generation.prompt.trim()
   const author = authorNameOf(generation)
 
   return (
@@ -106,10 +110,7 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
             className="relative w-full overflow-hidden bg-surface"
             style={aspectStyle(generation.aspect_ratio)}
           >
-            <GenerationMedia
-              assets={generation.assets}
-              alt={label || `A ${TASK_LABELS[generation.task].toLowerCase()} made with Kinetic`}
-            />
+            <GenerationMedia assets={generation.assets} alt={label} />
           </div>
 
           <div className="space-y-5 p-5 sm:p-6">
@@ -123,12 +124,18 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
                 </AvatarFallback>
               </Avatar>
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{author}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatRelativeTime(generation.created_at)}
+                  <time dateTime={generation.created_at}>
+                    {formatRelativeTime(generation.created_at)}
+                  </time>
                 </p>
               </div>
+
+              {/* Only its author sees this. Everything reachable at this URL is
+                  public, so on anyone else's screen the badge says nothing. */}
+              {generation.isOwner && <VisibilityBadge visibility={generation.visibility} />}
             </div>
 
             {/*
@@ -138,8 +145,18 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
               to a screen reader and to a crawler.
             */}
             <h1 className="text-pretty text-lg font-normal leading-relaxed text-foreground/90">
-              {label || 'Untitled shot'}
+              {label}
             </h1>
+
+            {/* When a shot has a title of its own, the prompt is a separate
+                fact rather than the heading, and gets said separately. */}
+            {generation.title?.trim() && prompt && (
+              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
+                {prompt}
+              </p>
+            )}
+
+            <CategoryChips categories={generation.categories} />
 
             <div className="flex flex-wrap items-center gap-2">
               {preset && (
@@ -161,8 +178,13 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
 
             <PermalinkActions
               generationId={generation.id}
+              label={label}
+              assets={generation.assets}
               initialLiked={generation.liked}
-              initialCount={generation.like_count}
+              initialLikeCount={generation.like_count}
+              initialFavourited={generation.favourited}
+              initialFavouriteCount={generation.favourite_count}
+              initialDownloadCount={generation.download_count}
               signedIn={Boolean(user)}
             />
           </div>

@@ -37,12 +37,15 @@ export type { MediaCategory }
 /**
  * The one loose seam in this file, and the reason it is here.
  *
- * `media_assets` is not registered in the `Database` map — registering an
- * eleventh table breaks supabase-js's type resolution for every other table
- * (see the note on MediaAssetRow in types/database.ts). So this table is
+ * `media_assets` is not registered in the `Database` map, so this table is
  * queried through a narrowed client and the rows are mapped back onto the
  * real interface immediately, which keeps the untyped surface to two lines
  * rather than spreading it through the schema.
+ *
+ * The original reason — that an eleventh table broke supabase-js's type
+ * resolution for every other table — no longer holds; see the note on
+ * MediaAssetRow in types/database.ts. This stays as it is because it works,
+ * not because the map cannot take it.
  */
 type LooseClient = {
   from: (table: string) => {

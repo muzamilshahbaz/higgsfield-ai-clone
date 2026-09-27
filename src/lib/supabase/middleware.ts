@@ -12,6 +12,10 @@ const PROTECTED_PREFIXES = [
   '/library',
   '/history',
   '/settings',
+  // Explore is deliberately absent — it is the one studio surface a stranger
+  // can browse. Favourites is not: it is one person's saved list, and there is
+  // no signed-out version of it that means anything.
+  '/favourites',
 ]
 
 /** Auth pages a signed-in user should not see. */

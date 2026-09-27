@@ -12,14 +12,17 @@ import {
   Lock,
   Loader2,
   Sparkles,
+  Star,
+  Tags,
   Trash2,
   Wand2,
 } from 'lucide-react'
 
 import { deleteGenerationAction, moveGenerationAction } from '@/app/(studio)/library/actions'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { setVisibilityAction } from '@/app/(studio)/explore/actions'
+import { CategoryChips, StatPill, StatRow } from '@/components/explore/engagement'
 import { ShareButton } from '@/components/explore/share-button'
+import { PublishDialog, VisibilityControl } from '@/components/gallery/visibility-control'
 import { setProjectCoverAction } from '@/app/(studio)/projects/actions'
 import { GenerationMedia } from '@/components/gallery/generation-media'
 import { Badge } from '@/components/ui/badge'
@@ -45,7 +48,12 @@ import {
   formatDuration,
   formatRelativeTime,
 } from '@/lib/utils'
-import { isTerminal, type GenerationVisibility, type GenerationWithAssets } from '@/types/database'
+import {
+  isTerminal,
+  type ExploreCategorySlug,
+  type GenerationVisibility,
+  type GenerationWithAssets,
+} from '@/types/database'
 
 /**
  * The detail view behind every library tile.
@@ -83,13 +91,19 @@ export function GenerationDrawer({
   coverProjectId?: string | null
   onDeleted?: (id: string) => void
   onMoved?: (id: string, projectId: string | null) => void
-  onVisibilityChanged?: (id: string, visibility: GenerationVisibility) => void
+  onVisibilityChanged?: (
+    id: string,
+    visibility: GenerationVisibility,
+    categories: ExploreCategorySlug[],
+  ) => void
 }) {
   const { byId } = usePresetCatalogue()
   const [busy, setBusy] = React.useState<
-    null | 'download' | 'move' | 'cover' | 'delete' | 'publish'
+    null | 'download' | 'move' | 'cover' | 'delete'
   >(null)
   const [confirmingDelete, setConfirmingDelete] = React.useState(false)
+  /** The publish sheet, reopened to change categories on already-public work. */
+  const [retagging, setRetagging] = React.useState(false)
 
   // Reset the destructive confirmation whenever a different shot is opened.
   React.useEffect(() => {
@@ -152,24 +166,6 @@ export function GenerationDrawer({
       return
     }
     toast.success('Project cover updated')
-  }
-
-  async function setVisibility(next: 'public' | 'private') {
-    if (!generation) return
-    setBusy('publish')
-    const result = await setVisibilityAction(generation.id, next)
-    setBusy(null)
-
-    if (!result.ok) {
-      toast.error(result.error)
-      return
-    }
-
-    onVisibilityChanged?.(generation.id, result.data.visibility)
-    toast.success(next === 'public' ? 'Published to Explore' : 'Taken down from Explore', {
-      description:
-        next === 'public' ? 'Anyone with the link can see it now.' : 'Only you can see it again.',
-    })
   }
 
   async function remove() {
@@ -334,36 +330,67 @@ export function GenerationDrawer({
                     </div>
                   </div>
 
+                  {/* What it is filed under. Only meaningful once it is
+                      public, which is the only state in which anybody browses
+                      by category. */}
+                  {isPublic && generation.categories?.length > 0 && (
+                    <CategoryChips categories={generation.categories} />
+                  )}
+
                   <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant={isPublic ? 'outline' : 'default'}
-                      size="sm"
-                      onClick={() => void setVisibility(isPublic ? 'private' : 'public')}
-                      disabled={busy === 'publish'}
-                    >
-                      {busy === 'publish' ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : isPublic ? (
-                        <Lock className="size-3.5" />
-                      ) : (
-                        <Globe className="size-3.5" />
-                      )}
-                      {isPublic ? 'Unpublish' : 'Publish'}
-                    </Button>
+                    <VisibilityControl
+                      variant="button"
+                      generation={generation}
+                      onChanged={(id, visibility, categories) =>
+                        onVisibilityChanged?.(id, visibility, categories)
+                      }
+                    />
 
                     {isPublic && (
                       <>
+                        <Button variant="ghost" size="sm" onClick={() => setRetagging(true)}>
+                          <Tags className="size-3.5" />
+                          Categories
+                        </Button>
                         <ShareButton generationId={generation.id} variant="ghost" />
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {generation.like_count} {generation.like_count === 1 ? 'like' : 'likes'}
-                          {generation.remix_count > 0
-                            ? ` · ${generation.remix_count} ${generation.remix_count === 1 ? 'remix' : 'remixes'}`
-                            : ''}
-                        </span>
                       </>
                     )}
                   </div>
+
+                  {/* The engagement this shot has earned. Absent while it is
+                      private, because every one of these numbers is zero until
+                      somebody can see it. */}
+                  {isPublic && (
+                    <div className="flex flex-wrap items-center gap-3 border-t border-border/60 pt-2.5 text-xs tabular-nums text-muted-foreground">
+                      <StatRow
+                        likes={generation.like_count}
+                        comments={generation.comment_count}
+                        downloads={generation.download_count}
+                      />
+                      <StatPill
+                        icon={Star}
+                        count={generation.favourite_count}
+                        label="favourite"
+                      />
+                      {generation.remix_count > 0 && (
+                        <span>
+                          {generation.remix_count}{' '}
+                          {generation.remix_count === 1 ? 'remix' : 'remixes'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                <PublishDialog
+                  open={retagging}
+                  onOpenChange={setRetagging}
+                  generation={generation}
+                  onPublished={(categories) => {
+                    onVisibilityChanged?.(generation.id, 'public', categories)
+                    setRetagging(false)
+                  }}
+                />
               </Section>
             )}
 

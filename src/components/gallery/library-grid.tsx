@@ -331,6 +331,9 @@ export function LibraryGrid({
               selected={selection.has(generation.id)}
               onToggleSelect={toggleSelect}
               onDelete={setDeleting}
+              onVisibilityChanged={(id, visibility, categories) =>
+                patch(id, { visibility, categories })
+              }
             />
           ))}
         </MasonryGrid>
@@ -407,7 +410,9 @@ export function LibraryGrid({
         projects={projects}
         coverProjectId={projectId}
         onDeleted={remove}
-        onVisibilityChanged={(id, visibility) => patch(id, { visibility })}
+        onVisibilityChanged={(id, visibility, categories) =>
+          patch(id, categories ? { visibility, categories } : { visibility })
+        }
         onMoved={(id, nextProjectId) => {
           // Moved out of the project being viewed: it no longer belongs here.
           if (projectId && nextProjectId !== projectId) remove(id)

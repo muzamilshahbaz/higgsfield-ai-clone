@@ -60,15 +60,24 @@ export type MediaCategory =
  *
  * Never generated output: see migration 0011 and services/media.service.ts.
  *
- * Deliberately NOT registered in the `Database` map below. Adding an eleventh
- * table tips supabase-js's type machinery past an instantiation limit and the
- * whole client generic silently degrades to `never` — every other table's
- * `rpc` and row types break with it. Reproduced with a two-field row and with
- * the column types simplified, so it is the table count, not this shape.
+ * Deliberately NOT registered in the `Database` map below — but the reason is
+ * no longer the one originally written here.
  *
- * services/media.service.ts therefore reads this one table through a narrowed
- * client and maps the result back onto this interface, which keeps the
- * looseness in one file instead of across the schema.
+ * That note said an eleventh table tipped supabase-js's type machinery past an
+ * instantiation limit and degraded the whole client generic to `never`. The
+ * map now carries twelve tables (`favourites` and `comments` joined it in
+ * migration 0013) and `tsc --noEmit` is clean; probing with three extra table
+ * entries was also clean. So whatever that limit was, the current TypeScript
+ * and supabase-js versions do not hit it at this size.
+ *
+ * This table stays out of the map because moving it in now would be churn for
+ * no gain: `media.service.ts` already reads it through a narrowed client and
+ * maps the rows back onto this interface, and that works. If a future table
+ * genuinely needs registering, register it — and if the `never` degradation
+ * ever comes back, it will be a real limit rather than this inherited belief.
+ *
+ * services/media.service.ts keeps the looseness in one file rather than
+ * spreading it across the schema.
  */
 export interface MediaAssetRow {
   id: string
@@ -92,6 +101,27 @@ export type ProviderKeyStatus = 'unverified' | 'valid' | 'invalid' | 'unreachabl
 export type GenerationTask = 'text_to_image' | 'text_to_video' | 'image_to_video'
 export type GenerationStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'canceled'
 export type GenerationVisibility = 'private' | 'public'
+
+/**
+ * The closed vocabulary a published shot can be tagged with.
+ *
+ * Mirrors the `generations_categories_allowed` check constraint in migration
+ * 0013 — the database is the enforcement point, this is the compiler's copy,
+ * and tests/categories.test.ts fails if the two ever disagree.
+ *
+ * Deliberately not a Postgres enum: categories are editorial, a new one is a
+ * one-line constraint change, and an enum would make removing one a migration
+ * that rewrites the table.
+ */
+export type ExploreCategorySlug =
+  | 'portraits'
+  | 'anime'
+  | 'cinematic'
+  | 'product'
+  | 'nature'
+  | 'architecture'
+  | 'fantasy'
+  | 'abstract'
 export type AssetKind = 'image' | 'video' | 'poster'
 export type CreditReason =
   | 'signup_grant'
@@ -179,7 +209,23 @@ export type GenerationRow = {
   error_code: string | null
   error_message: string | null
   visibility: GenerationVisibility
+  /** Optional headline. Most shots are known by their prompt; see migration 0013. */
+  title: string | null
+  /**
+   * Browse tags from a closed vocabulary — see `lib/categories.ts`, which the
+   * `generations_categories_allowed` check constraint mirrors.
+   */
+  categories: ExploreCategorySlug[]
   like_count: number
+  comment_count: number
+  favourite_count: number
+  download_count: number
+  /**
+   * Weighted engagement, maintained by Postgres as a generated column.
+   * Read-only: writing to it is an error, which is why it is absent from the
+   * Update shape below.
+   */
+  engagement_score: number
   remix_count: number
   idempotency_key: string
   queued_at: string
@@ -221,6 +267,40 @@ export type LikeRow = {
   user_id: string
   generation_id: string
   created_at: string
+}
+
+/**
+ * A private bookmark. Deliberately a different table from `likes`: a like is
+ * public applause with a counter behind it, a favourite is only ever listed
+ * by the person who made it. See migration 0013.
+ */
+export type FavouriteRow = {
+  user_id: string
+  generation_id: string
+  created_at: string
+}
+
+/**
+ * One comment on a published generation.
+ *
+ * The three author fields are denormalised, exactly as they are on
+ * `generations` and for the same reason: `profiles_select_own` is strictly
+ * own-row, so a public thread cannot join to a profile to find a name.
+ *
+ * `parent_id` is at most one level deep — `add_comment()` re-points a reply to
+ * a reply at its root, so the renderer never meets a chain.
+ */
+export type CommentRow = {
+  id: string
+  generation_id: string
+  user_id: string
+  parent_id: string | null
+  author_handle: string | null
+  author_name: string | null
+  author_avatar_url: string | null
+  body: string
+  created_at: string
+  updated_at: string
 }
 
 /**
@@ -281,6 +361,22 @@ export type PaymentTransactionRow = {
 }
 
 /**
+ * What a creator's published work has earned, aggregated in Postgres.
+ *
+ * Returned by the `creator_stats()` function, which is scoped to `auth.uid()`
+ * and takes no arguments — there is no form of this call that reports on
+ * anybody else.
+ */
+export type CreatorStatsRow = {
+  public_count: number
+  private_count: number
+  likes_received: number
+  downloads_received: number
+  favourites_received: number
+  comments_received: number
+}
+
+/**
  * `Relationships` is required by the client's GenericTable constraint. It is
  * left empty here because we query tables explicitly rather than through
  * PostgREST embedded resources; `npm run db:types` emits the real foreign-key
@@ -316,11 +412,14 @@ export type Database = {
       }
       generations: {
         Row: GenerationRow
-        Insert: InsertOf<
-          GenerationRow,
-          'user_id' | 'task' | 'model_id' | 'idempotency_key'
+        // `engagement_score` is GENERATED ALWAYS: Postgres rejects a write to
+        // it, so it is removed from both write shapes rather than left as a
+        // column the compiler says is settable.
+        Insert: Omit<
+          InsertOf<GenerationRow, 'user_id' | 'task' | 'model_id' | 'idempotency_key'>,
+          'engagement_score'
         >
-        Update: Partial<GenerationRow>
+        Update: Partial<Omit<GenerationRow, 'engagement_score'>>
         Relationships: []
       }
       assets: {
@@ -339,6 +438,18 @@ export type Database = {
         Row: LikeRow
         Insert: InsertOf<LikeRow, 'user_id' | 'generation_id'>
         Update: Partial<LikeRow>
+        Relationships: []
+      }
+      favourites: {
+        Row: FavouriteRow
+        Insert: InsertOf<FavouriteRow, 'user_id' | 'generation_id'>
+        Update: Partial<FavouriteRow>
+        Relationships: []
+      }
+      comments: {
+        Row: CommentRow
+        Insert: InsertOf<CommentRow, 'generation_id' | 'user_id' | 'body'>
+        Update: Partial<CommentRow>
         Relationships: []
       }
       user_provider_keys: {
@@ -390,6 +501,26 @@ export type Database = {
       toggle_like: {
         Args: { p_generation_id: string }
         Returns: boolean
+      }
+      toggle_favourite: {
+        Args: { p_generation_id: string }
+        Returns: boolean
+      }
+      add_comment: {
+        Args: { p_generation_id: string; p_body: string; p_parent_id?: string | null }
+        Returns: string
+      }
+      delete_comment: {
+        Args: { p_comment_id: string }
+        Returns: number
+      }
+      register_download: {
+        Args: { p_generation_id: string }
+        Returns: number
+      }
+      creator_stats: {
+        Args: Record<string, never>
+        Returns: CreatorStatsRow[]
       }
       ensure_default_project: {
         Args: { p_user_id: string }

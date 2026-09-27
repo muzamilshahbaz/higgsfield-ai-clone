@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Compass,
   History,
+  Star,
   UserRound,
   Wand2,
 } from 'lucide-react'
@@ -52,12 +53,13 @@ export const studioNav: NavItem[] = [
   { title: 'Library', href: '/library', icon: Images, description: 'Every asset you own' },
   { title: 'History', href: '/history', icon: History, description: 'Every job you have run' },
   { title: 'Explore', href: '/explore', icon: Compass, description: 'What the community is making' },
+  { title: 'Favourites', href: '/favourites', icon: Star, description: 'Everything you have saved' },
 ]
 
 /**
  * The sidebar, grouped.
  *
- * Seven flat links is a list you read every time; three labelled groups is a
+ * Eight flat links is a list you read every time; three labelled groups is a
  * shape you learn once and then navigate by position. The grouping is by what
  * you are doing — making something, managing what you made, looking at what
  * other people made — not by how often a link is clicked.
@@ -79,7 +81,7 @@ function navItem(href: string): NavItem {
 export const studioNavGroups: NavGroup[] = [
   { label: 'Workspace', items: ['/dashboard', '/create', '/presets'].map(navItem) },
   { label: 'Content', items: ['/projects', '/library', '/history'].map(navItem) },
-  { label: 'Community', items: ['/explore'].map(navItem) },
+  { label: 'Community', items: ['/explore', '/favourites'].map(navItem) },
 ]
 
 /**

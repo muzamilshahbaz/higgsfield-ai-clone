@@ -65,6 +65,25 @@ export const RATE_LIMITS = {
   explore: { limit: 120, windowMs: 60 * 1000 },
   /** Cheap per call, but a held-down key should not write 500 rows. */
   likes: { limit: 60, windowMs: 60 * 1000 },
+  /** Same shape as a like: one row and one counter. */
+  favourites: { limit: 60, windowMs: 60 * 1000 },
+  /**
+   * Tighter than a like, because a comment is content rather than a counter.
+   * Twenty a minute is faster than anyone types and slow enough that a script
+   * cannot paper a thread before anybody notices.
+   */
+  comments: { limit: 20, windowMs: 60 * 1000 },
+  /**
+   * The brake on inflating "Most downloaded".
+   *
+   * It is not a defence — the counter is incremented by an endpoint anyone can
+   * call, and a determined script with a pool of addresses can move it. What
+   * stops that mattering is that the number decorates a sort order and nothing
+   * else: no money, no ranking anybody is paid for, no access decision. A
+   * per-user download ledger would make it exact and is the upgrade path if
+   * the number ever starts meaning something.
+   */
+  downloads: { limit: 40, windowMs: 60 * 1000 },
   /** Well under MAX_PROJECTS, which is the real ceiling. */
   projects: { limit: 20, windowMs: 10 * 60 * 1000 },
   /**

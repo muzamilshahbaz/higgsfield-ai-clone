@@ -11,10 +11,16 @@ import {
 } from 'lucide-react'
 
 import { GenerationMedia, useHoverPlayback } from '@/components/gallery/generation-media'
+import { VisibilityControl } from '@/components/gallery/visibility-control'
 import { Badge } from '@/components/ui/badge'
 import { STATUS_LABELS } from '@/lib/constants'
 import { aspectStyle, cn, truncate } from '@/lib/utils'
-import { isTerminal, type GenerationWithAssets } from '@/types/database'
+import {
+  isTerminal,
+  type ExploreCategorySlug,
+  type GenerationVisibility,
+  type GenerationWithAssets,
+} from '@/types/database'
 
 /**
  * One library tile.
@@ -36,12 +42,25 @@ export function GenerationCard({
   selected = false,
   onToggleSelect,
   onDelete,
+  onVisibilityChanged,
 }: {
   generation: GenerationWithAssets
   onOpen: (generation: GenerationWithAssets) => void
   selectable?: boolean
   selected?: boolean
   onToggleSelect?: (generation: GenerationWithAssets) => void
+  /**
+   * Publishes or unpublishes without leaving the grid.
+   *
+   * Passing this is what turns the visibility chip on. A surface that lists
+   * somebody else's work — there is none today, but the card does not know
+   * that — simply omits it and gets a read-only tile.
+   */
+  onVisibilityChanged?: (
+    id: string,
+    visibility: GenerationVisibility,
+    categories: ExploreCategorySlug[],
+  ) => void
   /**
    * Asks the owner to confirm and perform a delete. The card never deletes
    * anything itself — it has no idea which grid it is in or what should happen
@@ -99,6 +118,21 @@ export function GenerationCard({
           )}
         </div>
       </button>
+
+      {/*
+        The visibility chip.
+
+        A sibling of the card button rather than a child of it, for the same
+        reason the delete button is: a button inside a button is invalid markup
+        and the inner one stops firing. Always visible, unlike delete — whether
+        a shot is public is a fact about it that the owner should be able to
+        read at a glance, not something they have to hover to discover.
+      */}
+      {!selectable && onVisibilityChanged && generation.status === 'succeeded' && (
+        <span className="absolute bottom-2.5 left-2.5 z-20">
+          <VisibilityControl generation={generation} onChanged={onVisibilityChanged} />
+        </span>
+      )}
 
       {/*
         Hidden until hover or keyboard focus, so a wall of thumbnails is not a

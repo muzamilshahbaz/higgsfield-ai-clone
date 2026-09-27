@@ -125,3 +125,60 @@ export function initialsFor(profile: Pick<Profile, 'display_name' | 'handle' | '
   }
   return source.slice(0, 2).toUpperCase()
 }
+
+/**
+ * What the signed-in creator's work has earned.
+ *
+ * One `creator_stats()` call rather than summing four counters over every row
+ * they own — the aggregate belongs in Postgres, and the function takes no
+ * arguments precisely so there is no version of it that reports on somebody
+ * else.
+ *
+ * Returns zeroes rather than null on failure: these numbers decorate a
+ * settings page, and a profile that 500s because a total could not be counted
+ * would be a worse outcome than one showing nothing yet.
+ */
+export interface CreatorStats {
+  publicCount: number
+  privateCount: number
+  likesReceived: number
+  downloadsReceived: number
+  favouritesReceived: number
+  commentsReceived: number
+}
+
+const NO_STATS: CreatorStats = {
+  publicCount: 0,
+  privateCount: 0,
+  likesReceived: 0,
+  downloadsReceived: 0,
+  favouritesReceived: 0,
+  commentsReceived: 0,
+}
+
+export async function getMyCreatorStats(): Promise<CreatorStats> {
+  const user = await getCurrentUser()
+  if (!user) return NO_STATS
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('creator_stats')
+
+  if (error) {
+    console.error('[profile.service] getMyCreatorStats failed:', error.message)
+    return NO_STATS
+  }
+
+  // `returns table (...)` arrives as an array of one row, and as an empty
+  // array for a user who has never generated anything.
+  const row = Array.isArray(data) ? data[0] : null
+  if (!row) return NO_STATS
+
+  return {
+    publicCount: row.public_count ?? 0,
+    privateCount: row.private_count ?? 0,
+    likesReceived: row.likes_received ?? 0,
+    downloadsReceived: row.downloads_received ?? 0,
+    favouritesReceived: row.favourites_received ?? 0,
+    commentsReceived: row.comments_received ?? 0,
+  }
+}

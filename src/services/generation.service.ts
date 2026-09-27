@@ -795,6 +795,12 @@ export async function setGenerationVisibility(
     .from('generations')
     .update({ visibility })
     .eq('id', generationId)
+    // Ownership is already enforced by `generations_update_own`. The explicit
+    // filter is here so the statement matches no rows for anybody else rather
+    // than depending on the policy to reject it — the same belt-and-braces the
+    // Explore reads use, and it means a policy edit cannot quietly turn this
+    // into a write anyone can make.
+    .eq('user_id', user.id)
     .is('deleted_at', null)
     .select('id, visibility')
     .maybeSingle()

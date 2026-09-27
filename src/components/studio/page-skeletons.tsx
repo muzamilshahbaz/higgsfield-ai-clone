@@ -90,3 +90,31 @@ export function RowsSkeleton({ count = 6 }: { count?: number }) {
     </div>
   )
 }
+
+/**
+ * Explore's filter bar: a rail of category chips and the search/sort row.
+ *
+ * Matched to `ExploreFilters` chip for chip, because the thing this stands in
+ * for is 90px tall and a grid that jumps up by that much when the real bar
+ * arrives is a layout shift the reader feels.
+ */
+export function FiltersSkeleton() {
+  return (
+    <div className="space-y-3" aria-hidden>
+      <div className="flex gap-1.5 overflow-hidden">
+        {Array.from({ length: 8 }, (_, i) => (
+          <Skeleton
+            key={i}
+            className="h-8 shrink-0 rounded-lg"
+            style={{ width: `${68 + ((i * 17) % 52)}px`, animationDelay: `${i * 60}ms` }}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface/40 p-2">
+        <Skeleton className="h-8 w-full max-w-xs rounded-md" />
+        <Skeleton className="ml-auto h-8 w-[11rem] rounded-md" />
+      </div>
+    </div>
+  )
+}
