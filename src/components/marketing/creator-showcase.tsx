@@ -7,6 +7,7 @@ import { Section, SectionHeading } from '@/components/marketing/section-heading'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { authorNameOf, type ExploreItem } from '@/lib/explore'
+import type { LandingSection } from '@/lib/cms/content'
 import { aspectStyle, truncate } from '@/lib/utils'
 import type { MediaAsset } from '@/services/media.service'
 
@@ -33,7 +34,18 @@ import type { MediaAsset } from '@/services/media.service'
  */
 const REFERENCE_RATIOS = ['16:9', '9:16', '16:9', '1:1', '16:9', '16:9', '16:9', '9:16']
 
-export function CreatorShowcase({ items, media }: { items: ExploreItem[]; media: MediaAsset[] }) {
+export function CreatorShowcase({
+  section,
+  items,
+  media,
+  siteName,
+}: {
+  section: LandingSection
+  items: ExploreItem[]
+  media: MediaAsset[]
+  /** The configured site name, for the "Made in …" heading. */
+  siteName: string
+}) {
   // Real work wins. Reference photography is only ever the empty state, and
   // only when there is any to show.
   const usingSamples = items.length === 0 && media.length > 0
@@ -43,26 +55,39 @@ export function CreatorShowcase({ items, media }: { items: ExploreItem[]; media:
   return (
     <Section id="showcase">
       <SectionHeading
-        index="05"
-        eyebrow={usingSamples ? 'Reference imagery' : 'From the feed'}
+        index={section.indexLabel ?? '05'}
+        /*
+          The fallback branch is NOT editable, deliberately.
+
+          When the feed is empty this section shows reference photography, and the copy that says
+          so — the eyebrow, the heading, the badge and the explanation — is the thing that stops a
+          stock photograph being presented as somebody's published work. An operator who could
+          edit it could, with one careless save, turn an honest empty state into a false claim.
+          So the CMS owns the real heading and the code owns the disclaimer.
+        */
+        eyebrow={usingSamples ? 'Reference imagery' : (section.eyebrow ?? 'From the feed')}
         title={
           <span className="flex flex-wrap items-center gap-3">
-            {usingSamples ? 'What these moves are for' : 'Made in Kinetic Studio'}
+            {usingSamples
+              ? 'What these moves are for'
+              : (section.title ?? `Made in ${siteName}`)}
             {usingSamples && <Badge variant="outline">Not app output</Badge>}
           </span>
         }
         lead={
           usingSamples
             ? 'Nothing has been published to the public feed yet. These are reference photographs, not output from this app — they show the kind of frame each camera move is built for. Your work replaces them the moment you publish.'
-            : 'Published by people using the presets you get on day one. Open any of them and hit remix — the prompt, the preset and the seed come with it.'
+            : (section.lead ?? undefined)
         }
         action={
-          <Button asChild variant="outline">
-            <Link href="/explore">
-              Browse the feed
-              <ArrowRight className="size-4" aria-hidden />
-            </Link>
-          </Button>
+          section.ctaLabel && section.ctaHref ? (
+            <Button asChild variant="outline">
+              <Link href={section.ctaHref}>
+                {section.ctaLabel}
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+            </Button>
+          ) : undefined
         }
       />
 

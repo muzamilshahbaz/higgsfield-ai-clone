@@ -3,12 +3,14 @@ import type { Metadata } from 'next'
 
 import { GoogleButton } from '@/components/auth/google-button'
 import { SignUpForm } from '@/components/auth/sign-up-form'
+import { getFlags } from '@/lib/flags'
 import { getEnabledAuthProviders } from '@/lib/supabase/providers'
 import { safeNextPath } from '@/lib/validation/auth'
+import { signupGrant } from '@/services/cms/credits.service'
 
 export const metadata: Metadata = {
   title: 'Create your account',
-  description: 'Start with 200 credits. No card required.',
+  description: 'No card required.',
 }
 
 export default async function SignUpPage({
@@ -18,14 +20,51 @@ export default async function SignUpPage({
 }) {
   const { next } = await searchParams
   const redirectTo = safeNextPath(next)
-  const providers = await getEnabledAuthProviders()
+
+  const [providers, flags, grant] = await Promise.all([
+    getEnabledAuthProviders(),
+    getFlags(),
+    signupGrant(),
+  ])
+
+  /*
+   * Registration closed.
+   *
+   * A page that explains itself rather than a 404, because somebody following an invite link
+   * needs to know the door is shut rather than that it moved. Sign-in stays reachable — closing
+   * signup must not lock out the people who already have accounts.
+   *
+   * This is the visible half. The Server Action behind the form checks the same flag, because a
+   * hidden form is not a closed door.
+   */
+  if (!flags.registration) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <h1 className="font-display text-[1.75rem] font-semibold">Registration is closed</h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            New accounts are not being created at the moment. If you already have one, you can still
+            sign in as normal.
+          </p>
+        </div>
+
+        <p className="text-center text-sm text-muted-foreground">
+          <Link href="/sign-in" className="font-medium text-brand underline-offset-4 hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="font-display text-[1.75rem] font-semibold">Create your account</h1>
         <p className="text-sm text-muted-foreground">
-          Your first shot is 200 credits away.
+          {grant > 0
+            ? `Your first shot is ${grant} credits away.`
+            : 'Connect a provider key and start generating.'}
         </p>
       </div>
 

@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 
 import { ExploreFeed } from '@/components/explore/explore-feed'
 import { SiteFooter } from '@/components/marketing/site-footer'
 import { SiteHeader } from '@/components/marketing/site-header'
 import { getCategory, isExploreCategory } from '@/lib/categories'
 import { isExploreSort } from '@/lib/explore'
+import { getFlags } from '@/lib/flags'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
 import { getMyProfile } from '@/services/profile.service'
@@ -47,6 +49,16 @@ export default async function ExplorePage({
   searchParams: Promise<{ category?: string; sort?: string; q?: string }>
 }) {
   const params = await searchParams
+
+  /*
+   * Explore, switched off.
+   *
+   * `notFound()` rather than a notice page: a disabled feed has no page, and a "temporarily
+   * unavailable" one is a URL that stays in search results promising something that is not there.
+   * The landing page's showcase band is gated on the same flag, so nothing links here while it is
+   * off.
+   */
+  if (!(await getFlags()).explore) notFound()
 
   // Every parameter is validated against a known set rather than passed
   // through. A hand-edited value falls back to the default instead of

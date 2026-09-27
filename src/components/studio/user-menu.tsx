@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useTransition } from 'react'
-import { ChevronDown, Loader2, LogOut, Settings, User } from 'lucide-react'
+import { ChevronDown, Loader2, LogOut, Settings, ShieldCheck, User } from 'lucide-react'
 
 import { signOut } from '@/app/(auth)/actions'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -23,7 +23,20 @@ export interface UserMenuProfile {
   initials: string
 }
 
-export function UserMenu({ profile }: { profile: UserMenuProfile }) {
+export function UserMenu({
+  profile,
+  isStaff = false,
+}: {
+  profile: UserMenuProfile
+  /**
+   * Whether to offer the admin panel.
+   *
+   * Resolved on the server from the profile's role, so the browser is never handed a link to a
+   * surface it cannot open. It is a courtesy rather than a control: /admin guards itself, and
+   * every action inside it checks a capability of its own.
+   */
+  isStaff?: boolean
+}) {
   const [signingOut, startSignOut] = useTransition()
 
   return (
@@ -74,6 +87,18 @@ export function UserMenu({ profile }: { profile: UserMenuProfile }) {
             Settings
           </Link>
         </DropdownMenuItem>
+
+        {isStaff && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/admin">
+                <ShieldCheck />
+                Admin panel
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
 
         <DropdownMenuSeparator />
 

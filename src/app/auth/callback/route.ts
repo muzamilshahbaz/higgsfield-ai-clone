@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { logEvent } from '@/lib/admin/audit'
 import { createClient } from '@/lib/supabase/server'
 import { safeNextPath } from '@/lib/validation/auth'
 
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
     const url = new URL('/auth/auth-code-error', origin)
@@ -46,6 +47,34 @@ export async function GET(request: NextRequest) {
         : error.message,
     )
     return NextResponse.redirect(url)
+  }
+
+  /*
+   * Record the sign-in.
+   *
+   * Awaited rather than fired and forgotten: a Server Route that returns a redirect can have its
+   * execution torn down the moment the response is sent, and a floating promise would sometimes
+   * write and sometimes not. `logEvent` never throws and never blocks on failure, so the cost of
+   * awaiting it is one insert on a path that already did a token exchange.
+   *
+   * This is what the sign-in history on a user's admin page reads. It only covers sessions
+   * established through this callback — OAuth, email confirmation, password recovery — which is
+   * stated on that page rather than implied, because a password sign-in does not come through
+   * here.
+   */
+  if (data.user) {
+    await logEvent({
+      source: 'auth',
+      event: 'auth.callback',
+      message: `Session established for ${data.user.email ?? data.user.id}`,
+      userId: data.user.id,
+      context: {
+        provider: data.user.app_metadata?.provider ?? 'email',
+        // `next` is already validated by `safeNextPath`, so this cannot record an open redirect
+        // that the app would not have followed.
+        next,
+      },
+    })
   }
 
   // Behind a proxy (Vercel), `origin` is the internal host — prefer the

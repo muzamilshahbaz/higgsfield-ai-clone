@@ -3,7 +3,9 @@ import { Inter, Space_Grotesk } from 'next/font/google'
 import { Toaster } from 'sonner'
 
 import { RouteProgress } from '@/components/route-progress'
+import { ThemeStyle } from '@/components/brand/theme-style'
 import { siteConfig } from '@/config/site'
+import { getSettings } from '@/services/cms/settings.service'
 
 import './globals.css'
 
@@ -34,38 +36,86 @@ const spaceGrotesk = Space_Grotesk({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteConfig.url),
-  title: {
-    default: `${siteConfig.name} — ${siteConfig.tagline}`,
-    template: `%s · ${siteConfig.name}`,
-  },
-  description: siteConfig.description,
-  openGraph: {
-    type: 'website',
-    siteName: siteConfig.name,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
-    description: siteConfig.description,
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
-    description: siteConfig.description,
-  },
+/**
+ * Metadata, read from the database.
+ *
+ * `generateMetadata` rather than a static export, because the site name, the title template
+ * and the Open Graph card are all editable in the admin panel — and a static object would be
+ * frozen at build time.
+ *
+ * Every field falls back to the value the app shipped with: `getSettings` resolves to
+ * `DEFAULT_SETTINGS` on an unconfigured or unreachable database, so a deploy with no Supabase
+ * credentials still serves complete metadata rather than empty strings. That is not
+ * hypothetical — a deploy with those variables unset once served 500s across the app, and the
+ * whole CMS read layer is built around not repeating it.
+ *
+ * `metadataBase` stays the environment's site URL. It is infrastructure, not content: an
+ * operator who could edit it from a form could break every absolute URL the app emits.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSettings()
+
+  const title = settings.seo.defaultTitle || `${settings.site.name} — ${settings.site.tagline}`
+  const description = settings.site.description
+
+  return {
+    metadataBase: new URL(siteConfig.url),
+    title: {
+      default: title,
+      // The template has to contain %s or every page inherits one title. The admin action
+      // refuses to save one without it; this is the second guard, for a row written any other
+      // way.
+      template: settings.seo.titleTemplate.includes('%s')
+        ? settings.seo.titleTemplate
+        : `%s · ${settings.site.name}`,
+    },
+    description,
+    keywords: settings.seo.keywords.length > 0 ? settings.seo.keywords : undefined,
+    // A custom favicon replaces the generated icon route. Declared here rather than as a file
+    // convention, because the URL is configuration.
+    icons: settings.branding.faviconUrl ? { icon: settings.branding.faviconUrl } : undefined,
+    openGraph: {
+      type: 'website',
+      siteName: settings.site.name,
+      title,
+      description,
+      images: settings.seo.ogImageUrl ? [settings.seo.ogImageUrl] : undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      site: settings.seo.twitterHandle ? `@${settings.seo.twitterHandle}` : undefined,
+      images: settings.seo.ogImageUrl ? [settings.seo.ogImageUrl] : undefined,
+    },
+    // Mirrors the `seo.robots_index` setting. robots.txt carries the same decision; this is
+    // the per-page meta tag, which is what a crawler that ignores robots.txt reads.
+    robots: settings.seo.robotsIndex ? undefined : { index: false, follow: false },
+  }
 }
 
 export const viewport: Viewport = {
-  // The graphite canvas, so a mobile browser's chrome matches the page rather
-  // than framing it in a different dark.
+  /*
+   * The graphite canvas, so a mobile browser's chrome matches the page rather than framing it
+   * in a different dark.
+   *
+   * Deliberately still a literal while the background token is editable. `themeColor` has to
+   * be a colour a browser's own chrome can parse, `oklch()` support there is inconsistent, and
+   * a value it cannot read leaves the address bar an unrelated colour. The mismatch after a
+   * theme edit is a shade of dark grey; a broken address bar would be worse.
+   */
   themeColor: '#1f2227',
   colorScheme: 'dark',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // One read, shared with `generateMetadata` above through the per-request cache.
+  const settings = await getSettings()
+
   return (
     <html
       lang="en"
@@ -89,6 +139,10 @@ export default function RootLayout({
         className="min-h-dvh bg-background text-foreground antialiased"
         suppressHydrationWarning
       >
+        {/* The operator's theme tokens, as a later :root rule. In the server-rendered HTML,
+            so the first paint already has the right colours rather than flashing. */}
+        <ThemeStyle settings={settings} />
+
         <RouteProgress />
         {children}
         <Toaster

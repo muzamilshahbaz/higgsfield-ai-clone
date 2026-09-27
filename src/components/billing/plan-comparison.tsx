@@ -1,13 +1,15 @@
 import { Check, Minus } from 'lucide-react'
 
-import { PLAN_FEATURES, PLAN_LIST, type PlanId } from '@/lib/plans'
+import { PLAN_FEATURES, PLAN_LIST, type Plan, type PlanFeature, type PlanId } from '@/lib/plans'
 import { cn } from '@/lib/utils'
 
 /**
  * The feature matrix.
  *
- * Driven entirely by `PLAN_FEATURES` and `PLAN_LIST`, so a new tier or a new
- * row is a catalogue edit and never a change here.
+ * Driven entirely by the plans and rows it is handed, so a new tier or a new
+ * row is a data change and never a change here. Both default to the code
+ * catalogue, which keeps every existing caller working and is the fallback a
+ * page gets when the database is unreachable.
  *
  * A real `<table>`, not a grid of divs: this is tabular data, and a screen
  * reader announcing "Concurrent renders, Pro, 5" depends on the row and column
@@ -16,7 +18,15 @@ import { cn } from '@/lib/utils'
  * has stopped being a comparison.
  */
 
-export function PlanComparison({ currentPlanId }: { currentPlanId?: PlanId }) {
+export function PlanComparison({
+  currentPlanId,
+  plans = PLAN_LIST,
+  features = PLAN_FEATURES,
+}: {
+  currentPlanId?: PlanId
+  plans?: Plan[]
+  features?: PlanFeature[]
+}) {
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <table className="w-full min-w-[34rem] border-collapse text-sm">
@@ -26,7 +36,7 @@ export function PlanComparison({ currentPlanId }: { currentPlanId?: PlanId }) {
             <th scope="col" className="eyebrow py-3 pr-4 text-left text-muted-foreground">
               Feature
             </th>
-            {PLAN_LIST.map((plan) => (
+            {plans.map((plan) => (
               <th
                 key={plan.id}
                 scope="col"
@@ -47,13 +57,13 @@ export function PlanComparison({ currentPlanId }: { currentPlanId?: PlanId }) {
         </thead>
 
         <tbody>
-          {PLAN_FEATURES.map((feature) => (
+          {features.map((feature) => (
             <tr key={feature.label} className="border-b border-border/60 last:border-0">
               <th scope="row" className="py-3 pr-4 text-left font-normal text-muted-foreground">
                 {feature.label}
               </th>
 
-              {PLAN_LIST.map((plan) => {
+              {plans.map((plan) => {
                 const value = feature.values[plan.id]
                 return (
                   <td key={plan.id} className="px-4 py-3 text-center tabular-nums">

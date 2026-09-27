@@ -3,21 +3,22 @@ import { Plus } from 'lucide-react'
 
 import { Reveal } from '@/components/marketing/reveal'
 import { Section } from '@/components/marketing/section-heading'
-import { FAQ as QUESTIONS } from '@/lib/marketing/landing'
+import type { FaqItem, LandingSection } from '@/lib/cms/content'
 
 /**
  * FAQ.
  *
- * Native `<details>` / `<summary>`, not a JavaScript accordion. The browser
- * already gives this Enter and Space handling, the correct expanded state for a
- * screen reader, and — the part hand-rolled accordions always miss — find-in-page
- * that opens the section it matched. It also costs zero bytes of JavaScript on
- * the one route where a first-time visitor is waiting.
+ * Native `<details>` / `<summary>`, not a JavaScript accordion. The browser already gives this
+ * Enter and Space handling, the correct expanded state for a screen reader, and — the part
+ * hand-rolled accordions always miss — find-in-page that opens the section it matched. It also
+ * costs zero bytes of JavaScript on the one route where a first-time visitor is waiting.
  *
- * The heading sits in a sticky column on desktop while the questions scroll
- * past it, which is the section's own layout rather than another centred block.
+ * The heading sits in a sticky column on desktop while the questions scroll past it, which is
+ * this section's own layout rather than another centred block.
  */
-export function FAQ() {
+export function FAQ({ section, items }: { section: LandingSection; items: FaqItem[] }) {
+  if (items.length === 0) return null
+
   return (
     <Section id="faq">
       <div className="grid gap-10 lg:grid-cols-12 lg:gap-12">
@@ -25,43 +26,46 @@ export function FAQ() {
           <Reveal>
             <div className="lg:sticky lg:top-28">
               <p className="eyebrow flex items-center gap-3 text-muted-foreground">
-                <span className="text-brand">08</span>
+                {section.indexLabel && <span className="text-brand">{section.indexLabel}</span>}
                 <span className="h-px w-8 bg-border" aria-hidden />
-                Questions
+                {section.eyebrow ?? 'Questions'}
               </p>
 
               <h2 className="mt-5 text-balance text-3xl font-semibold leading-[1.1] sm:text-4xl">
-                Before you sign up
+                {section.title ?? 'Before you sign up'}
               </h2>
 
-              <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
-                Including the two most products bury: what it costs, and whether the billing is
-                real.
-              </p>
+              {section.lead && (
+                <p className="mt-4 text-[15px] leading-relaxed text-muted-foreground">
+                  {section.lead}
+                </p>
+              )}
 
-              <p className="mt-6 text-sm text-muted-foreground">
-                Still deciding?{' '}
-                <Link
-                  href="/explore"
-                  className="font-medium text-brand underline-offset-4 hover:underline"
-                >
-                  Look at the feed first
-                </Link>
-                .
-              </p>
+              {section.ctaLabel && section.ctaHref && (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  Still deciding?{' '}
+                  <Link
+                    href={section.ctaHref}
+                    className="font-medium text-brand underline-offset-4 hover:underline"
+                  >
+                    {section.ctaLabel}
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
           </Reveal>
         </div>
 
         <div className="lg:col-span-8">
           <ul className="divide-y divide-border border-y border-border">
-            {QUESTIONS.map((entry, index) => (
-              <Reveal key={entry.q} delay={Math.min(index, 4) * 0.05}>
+            {items.map((entry, index) => (
+              <Reveal key={entry.id} delay={Math.min(index, 4) * 0.05}>
                 <li>
                   <details className="group">
                     <summary className="flex cursor-pointer list-none items-start justify-between gap-6 py-5 text-left [&::-webkit-details-marker]:hidden">
                       <h3 className="text-[17px] font-medium leading-snug transition-colors group-hover:text-brand">
-                        {entry.q}
+                        {entry.question}
                       </h3>
 
                       <span
@@ -72,8 +76,8 @@ export function FAQ() {
                       </span>
                     </summary>
 
-                    <p className="max-w-2xl pb-6 pr-10 text-[15px] leading-relaxed text-muted-foreground">
-                      {entry.a}
+                    <p className="max-w-2xl whitespace-pre-line pb-6 pr-10 text-[15px] leading-relaxed text-muted-foreground">
+                      {entry.answer}
                     </p>
                   </details>
                 </li>

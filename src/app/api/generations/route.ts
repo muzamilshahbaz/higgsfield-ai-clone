@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 
+import { getAccountState, suspensionMessage } from '@/lib/account-status'
 import { RATE_LIMITS } from '@/lib/constants'
+import { getFlags } from '@/lib/flags'
 import { clientKey, rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { createGenerationSchema, fieldErrors } from '@/lib/validation/generation'
@@ -39,6 +41,38 @@ export async function POST(request: Request) {
   const quota = rateLimit(clientKey(request, user?.id), RATE_LIMITS.generations)
   if (!quota.ok) {
     return tooManyRequests(quota, 'That is a lot of generations at once. Give it a minute.')
+  }
+
+  /*
+   * The two gates that live above the generation service rather than inside it.
+   *
+   * `createGeneration` decides whether a job is allowed — credits, concurrency, the plan's hourly
+   * limit — and that logic is untouched. These two are about whether the endpoint should be
+   * accepting work at all, which is a different question and belongs at the door.
+   *
+   * Both return 403 rather than 503: this is a decision about the caller and the configuration,
+   * not a failure, and a client retrying on a 503 would hammer a switch somebody turned off
+   * deliberately.
+   */
+  const [flags, account] = await Promise.all([getFlags(), getAccountState()])
+
+  if (!flags.generation) {
+    return NextResponse.json(
+      {
+        error: {
+          code: 'GENERATION_DISABLED',
+          message: 'New generations are paused right now. Anything already running will finish.',
+        },
+      },
+      { status: 403 },
+    )
+  }
+
+  if (!account.active) {
+    return NextResponse.json(
+      { error: { code: 'ACCOUNT_RESTRICTED', message: suspensionMessage(account) } },
+      { status: 403 },
+    )
   }
 
   let body: unknown

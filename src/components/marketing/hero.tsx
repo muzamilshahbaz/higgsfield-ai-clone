@@ -2,18 +2,34 @@ import Link from 'next/link'
 import { ArrowRight, Compass, Sparkles } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { PROVIDERS } from '@/lib/ai/catalogue'
-import { MODELS } from '@/lib/ai/registry'
-import { SIGNUP_CREDIT_GRANT } from '@/lib/constants'
+import { configBoolean, configString, type LandingSection } from '@/lib/cms/content'
 import type { PresetSummary } from '@/lib/presets'
 import type { MediaAsset } from '@/services/media.service'
 
 /**
- * Providers a generation can actually run through, not every vendor whose key
- * can be stored. Counting all eleven would promise routing this build does not
- * do — see `generationReady` in lib/ai/catalogue.ts.
+ * The headline, with one phrase underlined.
+ *
+ * The phrase comes from `config.highlight` and has to be a substring of the title, or the
+ * headline renders with no colour in it at all. Splitting on the first occurrence rather than
+ * replacing globally: a phrase that appears twice should be marked once, and the second
+ * occurrence is almost always part of a longer word.
  */
-const GENERATION_PROVIDER_COUNT = PROVIDERS.filter((provider) => provider.generationReady).length
+function Headline({ title, highlight }: { title: string; highlight: string | null }) {
+  const at = highlight ? title.indexOf(highlight) : -1
+
+  if (!highlight || at < 0) return <>{title}</>
+
+  return (
+    <>
+      {title.slice(0, at)}
+      <span className="relative whitespace-nowrap">
+        <span className="relative z-10">{highlight}</span>
+        <span className="absolute inset-x-0 bottom-[0.06em] h-[0.2em] bg-primary/25" aria-hidden />
+      </span>
+      {title.slice(at + highlight.length)}
+    </>
+  )
+}
 
 /**
  * The hero.
@@ -31,19 +47,45 @@ const GENERATION_PROVIDER_COUNT = PROVIDERS.filter((provider) => provider.genera
  * headline, or a glow behind the text. The headline is solid white with one
  * cyan-underscored phrase, and the light in the section is a linear wash from
  * two corners.
+ *
+ * Every string is a database row now, and every count is passed in rather than imported. The
+ * counts matter: `providerCount` is providers a generation can actually run through, not every
+ * vendor whose key can be stored — promising eleven would promise routing this build does not do.
  */
 export function Hero({
+  section,
   isSignedIn = false,
   media = [],
   presets = [],
+  modelCount,
+  providerCount,
+  signupGrant,
 }: {
+  section: LandingSection
   isSignedIn?: boolean
   /** Reference photography from `media_assets`, for the console frame. */
   media?: MediaAsset[]
   /** The real catalogue, for the marquee. Empty on an unreachable database. */
   presets?: PresetSummary[]
+  modelCount: number
+  /** Providers with a driver that a model routes to. Never the whole vendor list. */
+  providerCount: number
+  signupGrant: number
 }) {
   const frame = media[0]
+
+  const title = section.title ?? 'A workspace where stills move.'
+  const highlight = configString(section.config, 'highlight')
+
+  const primaryLabel = isSignedIn
+    ? (configString(section.config, 'signed_in_cta_label') ?? 'Open the composer')
+    : (section.ctaLabel ?? 'Start creating free')
+  const primaryHref = isSignedIn
+    ? (configString(section.config, 'signed_in_cta_href') ?? '/create')
+    : (section.ctaHref ?? '/sign-up')
+
+  const secondaryLabel = configString(section.config, 'secondary_cta_label')
+  const secondaryHref = configString(section.config, 'secondary_cta_href')
 
   return (
     <section className="relative overflow-hidden pt-28 sm:pt-36">
@@ -59,47 +101,42 @@ export function Hero({
           <div className="lg:col-span-6">
             <p className="chip-brand eyebrow inline-flex items-center gap-2 rounded-md px-2.5 py-2">
               <Sparkles className="size-3.5" aria-hidden />
-              {MODELS.length} open models · {GENERATION_PROVIDER_COUNT} providers
+              {modelCount} open models · {providerCount} providers
             </p>
 
             <h1 className="mt-6 text-balance text-[2.75rem] font-semibold leading-[1.02] sm:text-6xl xl:text-[4.25rem]">
-              A workspace where{' '}
               {/* The one piece of colour in the headline: an underline rather
                   than a gradient fill, so the text keeps its full contrast. */}
-              <span className="relative whitespace-nowrap">
-                <span className="relative z-10">stills move</span>
-                <span
-                  className="absolute inset-x-0 bottom-[0.06em] h-[0.2em] bg-primary/25"
-                  aria-hidden
-                />
-              </span>
-              .
+              <Headline title={title} highlight={highlight} />
             </h1>
 
-            <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-              Kinetic Studio puts every open image and video model behind one composer. Write a
-              prompt, pick a camera move, and get a finished shot back — with the credit cost on
-              screen before you spend it.
-            </p>
+            {section.lead && (
+              <p className="mt-6 max-w-lg text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+                {section.lead}
+              </p>
+            )}
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Button asChild size="lg" className="w-full sm:w-auto">
-                <Link href={isSignedIn ? '/create' : '/sign-up'}>
-                  {isSignedIn ? 'Open the composer' : 'Start creating free'}
+                <Link href={primaryHref}>
+                  {primaryLabel}
                   <ArrowRight className="size-4" aria-hidden />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
-                <Link href="/explore">
-                  <Compass className="size-4" aria-hidden />
-                  Browse the feed
-                </Link>
-              </Button>
+
+              {secondaryLabel && secondaryHref && (
+                <Button asChild size="lg" variant="outline" className="w-full sm:w-auto">
+                  <Link href={secondaryHref}>
+                    <Compass className="size-4" aria-hidden />
+                    {secondaryLabel}
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <p className="mt-5 text-sm text-muted-foreground">
-              <span className="tabular-nums text-credit">{SIGNUP_CREDIT_GRANT} credits</span> on
-              signup · no card required · connect your own keys any time
+              <span className="tabular-nums text-credit">{signupGrant} credits</span> on signup · no
+              card required · connect your own keys any time
             </p>
           </div>
 
@@ -111,7 +148,7 @@ export function Hero({
       </div>
 
       {/* --------------------------------------------------- preset marquee */}
-      <PresetMarquee presets={presets} />
+      {configBoolean(section.config, 'show_marquee', true) && <PresetMarquee presets={presets} />}
     </section>
   )
 }

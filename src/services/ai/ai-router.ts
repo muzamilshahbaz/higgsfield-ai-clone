@@ -135,6 +135,16 @@ export interface RouteInput {
    */
   keys?: Partial<Record<ProviderName, string | null>>
   /**
+   * The operator's shared keys, by provider.
+   *
+   * Consulted after the caller's own key and before `serverProviderKey()`, so a
+   * key stored in `app_provider_keys` by the admin panel wins over the
+   * environment variable and a deployment that stores nothing behaves exactly as
+   * it did. Optional, and absent in every unit test, which is what keeps this
+   * function a pure one the tests can drive.
+   */
+  sharedKeys?: Partial<Record<ProviderName, string | null>>
+  /**
    * Pins the decision to one provider, for advancing a job that was already
    * submitted somewhere. Without this, a user connecting a new key mid-job
    * would move the poll to a provider that never saw the submission.
@@ -142,7 +152,7 @@ export interface RouteInput {
   only?: ProviderName
 }
 
-export function routeGeneration({ modelId, keys, only }: RouteInput): RouteDecision {
+export function routeGeneration({ modelId, keys, sharedKeys, only }: RouteInput): RouteDecision {
   const model = getModel(modelId)
 
   if (!model) {
@@ -154,12 +164,13 @@ export function routeGeneration({ modelId, keys, only }: RouteInput): RouteDecis
     }
   }
 
-  return routeForModel(model, keys ?? {}, only)
+  return routeForModel(model, keys ?? {}, sharedKeys ?? {}, only)
 }
 
 function routeForModel(
   model: ModelEntry,
   keys: Partial<Record<ProviderName, string | null>>,
+  sharedKeys: Partial<Record<ProviderName, string | null>>,
   only?: ProviderName,
 ): RouteDecision {
   const candidates = providersFor(model).filter((provider) => !only || provider === only)
@@ -174,7 +185,10 @@ function routeForModel(
       return { ok: true, driver: create(userKey), providerName: provider, keySource: 'user_key' }
     }
 
-    const shared = serverProviderKey(provider)
+    // The operator's shared key: whatever the admin panel stored, falling back to
+    // the environment variable. Both are `server_key` to the caller — the
+    // distinction is where an operator rotates it, not whose quota is spent.
+    const shared = sharedKeys[provider]?.trim() || serverProviderKey(provider)
     if (shared) {
       return { ok: true, driver: create(shared), providerName: provider, keySource: 'server_key' }
     }

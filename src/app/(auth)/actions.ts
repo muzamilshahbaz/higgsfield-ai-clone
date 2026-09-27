@@ -4,6 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
+import { logEvent } from '@/lib/admin/audit'
+import { getFlags } from '@/lib/flags'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
 import {
@@ -65,14 +67,27 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
   }
 
   const supabase = await createClient()
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
     password: parsed.data.password,
   })
 
   if (error) {
-    // Deliberately vague: saying which half was wrong tells an attacker
-    // whether an address is registered.
+    /*
+     * A failed attempt is logged; the reason returned to the browser is not the reason recorded.
+     *
+     * The message here is deliberately vague — saying which half was wrong tells an attacker
+     * whether an address is registered. The log row carries the address that was tried, because
+     * "eleven failed sign-ins for one address in two minutes" is the pattern an operator needs to
+     * be able to see, and it is only visible to staff.
+     */
+    await logEvent({
+      level: 'warn',
+      source: 'auth',
+      event: 'auth.sign_in_failed',
+      message: `Failed password sign-in for ${parsed.data.email}`,
+    })
+
     return {
       error:
         error.message === 'Invalid login credentials'
@@ -80,6 +95,15 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
           : error.message,
       values: { email: parsed.data.email },
     }
+  }
+
+  if (data.user) {
+    await logEvent({
+      source: 'auth',
+      event: 'auth.sign_in',
+      message: `Password sign-in for ${data.user.email ?? data.user.id}`,
+      userId: data.user.id,
+    })
   }
 
   revalidatePath('/', 'layout')
@@ -130,6 +154,21 @@ export async function signUp(_prev: AuthState, formData: FormData): Promise<Auth
   if (!parsed.success) {
     return {
       fieldErrors: flatten(parsed.error.issues),
+      values: { email: raw.email, displayName: raw.displayName },
+    }
+  }
+
+  /*
+   * Registration closed.
+   *
+   * Checked here as well as on the page, because a Server Action is an HTTP endpoint: hiding the
+   * form stops somebody seeing it, and this is what stops somebody posting to it. Returning a
+   * form error rather than throwing, so the message lands above the fields like any other
+   * refusal.
+   */
+  if (!(await getFlags()).registration) {
+    return {
+      error: 'New accounts are not being created at the moment.',
       values: { email: raw.email, displayName: raw.displayName },
     }
   }

@@ -40,6 +40,12 @@ export async function listComments(generationId: string): Promise<ExploreComment
   const { data, error } = await supabase
     .from('comments')
     .select('*')
+    // Comments a moderator has hidden are excluded here rather than filtered in
+    // the renderer, so a hide takes effect on every surface that reads a thread —
+    // the permalink, the dialog and the count below — without each of them having
+    // to remember. See migration 0016 for why a hide is reversible and a delete
+    // is the admin's separate, deliberate action.
+    .eq('is_hidden', false)
     .eq('generation_id', generationId)
     .order('created_at', { ascending: false })
     .limit(COMMENT_PAGE_SIZE * 4)

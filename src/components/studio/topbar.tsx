@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { KineticLogo } from '@/components/brand/logo'
+import { SiteLogo } from '@/components/brand/site-logo'
 import { CreditPill } from '@/components/studio/credit-pill'
 import { MobileNav } from '@/components/studio/mobile-nav'
 import { UserMenu, type UserMenuProfile } from '@/components/studio/user-menu'
@@ -16,21 +16,30 @@ import { Button } from '@/components/ui/button'
  * carries it is collapsed into the menu — a second wordmark beside the rail
  * would be the same brand twice on one screen.
  */
-export function Topbar({ profile, credits }: { profile: UserMenuProfile | null; credits: number }) {
+export function Topbar({
+  profile,
+  credits,
+  isStaff = false,
+}: {
+  profile: UserMenuProfile | null
+  credits: number
+  /** Passed through to the account menu, which offers the admin panel when true. */
+  isStaff?: boolean
+}) {
   return (
     <header className="glass sticky top-0 z-40 border-b border-border/70">
       <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
         <MobileNav />
 
-        <Link href="/" className="rounded-md lg:hidden" aria-label="Kinetic Studio, home">
-          <KineticLogo compact markClassName="size-7" />
+        <Link href="/" className="rounded-md lg:hidden" aria-label="Home">
+          <SiteLogo compact markClassName="size-7" />
         </Link>
 
         <div className="ml-auto flex items-center gap-2">
           {profile ? (
             <>
               <CreditPill credits={credits} />
-              <UserMenu profile={profile} />
+              <UserMenu profile={profile} isStaff={isStaff} />
             </>
           ) : (
             <>

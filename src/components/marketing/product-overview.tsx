@@ -3,28 +3,37 @@ import { ArrowUpRight } from 'lucide-react'
 
 import { Reveal } from '@/components/marketing/reveal'
 import { Section, SectionHeading } from '@/components/marketing/section-heading'
-import { OVERVIEW_POINTS, WORKSPACE_SURFACES } from '@/lib/marketing/landing'
+import type { FeatureCard, LandingSection } from '@/lib/cms/content'
+import { WORKSPACE_SURFACES } from '@/lib/marketing/landing'
 
 /**
  * Product overview.
  *
- * Mirrors the hero: there the panel is on the right and the copy on the left,
- * here it is reversed, which is how the page avoids reading as a column of
- * identical bands.
+ * Mirrors the hero: there the panel is on the right and the copy on the left, here it is
+ * reversed, which is how the page avoids reading as a column of identical bands.
  *
- * The left panel is a real navigation, not a diagram of one. Each row links to
- * the route it describes — the middleware sends a signed-out visitor through
- * /sign-in and back — so a reader who is curious about the library ends up in
- * the library rather than reading a caption about it.
+ * The left panel is a real navigation, not a diagram of one. Each row links to the route it
+ * describes — the middleware sends a signed-out visitor through /sign-in and back — so a reader
+ * who is curious about the library ends up in the library rather than reading a caption about it.
+ *
+ * `WORKSPACE_SURFACES` stays in code deliberately, unlike the points beside it. Every entry is a
+ * route this build actually has, and an editable list of them is a list that can point at a 404.
+ * The copy on each row is one line and changes about as often as the routes do.
  */
-export function ProductOverview() {
+export function ProductOverview({
+  section,
+  points,
+}: {
+  section: LandingSection
+  points: FeatureCard[]
+}) {
   return (
     <Section id="overview">
       <SectionHeading
-        index="01"
-        eyebrow="The workspace"
-        title="Five surfaces, one balance, no exports in between"
-        lead="Most of the work in AI video is the shuffling: generate here, download, re-upload there, lose track of which prompt made which file. Kinetic Studio is one workspace with one asset store behind it."
+        index={section.indexLabel ?? '01'}
+        eyebrow={section.eyebrow ?? 'The workspace'}
+        title={section.title ?? 'Five surfaces, one balance, no exports in between'}
+        lead={section.lead ?? undefined}
       />
 
       <div className="mt-14 grid gap-10 lg:grid-cols-12 lg:gap-12">
@@ -62,13 +71,11 @@ export function ProductOverview() {
         {/* ----------------------------------------------------- points */}
         <div className="lg:col-span-5">
           <ol className="space-y-8">
-            {OVERVIEW_POINTS.map((point, index) => (
-              <Reveal key={point.title} delay={index * 0.08}>
+            {points.map((point, index) => (
+              <Reveal key={point.id} delay={index * 0.08}>
                 <li className="border-l-2 border-primary/40 pl-5">
                   <h3 className="text-lg font-medium leading-snug">{point.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    {point.body}
-                  </p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{point.body}</p>
                 </li>
               </Reveal>
             ))}

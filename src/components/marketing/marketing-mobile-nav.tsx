@@ -7,7 +7,7 @@ import { ArrowRight, Menu, X } from 'lucide-react'
 
 import { KineticLogo } from '@/components/brand/logo'
 import { Button } from '@/components/ui/button'
-import { marketingNav, resolveMarketingHref } from '@/config/site'
+import { DEFAULT_NAV, resolveNavHref, type NavLinkItem } from '@/lib/cms/content'
 
 /**
  * The landing page's mobile menu.
@@ -20,14 +20,20 @@ import { marketingNav, resolveMarketingHref } from '@/config/site'
  * Every link closes the sheet on click. Most are in-page anchors, so without
  * that the menu would stay open over the section it just scrolled to — the
  * single most common bug in a mobile marketing nav.
+ *
+ * The links arrive as a prop rather than being imported, because they are now database rows
+ * the header has already read. `DEFAULT_NAV.header` is the fallback for a caller that has
+ * nothing — the same links this file used to import.
  */
 export function MarketingMobileNav({
   isSignedIn = false,
   onLandingPage = false,
+  links = DEFAULT_NAV.header,
 }: {
   isSignedIn?: boolean
   /** Anchors only work on the landing page; elsewhere they need the `/` prefix. */
   onLandingPage?: boolean
+  links?: NavLinkItem[]
 }) {
   const [open, setOpen] = React.useState(false)
 
@@ -58,14 +64,16 @@ export function MarketingMobileNav({
           </div>
 
           <nav className="mt-6 flex flex-col" aria-label="Sections">
-            {marketingNav.map((item, index) => (
+            {links.map((item, index) => (
               <Link
-                key={item.href}
-                href={resolveMarketingHref(item, onLandingPage)}
+                key={item.id}
+                href={resolveNavHref(item, onLandingPage)}
+                target={item.isExternal ? '_blank' : undefined}
+                rel={item.isExternal ? 'noreferrer' : undefined}
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between border-b border-border/60 py-4 text-base font-medium transition-colors hover:text-brand"
               >
-                {item.title}
+                {item.label}
                 <span className="eyebrow text-muted-foreground" aria-hidden>
                   {String(index + 1).padStart(2, '0')}
                 </span>

@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache'
 
 import { normaliseCategories } from '@/lib/categories'
+import { getAccountState, suspensionMessage } from '@/lib/account-status'
 import { RATE_LIMITS } from '@/lib/constants'
+import { getFlags } from '@/lib/flags'
 import { actionKey, rateLimit } from '@/lib/rate-limit'
 import { addComment, deleteComment } from '@/services/comment.service'
 import {
@@ -30,11 +32,37 @@ import type { ExploreCategorySlug, GenerationVisibility } from '@/types/database
  * media because one heart moved would be a worse experience than the one it is
  * trying to fix. The actions that change *what the feed contains* — publishing
  * and retagging — do revalidate.
+ *
+ * Two gates run before the rate limit on the social actions, and both belong here rather than in
+ * the services below them. A feature flag is a decision about whether the endpoint should accept
+ * work at all; a suspension is a decision about the caller. Neither is about whether this
+ * particular like is valid, which is what the service decides.
  */
+
+/**
+ * The refusal a switched-off feature returns.
+ *
+ * Named rather than repeated, so all four social actions say the same thing about the same
+ * situation — and so `gate` below reads as one decision instead of four.
+ */
+async function gate(
+  feature: 'likes' | 'comments' | 'downloads',
+  label: string,
+): Promise<{ ok: false; error: string } | null> {
+  const [flags, account] = await Promise.all([getFlags(), getAccountState()])
+
+  if (!flags[feature]) return { ok: false, error: `${label} are switched off right now.` }
+  if (!account.active) return { ok: false, error: suspensionMessage(account) }
+
+  return null
+}
 
 export async function toggleLikeAction(
   generationId: string,
 ): Promise<ActionResult<{ liked: boolean; likeCount: number }>> {
+  const refused = await gate('likes', 'Likes')
+  if (refused) return refused
+
   // A like is one row and one counter, but a held-down key should not write
   // hundreds of them. The message says when, not just no.
   const quota = rateLimit(await actionKey(), RATE_LIMITS.likes)
@@ -51,6 +79,12 @@ export async function toggleLikeAction(
 export async function toggleFavouriteAction(
   generationId: string,
 ): Promise<ActionResult<{ favourited: boolean; favouriteCount: number }>> {
+  // Favourites are a private bookmark rather than a public counter, so they follow the account
+  // gate but not a feature flag — there is no version of "the feed is on but you may not save
+  // anything from it" that means something.
+  const account = await getAccountState()
+  if (!account.active) return { ok: false, error: suspensionMessage(account) }
+
   const quota = rateLimit(await actionKey(), RATE_LIMITS.favourites)
   if (!quota.ok) {
     return { ok: false, error: `Easy — try again in ${quota.retryAfterSec}s.` }
@@ -80,6 +114,9 @@ export async function toggleFavouriteAction(
 export async function registerDownloadAction(
   generationId: string,
 ): Promise<ActionResult<{ downloadCount: number }>> {
+  const refused = await gate('downloads', 'Downloads')
+  if (refused) return refused
+
   const quota = rateLimit(await actionKey(), RATE_LIMITS.downloads)
   if (!quota.ok) {
     return { ok: false, error: `Easy — try again in ${quota.retryAfterSec}s.` }
@@ -96,6 +133,9 @@ export async function addCommentAction(
   body: string,
   parentId?: string | null,
 ): Promise<ActionResult<{ id: string }>> {
+  const refused = await gate('comments', 'Comments')
+  if (refused) return refused
+
   const quota = rateLimit(await actionKey(), RATE_LIMITS.comments)
   if (!quota.ok) {
     return { ok: false, error: `Slow down — try again in ${quota.retryAfterSec}s.` }

@@ -3,15 +3,14 @@ import 'server-only'
 import {
   comparePlans,
   FREE_PLAN,
-  getPlan,
   isPlanId,
   type Plan,
   type PlanId,
-  planFor,
   CURRENCY,
   priceInMinorUnits,
 } from '@/lib/plans'
 import { getGateway, type CardDetails } from '@/lib/payments/demo-gateway'
+import { getPlanById, resolvePlan } from '@/services/cms/plans.service'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import type { PaymentTransactionRow, PlanTier, SubscriptionRow } from '@/types/database'
@@ -91,6 +90,13 @@ export async function listMyTransactions(limit = 20): Promise<PaymentTransaction
  * calls it with a user it has already resolved. Falls back to free on any
  * error: a billing lookup that fails should cost someone their higher
  * concurrency limit, never their ability to work.
+ *
+ * The tier's numbers now come from the `plans` table through `resolvePlan`,
+ * which falls back to the same `lib/plans.ts` catalogue this function used
+ * before — and migration 0017 seeded that table with exactly those values, so
+ * behaviour is unchanged until an operator edits a plan. What has NOT moved is
+ * the decision: entitlement is still `isEntitled`, lapsing is still `hasLapsed`
+ * below, and both live where they were and are still unit tested.
  */
 export async function planForUser(userId: string): Promise<Plan> {
   try {
@@ -112,7 +118,7 @@ export async function planForUser(userId: string): Promise<Plan> {
     // row still says, because nothing here runs a nightly job to rewrite it.
     if (hasLapsed(data)) return FREE_PLAN
 
-    return planFor(data.plan, data.status)
+    return resolvePlan(data.plan, data.status)
   } catch (cause) {
     console.error('[subscription.service] planForUser threw:', cause)
     return FREE_PLAN
@@ -154,7 +160,13 @@ export async function getBillingSnapshot(): Promise<BillingSnapshot> {
     .maybeSingle()
 
   const lapsed = subscription ? hasLapsed(subscription) : false
-  const plan = subscription && !lapsed ? planFor(subscription.plan, subscription.status) : FREE_PLAN
+  // The billing page shows what the user is on, resolved from the same
+  // database-backed catalogue the enforcement path uses, so the card they see and
+  // the limits they get cannot quote different numbers.
+  const plan =
+    subscription && !lapsed
+      ? await resolvePlan(subscription.plan, subscription.status)
+      : await getPlanById('free')
 
   return {
     plan,
@@ -231,7 +243,12 @@ export async function subscribeToPlan(
     return { ok: false, error: 'Choose a paid plan to continue.' }
   }
 
-  const plan = getPlan(planId)
+  // The price and the credit grant come from the database-backed catalogue, so a
+  // plan repriced in the admin panel is charged at the new price on the next
+  // checkout rather than at whatever lib/plans.ts last said. `getPlanById` falls
+  // back to that file, so a missing row still charges the shipped price instead
+  // of zero.
+  const plan = await getPlanById(planId)
   const current = await getMySubscription()
   const currentPlanId: PlanId = current && !hasLapsed(current) ? (current.plan as PlanId) : 'free'
 

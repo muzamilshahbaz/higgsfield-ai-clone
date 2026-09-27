@@ -14,7 +14,23 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
-export type UserRole = 'user' | 'admin'
+/**
+ * The staff ladder. 'user' and 'admin' are original; the other three arrived
+ * with migration 0015 so that "can edit the FAQ" and "can rotate the fal.ai
+ * key" stop being the same grant.
+ *
+ * The capability matrix is lib/admin/permissions.ts, not the database: it is a
+ * product decision that changes more often than a schema, and it is far easier
+ * to read — and to unit test — as a table of capabilities than as a pile of
+ * policy expressions.
+ */
+export type UserRole = 'user' | 'editor' | 'moderator' | 'admin' | 'super_admin'
+
+/** Mirrors the `account_status` enum (migration 0016). */
+export type AccountStatus = 'active' | 'suspended' | 'banned'
+
+/** Mirrors the `content_moderation_status` enum (migration 0016). */
+export type ContentModerationStatus = 'approved' | 'pending' | 'hidden'
 export type PresetKind = 'motion' | 'style'
 /**
  * Every vendor the app can name on a generation row.
@@ -43,9 +59,13 @@ export type ProviderName =
   | 'pika'
 
 /**
- * What is in a reference photograph.
+ * What is in a media asset.
  *
- * Keep in step with the `media_category` enum in migration 0011.
+ * The first six describe a photograph and are migration 0011's. The last three
+ * arrived with 0015, when the table stopped being only a reference-photography
+ * catalogue and started holding what an operator uploads — a logo, a favicon, an OG
+ * image. None of those is a landscape or a still life, and without somewhere to put
+ * them they would each be filed under whichever category was least wrong.
  */
 export type MediaCategory =
   | 'landscape'
@@ -54,6 +74,9 @@ export type MediaCategory =
   | 'urban'
   | 'abstract'
   | 'still_life'
+  | 'brand'
+  | 'ui'
+  | 'other'
 
 /**
  * Reference imagery the marketing page and the preset grid render.
@@ -148,6 +171,23 @@ export type ProfileRow = {
   avatar_url: string | null
   credits: number
   role: UserRole
+  /**
+   * Account state, added by migration 0016 and defaulting to 'active', so every
+   * row that existed before it keeps behaving as it did.
+   *
+   * Enforced in lib/supabase/middleware.ts rather than in a policy: RLS on this
+   * table is own-row, and a suspended user must still be able to read their own
+   * profile — that is what the suspension notice needs in order to explain
+   * itself.
+   */
+  status: AccountStatus
+  status_reason: string | null
+  status_changed_at: string | null
+  status_changed_by: string | null
+  /** A suspension with an end date lifts itself. A ban has none. */
+  suspended_until: string | null
+  /** Operator-only. Never rendered on a surface the account itself can see. */
+  notes: string | null
   created_at: string
   updated_at: string
 }
@@ -231,6 +271,18 @@ export type GenerationRow = {
    */
   engagement_score: number
   remix_count: number
+  /**
+   * The moderation record, added by 0016 and defaulting to 'approved' so no
+   * existing read path changes. Hiding a shot sets `visibility = 'private'` —
+   * the mechanism the Explore feed already enforces — and records the reason
+   * here. The status is the trail; visibility is the enforcement.
+   */
+  moderation_status: ContentModerationStatus
+  /** Editorially promoted. Read by the landing showcase, never by the feed. */
+  is_featured: boolean
+  moderation_note: string | null
+  moderated_at: string | null
+  moderated_by: string | null
   idempotency_key: string
   queued_at: string
   started_at: string | null
@@ -303,6 +355,14 @@ export type CommentRow = {
   author_name: string | null
   author_avatar_url: string | null
   body: string
+  /**
+   * Hidden by a moderator. Reversible on purpose: the generation's
+   * `comment_count` stays honest about what was said, and an over-eager hide
+   * costs nothing to undo. services/comment.service.ts filters on it.
+   */
+  is_hidden: boolean
+  hidden_at: string | null
+  hidden_by: string | null
   created_at: string
   updated_at: string
 }
@@ -548,6 +608,8 @@ export type Database = {
       subscription_status: SubscriptionStatus
       plan_tier: PlanTier
       payment_status: PaymentStatus
+      account_status: AccountStatus
+      content_moderation_status: ContentModerationStatus
     }
     CompositeTypes: { [_ in never]: never }
   }

@@ -8,6 +8,7 @@ import {
   type ProviderPollResult,
 } from '@/lib/ai'
 import { routeGeneration } from '@/services/ai/ai-router'
+import { resolveSharedKeys } from '@/services/cms/provider-keys.service'
 import { getUserProviderKeys } from '@/services/ai-keys.service'
 import { planForUser } from '@/services/subscription.service'
 import { LIMITS } from '@/lib/constants'
@@ -910,10 +911,15 @@ async function routeForUser(userId: string, modelId: string) {
   const model = getModel(modelId)
   const candidates = model ? providersFor(model) : []
 
-  // Only ask the vault for keys the router could actually use.
-  const keys = await getUserProviderKeys(userId, candidates)
+  // Only ask either vault for keys the router could actually use. Both reads in
+  // parallel: they are independent, and this is the critical path of a Generate
+  // click.
+  const [keys, sharedKeys] = await Promise.all([
+    getUserProviderKeys(userId, candidates),
+    resolveSharedKeys(candidates),
+  ])
 
-  return routeGeneration({ modelId, keys })
+  return routeGeneration({ modelId, keys, sharedKeys })
 }
 
 /**
@@ -930,8 +936,11 @@ async function routeForUser(userId: string, modelId: string) {
  * polling something that cannot answer until the timeout.
  */
 async function driverForRow(row: GenerationRow) {
-  const keys = await getUserProviderKeys(row.user_id, [row.provider])
-  const route = routeGeneration({ modelId: row.model_id, keys, only: row.provider })
+  const [keys, sharedKeys] = await Promise.all([
+    getUserProviderKeys(row.user_id, [row.provider]),
+    resolveSharedKeys([row.provider]),
+  ])
+  const route = routeGeneration({ modelId: row.model_id, keys, sharedKeys, only: row.provider })
 
   return route.ok ? route.driver : null
 }
