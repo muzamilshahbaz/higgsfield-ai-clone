@@ -139,6 +139,7 @@ export const marketingNav: MarketingNavItem[] = [
   { title: 'Explore', href: '/explore', route: true },
   { title: 'Features', href: '#overview' },
   { title: 'Models', href: '#models' },
+  { title: 'How it works', href: '#workflow' },
   { title: 'Pricing', href: '#pricing' },
   { title: 'FAQ', href: '#faq' },
 ]

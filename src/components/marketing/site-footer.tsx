@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 import { KineticLogo } from '@/components/brand/logo'
-import { marketingNav, siteConfig } from '@/config/site'
+import { marketingNav, resolveMarketingHref, siteConfig } from '@/config/site'
 
 /**
  * The footer.
@@ -15,10 +15,24 @@ import { marketingNav, siteConfig } from '@/config/site'
  * the app itself, and the honest notes about what this build is.
  */
 
-const COLUMNS = [
+/**
+ * The link columns.
+ *
+ * A function rather than a constant, because the Product column is built from
+ * `marketingNav` and most of those are in-page anchors. Computed once at
+ * module load they were bare `#pricing` hrefs, which point at a section that
+ * only exists on the landing page — so on /explore and /g/[id] the whole
+ * column was dead links. The header had already been fixed for this; the
+ * footer had not, which is what made it easy to miss.
+ */
+function columnsFor(onLandingPage: boolean) {
+  return [
   {
     heading: 'Product',
-    links: marketingNav.map((item) => ({ label: item.title, href: item.href })),
+    links: marketingNav.map((item) => ({
+      label: item.title,
+      href: resolveMarketingHref(item, onLandingPage),
+    })),
   },
   {
     heading: 'Workspace',
@@ -38,9 +52,12 @@ const COLUMNS = [
       { label: 'Billing', href: '/settings/billing' },
     ],
   },
-] as const
+  ] as const
+}
 
-export function SiteFooter() {
+export function SiteFooter({ onLandingPage = false }: { onLandingPage?: boolean }) {
+  const columns = columnsFor(onLandingPage)
+
   return (
     <footer className="border-t border-border/70 bg-surface/30">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
@@ -56,7 +73,7 @@ export function SiteFooter() {
             </p>
           </div>
 
-          {COLUMNS.map((column) => (
+          {columns.map((column) => (
             <nav key={column.heading} aria-labelledby={`footer-${column.heading}`} className="lg:col-span-2">
               <h2
                 id={`footer-${column.heading}`}

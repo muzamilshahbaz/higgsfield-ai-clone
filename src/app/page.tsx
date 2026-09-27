@@ -77,7 +77,7 @@ export default async function LandingPage() {
         <FinalCta isSignedIn={isSignedIn} />
       </main>
 
-      <SiteFooter />
+      <SiteFooter onLandingPage />
     </div>
   )
 }
