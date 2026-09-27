@@ -126,14 +126,20 @@ npm run dev
 
 ### 7. Optional: demo content
 
-Explore is empty until somebody publishes something. After signing up:
+Explore is empty until somebody publishes something, and that is handled: the
+landing page's showcase falls back to reference photography badged **Not app
+output**, and Explore itself shows an empty state inviting you to be first.
+Neither pretends a stock photograph is somebody's published work.
 
-```bash
-npm run seed:demo -- --email you@example.com
-```
+`npm run seed:demo -- --email you@example.com` used to publish six finished
+shots for an account. **It currently refuses to run**, and says why: the
+sample media it writes into `assets.url` lived under `public/samples/` and was
+deleted with the mock driver. Until something replaces those files the script
+would publish rows whose images 404 — which is what an empty feed already
+avoids, more honestly.
 
-Six finished, published shots attributed to that account. They cost zero
-credits and write no ledger rows, so the balance still reconciles.
+The quickest way to fill Explore is to generate something and publish it from
+your library.
 
 ## Deploying
 
@@ -233,6 +239,6 @@ something went wrong first — those say what.
 | `npm run test` | Vitest — 411 offline tests: provider drivers, routing, credits, schemas, registry |
 | `npm run seed` | Seed the preset catalogue |
 | `npm run seed:media` | Seed `media_assets` and repoint preset previews at it |
-| `npm run seed:demo` | Publish sample shots for one account (`-- --email you@…`) |
+| `npm run seed:demo` | Publish sample shots for one account — refuses while `public/samples/` is missing |
 | `npm run db:push` | Apply migrations via the Supabase CLI |
 | `npm run db:types` | Regenerate `src/types/database.ts` from the live schema |

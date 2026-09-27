@@ -84,9 +84,11 @@ Work top to bottom. The walkthrough at the end is the acceptance test.
 
 - [ ] `GET /robots.txt` and `GET /sitemap.xml` both return content.
 
-- [ ] Optional: `npm run seed:demo -- --email you@example.com` after signing
-      up, so Explore is not empty for the first visitor. Demo rows cost zero
-      credits and write no ledger entries.
+- [ ] Explore is empty for the first visitor, and that is the intended state:
+      the landing showcase falls back to reference photography badged "Not app
+      output", and Explore offers an empty state rather than fake content.
+      (`npm run seed:demo` refuses to run — its sample media was deleted with
+      the mock driver, so it would publish rows whose images 404.)
 
 ## 5. The walkthrough
 

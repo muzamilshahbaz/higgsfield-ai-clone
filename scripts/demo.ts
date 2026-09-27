@@ -17,6 +17,7 @@
  *   2. Every row is keyed by a deterministic `idempotency_key`, so re-running
  *      updates in place instead of filling the feed with duplicates.
  */
+import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 import { config } from 'dotenv'
@@ -92,11 +93,44 @@ function fail(message: string): never {
   process.exit(1)
 }
 
+/**
+ * Refuses to run when the media these rows point at is not there.
+ *
+ * This script wrote `/samples/shot-0N.svg` into `assets.url` long after commit
+ * 778701e deleted `public/samples/` along with the mock driver it belonged to.
+ * Nothing complained: the rows inserted fine, the feed listed them, and the
+ * only symptom was a wall of broken images on the landing page and a pair of
+ * 404s in the console. Seeding a feed with media that does not exist is worse
+ * than not seeding it — the showcase already has an honest empty state that
+ * says "not app output", and that is a better thing for a visitor to see.
+ */
+function assertMediaExists() {
+  const missing = SAMPLES.map((sample) => sample.asset).filter(
+    (asset) => !existsSync(resolve(process.cwd(), 'public', asset.replace(/^\//, ''))),
+  )
+
+  if (missing.length === 0) return
+
+  fail(
+    [
+      `Missing ${missing.length} of ${SAMPLES.length} sample files under public/:`,
+      ...missing.map((asset) => `  · ${asset}`),
+      '',
+      'These were removed with the mock driver in 778701e. Until something',
+      'replaces them, this script would publish rows whose media 404s.',
+      'The landing page and Explore both handle an empty feed correctly,',
+      'so doing nothing is the better outcome.',
+    ].join('\n'),
+  )
+}
+
 async function main() {
   const email = argValue('email')
   if (!email) {
     fail('Usage: npm run seed:demo -- --email you@example.com')
   }
+
+  assertMediaExists()
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
