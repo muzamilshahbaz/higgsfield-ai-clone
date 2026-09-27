@@ -6,7 +6,7 @@ import { AlertTriangle, Compass, Loader2, Search, Sparkles } from 'lucide-react'
 
 import { AssetDialog } from '@/components/explore/asset-dialog'
 import { ExploreCard } from '@/components/explore/explore-card'
-import { ExploreFilters } from '@/components/explore/explore-filters'
+import { ExploreFilters, ExploreSearch } from '@/components/explore/explore-filters'
 import { MasonryGrid } from '@/components/gallery/masonry-grid'
 import { EmptyState } from '@/components/studio/empty-state'
 import { Button } from '@/components/ui/button'
@@ -18,9 +18,11 @@ import { cn } from '@/lib/utils'
 /**
  * The public feed.
  *
- * Same masonry as the library, because published work has the same five aspect
- * ratios and there is no reason for two grids. What differs is what a card
- * does: this one opens a detail dialog and carries the social controls.
+ * One component for the whole surface — search, categories, sort, grid and the
+ * detail dialog — because all five read and write the same piece of state.
+ * Splitting them would mean lifting that state into the page and turning a
+ * server component into a client one, which is the opposite of what the
+ * standalone route is for.
  *
  * The dialog holds an id rather than a row, so a like registered inside it and
  * the same like registered on the card behind it are the same piece of state.
@@ -61,7 +63,7 @@ export function ExploreFeed({
    * a card: one piece of state, so a like registered in the dialog and the
    * same like on the card behind it can never disagree.
    */
-  const { adopt, getById } = feed
+  const { adopt, getById, loadMore, hasMore, loading, loadingMore } = feed
   const openItem = getById(openId)
 
   const open = React.useCallback(
@@ -72,19 +74,49 @@ export function ExploreFeed({
     [adopt],
   )
 
+  /**
+   * Infinite scroll.
+   *
+   * An observer on a sentinel below the grid, with a generous root margin so
+   * the next page is already arriving by the time the reader reaches the
+   * bottom. The Load More button stays underneath it rather than being
+   * replaced: an observer that never fires — reduced data, a browser that does
+   * not support it, a viewport tall enough that the sentinel starts on screen
+   * and never re-intersects — would otherwise leave the feed with no way
+   * forward at all.
+   */
+  const sentinelRef = React.useRef<HTMLDivElement>(null)
+
+  React.useEffect(() => {
+    const node = sentinelRef.current
+    if (!node || !hasMore || loading || loadingMore) return
+    if (typeof IntersectionObserver === 'undefined') return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore()
+      },
+      { rootMargin: '600px 0px' },
+    )
+
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, loadMore])
+
   const empty = feed.items.length === 0
   const activeCategory = getCategory(feed.category)
 
   return (
-    <div className="@container space-y-5">
+    <div className="@container space-y-8">
+      <ExploreSearch value={feed.search} onChange={feed.setSearch} loading={feed.loading} />
+
       <ExploreFilters
         category={feed.category}
         onCategoryChange={feed.setCategory}
         sort={feed.sort}
         onSortChange={feed.setSort}
-        search={feed.search}
-        onSearchChange={feed.setSearch}
         resultCount={feed.items.length}
+        hasMore={feed.hasMore}
         loading={feed.loading}
       />
 
@@ -106,7 +138,7 @@ export function ExploreFeed({
             title="Nothing matches that"
             description={
               feed.search.trim()
-                ? `No public shot matches “${feed.search.trim()}”. Try a different word, or browse a category.`
+                ? `No public creation matches “${feed.search.trim()}”. Try a different word, or browse a category.`
                 : `Nobody has published anything under ${activeCategory?.label ?? 'this category'} yet. ${activeCategory?.description ?? ''}`
             }
             action={
@@ -131,7 +163,10 @@ export function ExploreFeed({
           />
         )
       ) : (
-        <MasonryGrid className={cn(feed.loading && 'opacity-60 transition-opacity')}>
+        <MasonryGrid
+          density="wide"
+          className={cn(feed.loading && 'opacity-60 transition-opacity')}
+        >
           {feed.items.map((item) => (
             <ExploreCard
               key={item.id}
@@ -147,18 +182,22 @@ export function ExploreFeed({
       )}
 
       {feed.hasMore && !empty && (
-        <div className="flex justify-center pt-2">
-          <Button variant="outline" onClick={feed.loadMore} disabled={feed.loadingMore}>
-            {feed.loadingMore ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Loading…
-              </>
-            ) : (
-              'Load more'
-            )}
-          </Button>
-        </div>
+        <>
+          <div ref={sentinelRef} aria-hidden className="h-px w-full" />
+
+          <div className="flex justify-center pt-2">
+            <Button variant="outline" onClick={feed.loadMore} disabled={feed.loadingMore}>
+              {feed.loadingMore ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Loading…
+                </>
+              ) : (
+                'Load more'
+              )}
+            </Button>
+          </div>
+        </>
       )}
 
       <AssetDialog

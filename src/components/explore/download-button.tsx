@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Download, Loader2 } from 'lucide-react'
 
-import { registerDownloadAction } from '@/app/(studio)/explore/actions'
+import { registerDownloadAction } from '@/app/explore/actions'
 import { downloadMedia, filenameFor } from '@/lib/download'
 import { cn } from '@/lib/utils'
 import type { AssetRow } from '@/types/database'

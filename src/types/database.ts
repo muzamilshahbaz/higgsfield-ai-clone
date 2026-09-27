@@ -105,9 +105,9 @@ export type GenerationVisibility = 'private' | 'public'
 /**
  * The closed vocabulary a published shot can be tagged with.
  *
- * Mirrors the `generations_categories_allowed` check constraint in migration
- * 0013 — the database is the enforcement point, this is the compiler's copy,
- * and tests/categories.test.ts fails if the two ever disagree.
+ * Mirrors the `generations_categories_allowed` check constraint, as last
+ * rewritten by migration 0014 — the database is the enforcement point, this is
+ * the compiler's copy, and tests/categories.test.ts fails if they disagree.
  *
  * Deliberately not a Postgres enum: categories are editorial, a new one is a
  * one-line constraint change, and an enum would make removing one a migration
@@ -122,6 +122,10 @@ export type ExploreCategorySlug =
   | 'architecture'
   | 'fantasy'
   | 'abstract'
+  // Added in migration 0014.
+  | 'fashion'
+  | 'food'
+  | 'technology'
 export type AssetKind = 'image' | 'video' | 'poster'
 export type CreditReason =
   | 'signup_grant'

@@ -9,15 +9,16 @@ import type { CommentRow, GenerationWithAssets } from '@/types/database'
  * module into the browser bundle.
  */
 
-export type ExploreSort = 'new' | 'top' | 'downloads' | 'trending'
+export type ExploreSort = 'new' | 'trending' | 'top' | 'downloads' | 'comments'
 
-export const EXPLORE_SORTS: ExploreSort[] = ['new', 'top', 'downloads', 'trending']
+export const EXPLORE_SORTS: ExploreSort[] = ['new', 'trending', 'top', 'downloads', 'comments']
 
 export const EXPLORE_SORT_LABELS: Record<ExploreSort, string> = {
   new: 'Newest',
+  trending: 'Trending',
   top: 'Most liked',
   downloads: 'Most downloaded',
-  trending: 'Trending',
+  comments: 'Most commented',
 }
 
 export function isExploreSort(value: string | null | undefined): value is ExploreSort {

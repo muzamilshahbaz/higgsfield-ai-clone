@@ -117,16 +117,42 @@ export const settingsNav: NavItem[] = [
 ]
 
 /**
- * Landing-page nav.
+ * The public site's nav.
  *
- * Every href is an id that a section on / actually renders. Adding an entry
- * without the matching `id` gives a link that scrolls nowhere, which is worse
- * than not linking to the section at all.
+ * Every anchor href is an id that a section on `/` actually renders. Adding an
+ * entry without the matching `id` gives a link that scrolls nowhere, which is
+ * worse than not linking to the section at all.
+ *
+ * Explore is the one entry that is a route rather than an anchor, and it is
+ * first deliberately: it is the only item that takes a visitor somewhere they
+ * can use without an account.
  */
-export const marketingNav = [
-  { title: 'Product', href: '#overview' },
+export interface MarketingNavItem {
+  title: string
+  /** An in-page anchor, or a real route. See `resolveMarketingHref`. */
+  href: string
+  /** True for a route, which must not be rewritten when off the landing page. */
+  route?: boolean
+}
+
+export const marketingNav: MarketingNavItem[] = [
+  { title: 'Explore', href: '/explore', route: true },
+  { title: 'Features', href: '#overview' },
   { title: 'Models', href: '#models' },
-  { title: 'How it works', href: '#workflow' },
   { title: 'Pricing', href: '#pricing' },
   { title: 'FAQ', href: '#faq' },
-] as const
+]
+
+/**
+ * A nav href that works from wherever it is rendered.
+ *
+ * The bar is shared by `/`, `/explore` and `/g/[id]`. A bare `#pricing` scrolls
+ * to a section that only exists on the landing page — from anywhere else it is
+ * a link that visibly does nothing, which is worse than one that navigates.
+ * Off the landing page the anchors become `/#pricing`; real routes are left
+ * alone.
+ */
+export function resolveMarketingHref(item: MarketingNavItem, onLandingPage: boolean): string {
+  if (item.route) return item.href
+  return onLandingPage ? item.href : `/${item.href}`
+}

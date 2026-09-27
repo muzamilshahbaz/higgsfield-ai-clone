@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { AlertTriangle, Compass, Loader2, Star } from 'lucide-react'
 
-import { toggleFavouriteAction } from '@/app/(studio)/explore/actions'
+import { toggleFavouriteAction } from '@/app/explore/actions'
 import { AssetDialog } from '@/components/explore/asset-dialog'
 import { ExploreCard } from '@/components/explore/explore-card'
 import { MasonryGrid } from '@/components/gallery/masonry-grid'

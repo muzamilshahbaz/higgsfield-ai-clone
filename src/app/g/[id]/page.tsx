@@ -8,6 +8,7 @@ import { PermalinkActions } from '@/components/explore/permalink-actions'
 import { GenerationMedia } from '@/components/gallery/generation-media'
 import { SiteFooter } from '@/components/marketing/site-footer'
 import { SiteHeader } from '@/components/marketing/site-header'
+import { getMyProfile } from '@/services/profile.service'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -82,7 +83,11 @@ export async function generateMetadata({
 export default async function PermalinkPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
-  const [generation, user] = await Promise.all([getPublicGeneration(id), getCurrentUser()])
+  const [generation, user, profile] = await Promise.all([
+    getPublicGeneration(id),
+    getCurrentUser(),
+    getMyProfile(),
+  ])
 
   // Covers a bad id, a private shot and a deleted one with the same answer,
   // which is the only answer a stranger is entitled to.
@@ -102,7 +107,7 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="relative min-h-dvh">
-      <SiteHeader isSignedIn={Boolean(user)} />
+      <SiteHeader isSignedIn={Boolean(user)} profile={profile} />
 
       <main className="mx-auto max-w-5xl px-4 pb-20 pt-28 sm:px-6 sm:pt-32 lg:px-8">
         <div className="panel overflow-hidden rounded-2xl">

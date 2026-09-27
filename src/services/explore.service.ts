@@ -13,6 +13,7 @@ import {
   type ExploreItem,
   type ExploreSort,
 } from '@/lib/explore'
+import { MODELS } from '@/lib/ai/registry'
 import { createClient, getCurrentUser, tryCreateClient } from '@/lib/supabase/server'
 import { assetsByGeneration } from '@/services/asset.service'
 import type { ExploreCategorySlug, GenerationRow } from '@/types/database'
@@ -125,6 +126,14 @@ async function runQuery(
       filters.push(`categories.cs.{${slug}}`)
     }
 
+    // Same idea for models. `model_id` holds a slug like `lumen-flash`, but
+    // nobody searches for that — they type "Lumen Flash", which is the label
+    // the cards show them. Resolving the term through the registry is what
+    // makes the visible name the searchable one.
+    for (const id of matchingModelIds(term)) {
+      filters.push(`model_id.eq.${id}`)
+    }
+
     query = query.or(filters.join(','))
   }
 
@@ -136,6 +145,7 @@ async function runQuery(
 
   if (sort === 'top') query = query.order('like_count', { ascending: false })
   else if (sort === 'downloads') query = query.order('download_count', { ascending: false })
+  else if (sort === 'comments') query = query.order('comment_count', { ascending: false })
   else if (sort === 'trending') query = query.order('engagement_score', { ascending: false })
 
   // `created_at` always breaks the tie, so every sort is stable between
@@ -171,6 +181,31 @@ function sanitiseSearch(input: string | null | undefined): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 80)
+}
+
+/**
+ * Registered models whose label, id or provider matches the term.
+ *
+ * Capped, because each one becomes another alternative in the `or` filter and
+ * a two-letter search would otherwise splice the whole registry into one
+ * query string.
+ */
+function matchingModelIds(term: string): string[] {
+  const needle = term.toLowerCase()
+  if (needle.length < 2) return []
+
+  return MODELS.filter(
+    (model) =>
+      model.label.toLowerCase().includes(needle) ||
+      model.id.toLowerCase().includes(needle) ||
+      // `family` is the open-weight model behind the label — someone who knows
+      // they want FLUX should find it by typing FLUX, not by learning what we
+      // called it.
+      model.family.toLowerCase().includes(needle) ||
+      model.routes.some((route) => route.provider.toLowerCase().includes(needle)),
+  )
+    .slice(0, 8)
+    .map((model) => model.id)
 }
 
 /** Category tags whose slug or label contains the search term. */

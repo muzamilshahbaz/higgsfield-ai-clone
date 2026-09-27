@@ -10,6 +10,7 @@ import { Pricing } from '@/components/marketing/pricing'
 import { ProductOverview } from '@/components/marketing/product-overview'
 import { SiteFooter } from '@/components/marketing/site-footer'
 import { SiteHeader } from '@/components/marketing/site-header'
+import { getMyProfile } from '@/services/profile.service'
 import { Stats } from '@/components/marketing/stats'
 import { isSupabaseConfigured } from '@/lib/env'
 import { getCurrentUser } from '@/lib/supabase/server'
@@ -41,6 +42,8 @@ export default async function LandingPage() {
   const user = isSupabaseConfigured ? await getCurrentUser() : null
   const isSignedIn = Boolean(user)
 
+  const profile = isSupabaseConfigured ? await getMyProfile() : null
+
   const [showcase, heroMedia, showcaseMedia, presets] = isSupabaseConfigured
     ? await Promise.all([
         listPublicGenerations({ limit: SHOWCASE_COUNT, sort: 'top' }),
@@ -58,7 +61,7 @@ export default async function LandingPage() {
 
   return (
     <div className="relative min-h-dvh">
-      <SiteHeader isSignedIn={isSignedIn} />
+      <SiteHeader isSignedIn={isSignedIn} profile={profile} onLandingPage />
 
       <main>
         <Hero isSignedIn={isSignedIn} media={heroMedia} presets={presets} />

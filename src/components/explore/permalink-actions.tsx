@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Repeat2 } from 'lucide-react'
 
-import { toggleFavouriteAction, toggleLikeAction } from '@/app/(studio)/explore/actions'
+import { toggleFavouriteAction, toggleLikeAction } from '@/app/explore/actions'
 import { CommentThread } from '@/components/explore/comment-thread'
 import { DownloadButton } from '@/components/explore/download-button'
 import { FavouriteButton } from '@/components/explore/engagement'

@@ -7,7 +7,7 @@ import { ArrowRight, Menu, X } from 'lucide-react'
 
 import { KineticLogo } from '@/components/brand/logo'
 import { Button } from '@/components/ui/button'
-import { marketingNav } from '@/config/site'
+import { marketingNav, resolveMarketingHref } from '@/config/site'
 
 /**
  * The landing page's mobile menu.
@@ -17,11 +17,18 @@ import { marketingNav } from '@/config/site'
  * closes it, and the page behind it is marked inert so a swipe cannot scroll
  * it. The trigger is a real button with an accessible name.
  *
- * Every link closes the sheet on click. These are in-page anchors, so without
+ * Every link closes the sheet on click. Most are in-page anchors, so without
  * that the menu would stay open over the section it just scrolled to — the
  * single most common bug in a mobile marketing nav.
  */
-export function MarketingMobileNav({ isSignedIn = false }: { isSignedIn?: boolean }) {
+export function MarketingMobileNav({
+  isSignedIn = false,
+  onLandingPage = false,
+}: {
+  isSignedIn?: boolean
+  /** Anchors only work on the landing page; elsewhere they need the `/` prefix. */
+  onLandingPage?: boolean
+}) {
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -54,7 +61,7 @@ export function MarketingMobileNav({ isSignedIn = false }: { isSignedIn?: boolea
             {marketingNav.map((item, index) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={resolveMarketingHref(item, onLandingPage)}
                 onClick={() => setOpen(false)}
                 className="flex items-center justify-between border-b border-border/60 py-4 text-base font-medium transition-colors hover:text-brand"
               >
@@ -70,7 +77,7 @@ export function MarketingMobileNav({ isSignedIn = false }: { isSignedIn?: boolea
             {isSignedIn ? (
               <Button asChild size="lg">
                 <Link href="/dashboard" onClick={() => setOpen(false)}>
-                  Open the studio
+                  Dashboard
                   <ArrowRight className="size-4" aria-hidden />
                 </Link>
               </Button>

@@ -2,13 +2,16 @@ import {
   Boxes,
   Building2,
   Clapperboard,
+  Cpu,
   Flame,
   Image as ImageIcon,
   Leaf,
   Package,
   Shapes,
+  Shirt,
   Sparkles,
   UserRound,
+  UtensilsCrossed,
   Video,
   type LucideIcon,
 } from 'lucide-react'
@@ -50,45 +53,57 @@ export interface ExploreCategory {
 export const CATEGORY_TAGS: readonly ExploreCategorySlug[] = [
   'portraits',
   'anime',
-  'cinematic',
-  'product',
-  'nature',
+  'fashion',
   'architecture',
   'fantasy',
+  'nature',
+  'product',
+  'food',
+  'technology',
   'abstract',
+  'cinematic',
 ] as const
 
 export const TAG_LABELS: Record<ExploreCategorySlug, string> = {
   portraits: 'Portraits',
   anime: 'Anime',
-  cinematic: 'Cinematic',
-  product: 'Product photography',
-  nature: 'Nature',
+  fashion: 'Fashion',
   architecture: 'Architecture',
   fantasy: 'Fantasy',
+  nature: 'Nature',
+  product: 'Product',
+  food: 'Food',
+  technology: 'Technology',
   abstract: 'Abstract',
+  cinematic: 'Cinematic',
 }
 
 const TAG_ICONS: Record<ExploreCategorySlug, LucideIcon> = {
   portraits: UserRound,
   anime: Sparkles,
-  cinematic: Clapperboard,
-  product: Package,
-  nature: Leaf,
+  fashion: Shirt,
   architecture: Building2,
   fantasy: Shapes,
+  nature: Leaf,
+  product: Package,
+  food: UtensilsCrossed,
+  technology: Cpu,
   abstract: Boxes,
+  cinematic: Clapperboard,
 }
 
 const TAG_DESCRIPTIONS: Record<ExploreCategorySlug, string> = {
   portraits: 'Faces, figures and character work.',
   anime: 'Illustrated and animation-led styles.',
-  cinematic: 'Film looks, camera moves and lighting.',
-  product: 'Objects shot like they are for sale.',
-  nature: 'Landscape, weather, plants and animals.',
+  fashion: 'Clothing, styling and editorial looks.',
   architecture: 'Buildings, interiors and structure.',
   fantasy: 'Invented worlds, myth and the impossible.',
+  nature: 'Landscape, weather, plants and animals.',
+  product: 'Objects shot like they are for sale.',
+  food: 'Dishes, ingredients and the table.',
+  technology: 'Machines, interfaces and hardware.',
   abstract: 'Texture, colour and form over subject.',
+  cinematic: 'Film looks, camera moves and lighting.',
 }
 
 export const EXPLORE_CATEGORIES: readonly ExploreCategory[] = [
@@ -221,6 +236,19 @@ const KEYWORDS: Record<ExploreCategorySlug, readonly string[]> = {
   abstract: [
     'abstract', 'geometric', 'fractal', 'pattern', 'texture', 'gradient',
     'minimal', 'surreal', 'kaleidoscope', 'liquid', 'smoke',
+  ],
+  fashion: [
+    'fashion', 'runway', 'couture', 'editorial', 'model', 'outfit', 'dress',
+    'suit', 'streetwear', 'garment', 'jacket', 'catwalk', 'vogue', 'styling',
+  ],
+  food: [
+    'food', 'dish', 'meal', 'plate', 'cuisine', 'chef', 'restaurant', 'bakery',
+    'dessert', 'cake', 'coffee', 'cocktail', 'kitchen', 'ingredient', 'recipe',
+  ],
+  technology: [
+    'technology', 'robot', 'circuit', 'server', 'laptop', 'phone', 'drone',
+    'hardware', 'microchip', 'dashboard', 'interface', 'screen', 'lab',
+    'machine', 'engine',
   ],
 }
 

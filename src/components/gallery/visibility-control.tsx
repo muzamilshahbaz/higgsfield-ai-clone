@@ -4,7 +4,7 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { Globe2, Loader2, Lock } from 'lucide-react'
 
-import { setCategoriesAction, setVisibilityAction } from '@/app/(studio)/explore/actions'
+import { setCategoriesAction, setVisibilityAction } from '@/app/explore/actions'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { describe, expect, it } from 'vitest'
@@ -16,34 +16,54 @@ import {
 
 /**
  * The category vocabulary lives in two places that cannot be allowed to drift:
- * the check constraint in migration 0013, which is what actually stops a bad
+ * the check constraint in the migrations, which is what actually stops a bad
  * tag reaching the table, and `lib/categories.ts`, which is what the UI
  * offers.
  *
  * If they disagree the failure is quiet and nasty — a chip the user can tick
  * that produces a 23514 on publish, or a tag in the database that no filter
- * can find. This test reads the migration and compares.
+ * can find. This test reads the migrations and compares.
  */
 
-const MIGRATION = readFileSync(
-  path.join(process.cwd(), 'supabase', 'migrations', '0013_explore_social.sql'),
-  'utf8',
-)
+/**
+ * The live definition of the constraint: the last one any migration declares.
+ *
+ * Deliberately not pinned to a filename. 0013 introduced the constraint and
+ * 0014 replaced it with three more categories; a test pinned to 0013 went red
+ * for the right reason but pointed at the wrong file, which is the sort of
+ * failure that gets "fixed" by editing the expectation instead. Reading every
+ * migration in order and keeping the last match means this keeps testing
+ * whatever the database actually ends up with.
+ */
+function latestConstraintBody(): string | undefined {
+  const dir = path.join(process.cwd(), 'supabase', 'migrations')
+  const files = readdirSync(dir)
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+
+  let found: string | undefined
+
+  for (const name of files) {
+    const sql = readFileSync(path.join(dir, name), 'utf8')
+    // Anchored on `add constraint`, not on the name alone: the name also
+    // appears in `drop constraint if exists` and in 0013's existence guard,
+    // and matching those finds DDL with no vocabulary in it.
+    const matches = [
+      ...sql.matchAll(
+        /add constraint generations_categories_allowed\s+check \(([\s\S]*?)\n\s*\);/g,
+      ),
+    ]
+    if (matches.length > 0) found = matches.at(-1)![1]
+  }
+
+  return found
+}
 
 describe('category vocabulary', () => {
-  /**
-   * The body of the check constraint.
-   *
-   * Anchored on the `add constraint` clause rather than on the name alone:
-   * the name also appears in the `if not exists` guard above it, and matching
-   * that one finds a few words of DDL with no vocabulary in them.
-   */
-  const constraint = MIGRATION.match(
-    /add constraint generations_categories_allowed\s+check \(([\s\S]*?)\n\s*\);/,
-  )?.[1]
+  const constraint = latestConstraintBody()
 
   it('has a check constraint to compare against', () => {
-    expect(constraint, 'the check constraint is missing from migration 0013').toBeTruthy()
+    expect(constraint, 'no migration declares generations_categories_allowed').toBeTruthy()
   })
 
   it('matches the slugs the database check constraint allows', () => {

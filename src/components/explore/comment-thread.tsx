@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { Loader2, MessageCircle, Reply, Send, Trash2 } from 'lucide-react'
 
-import { addCommentAction, deleteCommentAction } from '@/app/(studio)/explore/actions'
+import { addCommentAction, deleteCommentAction } from '@/app/explore/actions'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'

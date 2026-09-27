@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 
-import { toggleFavouriteAction, toggleLikeAction } from '@/app/(studio)/explore/actions'
+import { toggleFavouriteAction, toggleLikeAction } from '@/app/explore/actions'
 import type { ExploreItem, ExploreSort } from '@/lib/explore'
 
 /**
