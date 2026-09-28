@@ -13,10 +13,21 @@ assets or branding.
 **Live demo — [kineticstudioai.vercel.app](https://kineticstudioai.vercel.app)** — the
 screenshot above links to it.
 
-**See the admin panel** — [sign in](https://kineticstudioai.vercel.app/sign-in) as
-`readonlyadmin@kineticstudio.ai` / `ReadOnly@1234` and you land straight on `/admin`.
-Read-only: it opens all 28 screens and can change nothing. Details under
-[The admin panel](#the-admin-panel).
+**See the admin panel.** Sign in with the account below and you land straight on
+`/admin` — read-only, so it opens all 28 screens and can change nothing. Details
+under [The admin panel](#the-admin-panel).
+
+**Admin sign-in URL**
+
+https://kineticstudioai.vercel.app/sign-in
+
+**Email**
+
+`readonlyadmin@kineticstudio.ai`
+
+**Password**
+
+`ReadOnly@1234`
 
 Signing up grants 200 credits, no card. Generations are real: images and video both
 run on open-weight models — FLUX.1, SDXL, Wan 2.2, LTX-Video, CogVideoX,
@@ -229,14 +240,23 @@ action to forget to check, and a test reads every action file to prove it.
 
 ### Look around the live panel
 
-Sign in at **[kineticstudioai.vercel.app/sign-in](https://kineticstudioai.vercel.app/sign-in)**
-with the read-only account, and you land on `/admin` rather than the studio:
+Sign in with the read-only account and you land on `/admin` rather than the studio.
 
-| | |
-|---|---|
-| Email | `readonlyadmin@kineticstudio.ai` |
-| Password | `ReadOnly@1234` |
-| Role | `viewer` — read-only admin |
+**Admin sign-in URL**
+
+https://kineticstudioai.vercel.app/sign-in
+
+**Email**
+
+`readonlyadmin@kineticstudio.ai`
+
+**Password**
+
+`ReadOnly@1234`
+
+**Role**
+
+`viewer` — read-only admin
 
 It opens all 28 screens and can change nothing: every table, search and filter works,
 and every control that would write is disabled. That is not enforced by the greyed
