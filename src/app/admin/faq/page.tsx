@@ -12,6 +12,8 @@ import { DeleteButton, ReorderButtons, ToggleAction } from '@/components/admin/c
 import type { FieldSpec } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cmsList } from '@/services/cms/crud'
@@ -73,14 +75,15 @@ const FIELDS: FieldSpec[] = [
 ]
 
 export default async function AdminFaqPage() {
-  await requireCapability('content:write', '/admin/faq')
+  const actor = await requireCapability('content:read', '/admin/faq')
+  const canWrite = can(actor.role, 'content:write')
 
   const rows = await cmsList('faq_entries', { orderBy: 'sort_order' })
   const ids = rows.map((row) => row.id)
   const visible = rows.filter((row) => row.is_visible).length
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="FAQ"
@@ -198,6 +201,6 @@ export default async function AdminFaqPage() {
           </>
         )}
       </AdminPanel>
-    </>
+    </AdminWriteScope>
   )
 }

@@ -14,6 +14,7 @@ import {
   type RecordValues,
 } from '@/components/admin/form-spec'
 import { ICON_NAMES, resolveIcon } from '@/lib/admin/icons'
+import { useAdminReadOnly } from '@/components/admin/read-only'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -95,6 +96,7 @@ export function RecordForm({
   const [pending, startTransition] = React.useTransition()
   const formRef = React.useRef<HTMLFormElement>(null)
   const router = useRouter()
+  const { readOnly, reason } = useAdminReadOnly()
 
   /**
    * Re-seed when the record being edited changes.
@@ -166,22 +168,36 @@ export function RecordForm({
 
   return (
     <form ref={formRef} onSubmit={submit} className={cn('space-y-5', className)} noValidate>
-      <div className={cn(columns === 2 && 'grid gap-5 sm:grid-cols-2')}>
-        {fields.map((field) => (
-          <Field
-            key={field.name}
-            field={field}
-            value={values[field.name]}
-            error={fieldError?.field === field.name ? fieldError.message : null}
-            onChange={(value) => set(field.name, value)}
-            mediaOptions={mediaOptions}
-            columns={columns}
-          />
-        ))}
-      </div>
+      {/*
+        A native fieldset rather than a `disabled` prop threaded through every
+        field type. `fieldset[disabled]` disables every form control inside it —
+        inputs, textareas, selects and the button-based pickers alike — which is
+        one line instead of one per control, and cannot be forgotten when a new
+        field type is added. `display: contents` keeps it out of the layout; the
+        disabling is semantic and does not depend on how it renders.
+
+        It deliberately does not wrap the footer: `secondary` is the dialog's
+        Cancel button, and a read-only operator who cannot close the dialog they
+        opened is worse off than one who cannot save.
+      */}
+      <fieldset disabled={readOnly} className="contents">
+        <div className={cn(columns === 2 && 'grid gap-5 sm:grid-cols-2')}>
+          {fields.map((field) => (
+            <Field
+              key={field.name}
+              field={field}
+              value={values[field.name]}
+              error={fieldError?.field === field.name ? fieldError.message : null}
+              onChange={(value) => set(field.name, value)}
+              mediaOptions={mediaOptions}
+              columns={columns}
+            />
+          ))}
+        </div>
+      </fieldset>
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending || readOnly} title={readOnly ? reason : undefined}>
           {pending && <Loader2 className="size-4 animate-spin" aria-hidden />}
           {submitLabel}
         </Button>
@@ -768,12 +784,27 @@ export function RecordDialog({
   triggerVariant?: 'default' | 'outline' | 'ghost' | 'secondary'
 }) {
   const [open, setOpen] = React.useState(false)
+  const { readOnly, reason } = useAdminReadOnly()
 
   return (
     <>
-      <span onClick={() => setOpen(true)} className="contents">
+      {/*
+        The trigger is a caller-supplied node as often as it is the default
+        button, so read-only mode cannot just set `disabled` on it. Dropping the
+        click handler is what actually stops it opening; the wrapper supplies the
+        look and the explanation for whatever is inside.
+      */}
+      <span
+        onClick={readOnly ? undefined : () => setOpen(true)}
+        title={readOnly ? reason : undefined}
+        aria-disabled={readOnly || undefined}
+        // `contents` normally, so the trigger keeps whatever layout its parent
+        // gave it. Read-only needs a real box: `opacity` does not apply to an
+        // element that generates none.
+        className={cn(readOnly ? 'inline-flex pointer-events-none opacity-50' : 'contents')}
+      >
         {trigger ?? (
-          <Button variant={triggerVariant}>
+          <Button variant={triggerVariant} disabled={readOnly}>
             <Plus className="size-4" aria-hidden />
             {triggerLabel}
           </Button>

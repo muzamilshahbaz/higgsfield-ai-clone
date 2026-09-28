@@ -11,7 +11,10 @@ import type { UserRole } from '@/types/database'
  * in all three by adding an entry here, and cannot appear in one and be missing
  * from another.
  *
- * `capabilities` is what the item needs to be *visible*. It is not the
+ * `capabilities` is what the item needs to be *visible*, and it is always a READ
+ * capability — a read-only admin has a link to every screen they can open, and a
+ * screen whose link needed a write grant would be invisible to exactly the role
+ * that is supposed to see all of them. It is not the
  * authorization: the page itself calls `requireCapability` and the actions call
  * `authorize`, because hiding a link is a courtesy and a guard is a control.
  * Listing several means "any of these", so a screen with two panels shows up for
@@ -69,7 +72,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/statistics',
         icon: 'statistics',
         description: 'The numbers band on the landing page',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
     ],
   },
@@ -81,42 +84,42 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/landing',
         icon: 'landing',
         description: 'Every band: copy, order, visibility',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
       {
         title: 'Features',
         href: '/admin/features',
         icon: 'features',
         description: 'Feature cards, capability cards and the overview points',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
       {
         title: 'FAQ',
         href: '/admin/faq',
         icon: 'faq',
         description: 'Questions and answers',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
       {
         title: 'Testimonials',
         href: '/admin/testimonials',
         icon: 'testimonials',
         description: 'Quotes, attribution and verification',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
       {
         title: 'Announcements',
         href: '/admin/announcements',
         icon: 'announcements',
         description: 'Scheduled banners across the marketing site and the studio',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
       {
         title: 'Categories',
         href: '/admin/categories',
         icon: 'categories',
         description: 'Preset, Explore, model and media vocabularies',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
       {
         title: 'Media',
@@ -182,7 +185,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/presets',
         icon: 'presets',
         description: 'The camera-move and style catalogue',
-        capabilities: ['content:write'],
+        capabilities: ['content:read'],
       },
     ],
   },
@@ -227,21 +230,21 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/branding',
         icon: 'branding',
         description: 'Logo, favicon, wordmark',
-        capabilities: ['settings:write'],
+        capabilities: ['settings:read'],
       },
       {
         title: 'Theme',
         href: '/admin/theme',
         icon: 'theme',
         description: 'Colours, type, radius and motion',
-        capabilities: ['settings:write'],
+        capabilities: ['settings:read'],
       },
       {
         title: 'Feature flags',
         href: '/admin/flags',
         icon: 'flags',
         description: 'Turn surfaces on and off, including maintenance mode',
-        capabilities: ['flags:write'],
+        capabilities: ['flags:read'],
       },
       {
         title: 'Settings',

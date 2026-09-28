@@ -3,15 +3,14 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ArrowLeft, Menu, ShieldCheck, X } from 'lucide-react'
+import { Menu, ShieldCheck, X } from 'lucide-react'
 
 import type { AdminNavGroup } from '@/lib/admin/nav'
 import { navIcon } from '@/lib/admin/nav-icons'
-import { ROLE_LABELS } from '@/lib/admin/permissions'
-import { Badge } from '@/components/ui/badge'
+import { AdminUserMenu, type AdminMenuProfile } from '@/components/admin/admin-user-menu'
+import { ReadOnlyBadge, useAdminReadOnly } from '@/components/admin/read-only'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { UserRole } from '@/types/database'
 
 /**
  * The admin navigation.
@@ -29,12 +28,10 @@ import type { UserRole } from '@/types/database'
 
 export function AdminSidebar({
   groups,
-  role,
-  handle,
+  profile,
 }: {
   groups: AdminNavGroup[]
-  role: UserRole
-  handle: string
+  profile: AdminMenuProfile
 }) {
   const [open, setOpen] = React.useState(false)
   const pathname = usePathname()
@@ -80,7 +77,7 @@ export function AdminSidebar({
             <div className="min-h-0 flex-1 overflow-y-auto p-3">
               <NavList groups={groups} pathname={pathname} />
             </div>
-            <Footer role={role} handle={handle} />
+            <Footer profile={profile} />
           </div>
         </div>
       )}
@@ -96,7 +93,7 @@ export function AdminSidebar({
           <NavList groups={groups} pathname={pathname} />
         </div>
 
-        <Footer role={role} handle={handle} />
+        <Footer profile={profile} />
       </aside>
     </>
   )
@@ -151,29 +148,25 @@ function NavList({ groups, pathname }: { groups: AdminNavGroup[]; pathname: stri
 }
 
 /**
- * Who you are signed in as, and the way back to the product.
+ * Who you are signed in as, and the way out.
  *
- * The role badge is not decoration: an operator who cannot do something needs to
- * know it is their role rather than a broken button, and this is the one place that
- * says so on every screen.
+ * The role is stated on every screen on purpose: an operator who cannot do
+ * something needs to know it is their role rather than a broken button, and a
+ * read-only account gets the badge beside it so the answer is visible without
+ * opening the menu.
  */
-function Footer({ role, handle }: { role: UserRole; handle: string }) {
+function Footer({ profile }: { profile: AdminMenuProfile }) {
+  const { readOnly } = useAdminReadOnly()
+
   return (
     <div className="shrink-0 space-y-2 border-t border-border px-3 py-3">
-      <div className="flex items-center justify-between gap-2 px-1">
-        <p className="min-w-0 truncate text-xs text-muted-foreground">@{handle}</p>
-        <Badge variant="outline" className="shrink-0">
-          {ROLE_LABELS[role]}
-        </Badge>
-      </div>
+      {readOnly && (
+        <div className="px-1 pt-1">
+          <ReadOnlyBadge />
+        </div>
+      )}
 
-      <Link
-        href="/dashboard"
-        className="flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:bg-surface-2/70 hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Back to the studio
-      </Link>
+      <AdminUserMenu profile={profile} />
     </div>
   )
 }

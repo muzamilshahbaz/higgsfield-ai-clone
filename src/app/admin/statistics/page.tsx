@@ -11,6 +11,8 @@ import { DeleteButton, ReorderButtons, ToggleAction } from '@/components/admin/c
 import type { FieldSpec } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { statValue } from '@/lib/cms/content'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -107,7 +109,8 @@ function initialFor(row: SiteStatRow) {
 }
 
 export default async function AdminStatisticsPage() {
-  await requireCapability('content:write', '/admin/statistics')
+  const actor = await requireCapability('content:read', '/admin/statistics')
+  const canWrite = can(actor.role, 'content:write')
 
   const readyProviders = PROVIDERS.filter((provider) => provider.generationReady).length
 
@@ -121,7 +124,7 @@ export default async function AdminStatisticsPage() {
   const ids = rows.map((row) => row.id)
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="Statistics"
@@ -278,6 +281,6 @@ export default async function AdminStatisticsPage() {
           ))}
         </dl>
       </AdminPanel>
-    </>
+    </AdminWriteScope>
   )
 }

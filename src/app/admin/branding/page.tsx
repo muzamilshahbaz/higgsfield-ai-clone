@@ -3,6 +3,8 @@ import type { FieldSpec, MediaOption } from '@/components/admin/form-spec'
 import { RecordForm } from '@/components/admin/record-form'
 import { KineticLogo } from '@/components/brand/logo'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { Button } from '@/components/ui/button'
 import { listMedia } from '@/services/cms/media.service'
 import { getSettingsForAdmin } from '@/services/cms/settings.service'
@@ -65,7 +67,8 @@ function fields(media: MediaOption[]): FieldSpec[] {
 }
 
 export default async function AdminBrandingPage() {
-  await requireCapability('settings:write', '/admin/branding')
+  const actor = await requireCapability('settings:read', '/admin/branding')
+  const canWrite = can(actor.role, 'settings:write')
 
   const [settings, mediaResult] = await Promise.all([
     getSettingsForAdmin(),
@@ -80,7 +83,7 @@ export default async function AdminBrandingPage() {
   }))
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="System"
         title="Branding"
@@ -184,6 +187,6 @@ export default async function AdminBrandingPage() {
           brand and it will appear here as a picker.
         </p>
       )}
-    </>
+    </AdminWriteScope>
   )
 }

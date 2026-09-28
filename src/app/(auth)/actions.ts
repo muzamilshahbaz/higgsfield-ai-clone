@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
 import { logEvent } from '@/lib/admin/audit'
+import { postSignInPath } from '@/lib/admin/permissions'
 import { getFlags } from '@/lib/flags'
 import { createClient } from '@/lib/supabase/server'
 import { env } from '@/lib/env'
@@ -106,8 +107,37 @@ export async function signIn(_prev: AuthState, formData: FormData): Promise<Auth
     })
   }
 
+  /*
+   * Staff land in the panel.
+   *
+   * Read through the client that just authenticated rather than a fresh one:
+   * the session is in memory here, whereas a new server client would have to
+   * read cookies this request has only just set. A failed read falls through to
+   * the studio, which is the safe direction — the worst case is one extra click
+   * for an operator, not a stranger in the panel, because /admin guards itself.
+   */
+  const home = await homeFor(supabase, data.user?.id)
+
   revalidatePath('/', 'layout')
-  redirect(safeNextPath(parsed.data.next))
+  redirect(safeNextPath(parsed.data.next, home))
+}
+
+/** The post-sign-in destination for this account. Never throws. */
+async function homeFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string | undefined,
+): Promise<string> {
+  if (!userId) return '/dashboard'
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role, status')
+      .eq('id', userId)
+      .maybeSingle()
+    return postSignInPath(data?.role, data?.status)
+  } catch {
+    return '/dashboard'
+  }
 }
 
 // ---------------------------------------------------------------- sign up
@@ -312,7 +342,14 @@ export async function resetPassword(_prev: AuthState, formData: FormData): Promi
 // ---------------------------------------------------------------- OAuth
 
 export async function signInWithGoogle(_prev: AuthState, formData: FormData): Promise<AuthState> {
-  const next = safeNextPath(String(formData.get('next') ?? ''))
+  /*
+   * Empty when the visitor named no destination, rather than /dashboard.
+   *
+   * This value is baked into the OAuth callback URL, so defaulting it here would
+   * hand the callback a destination it has to honour and stop it sending staff
+   * to the panel. The callback decides when this is empty.
+   */
+  const next = safeNextPath(String(formData.get('next') ?? ''), '')
 
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({

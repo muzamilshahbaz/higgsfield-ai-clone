@@ -10,6 +10,7 @@ import { getFlags } from '@/lib/flags'
 import { getCurrentUser } from '@/lib/supabase/server'
 import { listPublicGenerations } from '@/services/explore.service'
 import { getMyProfile } from '@/services/profile.service'
+import { isStaffVisitor } from '@/lib/marketing/staff-visitor'
 
 const PAGE_SIZE = 24
 
@@ -79,7 +80,7 @@ export default async function ExplorePage({
 
   return (
     <div className="relative min-h-dvh">
-      <SiteHeader isSignedIn={Boolean(user)} profile={profile} />
+      <SiteHeader isSignedIn={Boolean(user)} isStaff={isStaffVisitor(profile)} profile={profile} />
 
       <main className="pb-24 pt-28 sm:pt-32">
         {/*

@@ -4,6 +4,8 @@ import { AdminPageHeader, AdminPanel } from '@/components/admin/admin-chrome'
 import type { FieldSpec } from '@/components/admin/form-spec'
 import { RecordForm } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getSettingsForAdmin } from '@/services/cms/settings.service'
@@ -111,12 +113,13 @@ const FIELDS: FieldSpec[] = [
 ]
 
 export default async function AdminThemePage() {
-  await requireCapability('settings:write', '/admin/theme')
+  const actor = await requireCapability('settings:read', '/admin/theme')
+  const canWrite = can(actor.role, 'settings:write')
 
   const settings = await getSettingsForAdmin()
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="System"
         title="Theme"
@@ -290,6 +293,6 @@ export default async function AdminThemePage() {
           will fail contrast on every button at once.
         </p>
       </AdminPanel>
-    </>
+    </AdminWriteScope>
   )
 }

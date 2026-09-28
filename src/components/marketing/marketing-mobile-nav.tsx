@@ -27,10 +27,13 @@ import { DEFAULT_NAV, resolveNavHref, type NavLinkItem } from '@/lib/cms/content
  */
 export function MarketingMobileNav({
   isSignedIn = false,
+  isStaff = false,
   onLandingPage = false,
   links = DEFAULT_NAV.header,
 }: {
   isSignedIn?: boolean
+  /** Staff get the panel here too, so the two bars never disagree. */
+  isStaff?: boolean
   /** Anchors only work on the landing page; elsewhere they need the `/` prefix. */
   onLandingPage?: boolean
   links?: NavLinkItem[]
@@ -84,8 +87,8 @@ export function MarketingMobileNav({
           <div className="mt-6 flex flex-col gap-2.5">
             {isSignedIn ? (
               <Button asChild size="lg">
-                <Link href="/dashboard" onClick={() => setOpen(false)}>
-                  Dashboard
+                <Link href={isStaff ? '/admin' : '/dashboard'} onClick={() => setOpen(false)}>
+                  {isStaff ? 'Admin panel' : 'Dashboard'}
                   <ArrowRight className="size-4" aria-hidden />
                 </Link>
               </Button>

@@ -12,6 +12,8 @@ import { DeleteButton, ToggleAction } from '@/components/admin/controls'
 import type { FieldSpec, MediaOption } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cmsList } from '@/services/cms/crud'
@@ -104,7 +106,8 @@ function initialFor(row: TestimonialRow) {
 }
 
 export default async function AdminTestimonialsPage() {
-  await requireCapability('content:write', '/admin/testimonials')
+  const actor = await requireCapability('content:read', '/admin/testimonials')
+  const canWrite = can(actor.role, 'content:write')
 
   const [rows, mediaResult] = await Promise.all([
     cmsList('testimonials', { orderBy: 'sort_order' }),
@@ -122,7 +125,7 @@ export default async function AdminTestimonialsPage() {
   const published = rows.filter((row) => row.is_visible).length
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="Testimonials"
@@ -246,6 +249,6 @@ export default async function AdminTestimonialsPage() {
           </AdminTable>
         )}
       </AdminPanel>
-    </>
+    </AdminWriteScope>
   )
 }

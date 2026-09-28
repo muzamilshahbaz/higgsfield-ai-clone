@@ -21,6 +21,8 @@ import {
 import type { FieldSpec } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { MODELS } from '@/lib/ai/registry'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -167,7 +169,8 @@ export default async function AdminPresetsPage({
 }: {
   searchParams: Promise<{ q?: string; kind?: string; category?: string; page?: string }>
 }) {
-  await requireCapability('content:write', '/admin/presets')
+  const actor = await requireCapability('content:read', '/admin/presets')
+  const canWrite = can(actor.role, 'content:write')
   const params = await searchParams
 
   const page = Math.max(1, Number(params.page ?? '1') || 1)
@@ -188,7 +191,7 @@ export default async function AdminPresetsPage({
   const active = result.presets.filter((row) => row.is_active).length
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="AI"
         title="Prompt presets"
@@ -410,6 +413,6 @@ export default async function AdminPresetsPage({
         wrong value there produces a provider error the user is charged for, so they stay with the
         seed script, which has each model’s input schema in front of it.
       </p>
-    </>
+    </AdminWriteScope>
   )
 }

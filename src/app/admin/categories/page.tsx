@@ -13,6 +13,8 @@ import type { FieldSpec } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { resolveIcon } from '@/lib/admin/icons'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { CATEGORY_TAGS } from '@/lib/categories'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -110,12 +112,13 @@ function initialFor(row: ContentCategoryRow) {
 }
 
 export default async function AdminCategoriesPage() {
-  await requireCapability('content:write', '/admin/categories')
+  const actor = await requireCapability('content:read', '/admin/categories')
+  const canWrite = can(actor.role, 'content:write')
 
   const rows = await cmsList('content_categories', { orderBy: 'scope', thenBy: 'sort_order' })
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="Categories"
@@ -261,6 +264,6 @@ export default async function AdminCategoriesPage() {
           </AdminPanel>
         )
       })}
-    </>
+    </AdminWriteScope>
   )
 }

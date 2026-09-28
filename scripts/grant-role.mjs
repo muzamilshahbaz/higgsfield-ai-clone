@@ -22,7 +22,7 @@ import dotenv from 'dotenv'
 
 dotenv.config({ path: '.env.local' })
 
-const ROLES = ['user', 'editor', 'moderator', 'admin', 'super_admin']
+const ROLES = ['user', 'viewer', 'editor', 'moderator', 'admin', 'super_admin']
 
 const [email, role] = process.argv.slice(2)
 

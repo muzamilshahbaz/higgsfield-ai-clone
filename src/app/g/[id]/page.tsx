@@ -20,6 +20,7 @@ import { aspectStyle, formatRelativeTime, truncate } from '@/lib/utils'
 import { getPublicGeneration, listRelatedGenerations } from '@/services/explore.service'
 import { getPreset } from '@/services/preset.service'
 import { PermalinkStrip } from '@/components/explore/permalink-strip'
+import { isStaffVisitor } from '@/lib/marketing/staff-visitor'
 
 /**
  * The public permalink.
@@ -107,7 +108,7 @@ export default async function PermalinkPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="relative min-h-dvh">
-      <SiteHeader isSignedIn={Boolean(user)} profile={profile} />
+      <SiteHeader isSignedIn={Boolean(user)} isStaff={isStaffVisitor(profile)} profile={profile} />
 
       <main className="mx-auto max-w-5xl px-4 pb-20 pt-28 sm:px-6 sm:pt-32 lg:px-8">
         <div className="panel overflow-hidden rounded-2xl">

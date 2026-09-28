@@ -12,6 +12,8 @@ import type { FieldSpec, MediaOption } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { FEATURE_SPANS, resolveIcon } from '@/lib/admin/icons'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TASK_LABELS } from '@/lib/constants'
@@ -126,7 +128,8 @@ function initialFor(row: SiteFeatureRow) {
 }
 
 export default async function AdminFeaturesPage() {
-  await requireCapability('content:write', '/admin/features')
+  const actor = await requireCapability('content:read', '/admin/features')
+  const canWrite = can(actor.role, 'content:write')
 
   const [rows, mediaResult] = await Promise.all([
     cmsList('site_features', { orderBy: 'placement', thenBy: 'sort_order' }),
@@ -143,7 +146,7 @@ export default async function AdminFeaturesPage() {
   const spec = fields(media)
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="Features"
@@ -278,6 +281,6 @@ export default async function AdminFeaturesPage() {
       <Button asChild variant="outline">
         <Link href="/#features">View the grid on site</Link>
       </Button>
-    </>
+    </AdminWriteScope>
   )
 }

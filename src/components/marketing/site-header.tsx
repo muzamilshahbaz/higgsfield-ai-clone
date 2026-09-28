@@ -39,10 +39,20 @@ import { cn } from '@/lib/utils'
  */
 export async function SiteHeader({
   isSignedIn = false,
+  isStaff = false,
   profile = null,
   onLandingPage = false,
 }: {
   isSignedIn?: boolean
+  /**
+   * Whether this visitor works here.
+   *
+   * Changes the primary button from Dashboard to Admin panel. Resolved on the
+   * server from the profile's role — a courtesy, not a control: /admin guards
+   * itself, and a visitor who forged this would get a redirect for their
+   * trouble.
+   */
+  isStaff?: boolean
   /**
    * Shown as an avatar beside the Dashboard button. Optional: a page that has
    * not read the profile gets the button alone rather than a second query it
@@ -97,7 +107,9 @@ export async function SiteHeader({
           {signedIn ? (
             <>
               <Button asChild size="sm">
-                <Link href="/dashboard">Dashboard</Link>
+                <Link href={isStaff ? '/admin' : '/dashboard'}>
+                  {isStaff ? 'Admin panel' : 'Dashboard'}
+                </Link>
               </Button>
 
               {profile && (
@@ -131,6 +143,7 @@ export async function SiteHeader({
 
           <MarketingMobileNav
             isSignedIn={signedIn}
+            isStaff={isStaff}
             onLandingPage={onLandingPage}
             links={links}
           />

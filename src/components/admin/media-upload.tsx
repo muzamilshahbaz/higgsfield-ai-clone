@@ -6,6 +6,7 @@ import { Loader2, Replace, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { replaceMediaFile, uploadMediaFile } from '@/app/admin/_actions/media'
+import { useAdminReadOnly } from '@/components/admin/read-only'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -68,6 +69,7 @@ function rejectFile(file: File | undefined | null): string | null {
 }
 
 export function MediaUploadForm({ folders }: { folders: string[] }) {
+  const { readOnly, reason } = useAdminReadOnly()
   const [pending, startTransition] = React.useTransition()
   const [preview, setPreview] = React.useState<string | null>(null)
   const [fileName, setFileName] = React.useState<string | null>(null)
@@ -135,6 +137,9 @@ export function MediaUploadForm({ folders }: { folders: string[] }) {
 
   return (
     <form ref={formRef} onSubmit={submit} className="space-y-4">
+      {/* See the note in record-form.tsx: one fieldset disables every control
+          inside it, including the file input and the two pickers. */}
+      <fieldset disabled={readOnly} className="contents">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="media-file">File</Label>
@@ -239,8 +244,9 @@ export function MediaUploadForm({ folders }: { folders: string[] }) {
           <Input id="media-credit-url" name="creditUrl" type="url" placeholder="https://…" />
         </div>
       </div>
+      </fieldset>
 
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || readOnly} title={readOnly ? reason : undefined}>
         {pending ? (
           <Loader2 className="size-4 animate-spin" aria-hidden />
         ) : (
@@ -263,6 +269,7 @@ export function MediaReplaceButton({ id, slug }: { id: string; slug: string }) {
   const [open, setOpen] = React.useState(false)
   const [pending, startTransition] = React.useTransition()
   const router = useRouter()
+  const { readOnly, reason } = useAdminReadOnly()
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -292,7 +299,13 @@ export function MediaReplaceButton({ id, slug }: { id: string; slug: string }) {
 
   return (
     <>
-      <Button variant="ghost" size="icon-sm" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        disabled={readOnly}
+        title={readOnly ? reason : undefined}
+        onClick={() => setOpen(true)}
+      >
         <Replace className="size-4" aria-hidden />
         <span className="sr-only">Replace the file behind {slug}</span>
       </Button>

@@ -24,7 +24,13 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
  * to read — and to unit test — as a table of capabilities than as a pile of
  * policy expressions.
  */
-export type UserRole = 'user' | 'editor' | 'moderator' | 'admin' | 'super_admin'
+export type UserRole =
+  | 'user'
+  | 'viewer'
+  | 'editor'
+  | 'moderator'
+  | 'admin'
+  | 'super_admin'
 
 /** Mirrors the `account_status` enum (migration 0016). */
 export type AccountStatus = 'active' | 'suspended' | 'banned'

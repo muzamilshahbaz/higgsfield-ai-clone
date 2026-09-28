@@ -12,6 +12,8 @@ import { DeleteButton, ReorderButtons, ToggleAction } from '@/components/admin/c
 import type { FieldSpec, MediaOption } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { isSectionKey } from '@/lib/cms/content'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -192,7 +194,8 @@ function stepInitial(row: WorkflowStepRow) {
 }
 
 export default async function AdminLandingPage() {
-  await requireCapability('content:write', '/admin/landing')
+  const actor = await requireCapability('content:read', '/admin/landing')
+  const canWrite = can(actor.role, 'content:write')
 
   const [sections, steps, nav, mediaResult] = await Promise.all([
     cmsList('landing_sections', { orderBy: 'sort_order' }),
@@ -213,7 +216,7 @@ export default async function AdminLandingPage() {
   const stepIds = steps.map((row) => row.id)
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="Landing page"
@@ -507,6 +510,6 @@ export default async function AdminLandingPage() {
           )
         })}
       </AdminPanel>
-    </>
+    </AdminWriteScope>
   )
 }

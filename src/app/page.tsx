@@ -31,6 +31,7 @@ import { getMyProfile } from '@/services/profile.service'
 import { listPublicGenerations } from '@/services/explore.service'
 import { listMedia, listMediaMix } from '@/services/media.service'
 import { listPresetCatalogue } from '@/services/preset.service'
+import { isStaffVisitor } from '@/lib/marketing/staff-visitor'
 
 /**
  * The landing page.
@@ -225,7 +226,7 @@ export default async function LandingPage() {
 
   return (
     <div className="relative min-h-dvh">
-      <SiteHeader isSignedIn={isSignedIn} profile={profile} onLandingPage />
+      <SiteHeader isSignedIn={isSignedIn} isStaff={isStaffVisitor(profile)} profile={profile} onLandingPage />
 
       {announcement && <AnnouncementBanner announcement={announcement} />}
 

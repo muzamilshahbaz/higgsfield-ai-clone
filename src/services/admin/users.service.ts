@@ -2,7 +2,7 @@ import 'server-only'
 
 import { audit } from '@/lib/admin/audit'
 import type { AdminActor, AdminResult } from '@/lib/admin/guard'
-import { canAssignRole, ROLE_LABELS } from '@/lib/admin/permissions'
+import { canActOnUser, canAssignRole, ROLE_LABELS } from '@/lib/admin/permissions'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cmsAdminClient } from '@/lib/supabase/cms'
 import type { SystemLogRow } from '@/types/cms'
@@ -353,12 +353,11 @@ export async function setUserStatus(
   const target = await loadTarget(userId)
   if (!target) return { ok: false, error: 'That account no longer exists.' }
 
-  // An operator cannot act on somebody who outranks them. Reusing the role check
-  // rather than writing a second rank comparison: a moderator who could ban an
-  // admin has an escalation path, and there should be one place that decides rank.
-  if (!canAssignRole(actor.role, target.role, 'user') && target.role !== 'user') {
-    const outranks = target.role !== actor.role
-    if (outranks) return { ok: false, error: 'You cannot change the status of that account.' }
+  // An operator cannot act on somebody who outranks them: a moderator who could
+  // ban an admin has an escalation path, and an admin who could suspend a super
+  // admin could lock out the only person watching them. One rule, one place.
+  if (!canActOnUser(actor.role, target.role)) {
+    return { ok: false, error: 'You cannot change the status of that account.' }
   }
 
   if (
@@ -425,6 +424,13 @@ export async function adjustUserCredits(
 
   const target = await loadTarget(userId)
   if (!target) return { ok: false, error: 'That account no longer exists.' }
+
+  // Credits are money, and moving somebody's money is an action against them.
+  // This was the one destructive account path without a rank check: an admin
+  // could zero a super admin's balance while being unable to suspend them.
+  if (!canActOnUser(actor.role, target.role)) {
+    return { ok: false, error: 'You cannot adjust the credits on that account.' }
+  }
 
   const { data, error } = await cmsAdminClient().rpc('admin_adjust_credits', {
     p_user_id: userId,
@@ -505,7 +511,7 @@ export async function deleteUser(
   const target = await loadTarget(userId)
   if (!target) return { ok: false, error: 'That account no longer exists.' }
 
-  if (!canAssignRole(actor.role, target.role, 'user') && target.role !== 'user') {
+  if (!canActOnUser(actor.role, target.role)) {
     return { ok: false, error: 'You cannot delete that account.' }
   }
   if (target.role === 'super_admin' && (await isLastActiveSuperAdmin(userId))) {

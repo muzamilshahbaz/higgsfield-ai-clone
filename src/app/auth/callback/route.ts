@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
 import { logEvent } from '@/lib/admin/audit'
+import { postSignInPath } from '@/lib/admin/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { safeNextPath } from '@/lib/validation/auth'
 
@@ -16,7 +17,10 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
 
   const code = searchParams.get('code')
-  const next = safeNextPath(searchParams.get('next'))
+  // Kept raw until the session exists: whether the default destination is the
+  // studio or the panel depends on the role, which is not known yet. An explicit
+  // `next` still wins, and is validated either way.
+  const requestedNext = searchParams.get('next')
 
   // The provider itself refused (consent denied, provider disabled, ...).
   const providerError = searchParams.get('error')
@@ -70,12 +74,36 @@ export async function GET(request: NextRequest) {
       userId: data.user.id,
       context: {
         provider: data.user.app_metadata?.provider ?? 'email',
-        // `next` is already validated by `safeNextPath`, so this cannot record an open redirect
-        // that the app would not have followed.
-        next,
+        // Validated by `safeNextPath` below before it is followed, so this cannot record an
+        // open redirect that the app would act on.
+        next: requestedNext,
       },
     })
   }
+
+  /*
+   * Staff land in the panel, everybody else in the studio — unless the link
+   * carried its own destination, which always wins.
+   *
+   * A failed profile read falls through to the studio. That is the safe
+   * direction: the cost is one extra click for an operator, and /admin guards
+   * itself regardless of where anyone is sent.
+   */
+  let home = '/dashboard'
+  if (data.user) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, status')
+        .eq('id', data.user.id)
+        .maybeSingle()
+      home = postSignInPath(profile?.role, profile?.status)
+    } catch {
+      home = '/dashboard'
+    }
+  }
+
+  const next = safeNextPath(requestedNext, home)
 
   // Behind a proxy (Vercel), `origin` is the internal host — prefer the
   // forwarded one so the user is not bounced to an unreachable URL.

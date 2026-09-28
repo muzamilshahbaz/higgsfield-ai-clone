@@ -19,7 +19,20 @@ export default async function SignUpPage({
   searchParams: Promise<{ next?: string }>
 }) {
   const { next } = await searchParams
-  const redirectTo = safeNextPath(next)
+  /*
+   * Only a destination the visitor actually asked for is forwarded.
+   *
+   * `safeNextPath(next)` defaults to /dashboard, and passing that default into
+   * the form made the hidden field always non-empty — so the action's own
+   * decision about where this account belongs could never apply, and every
+   * staff sign-in landed in the studio. An empty string here means "no opinion",
+   * which is what lets postSignInPath() answer.
+   *
+   * A hostile or malformed `next` also resolves to empty rather than to the
+   * studio: it is not a destination anybody chose, so it should not beat the
+   * one the account has.
+   */
+  const redirectTo = next ? safeNextPath(next, '') : ''
 
   const [providers, flags, grant] = await Promise.all([
     getEnabledAuthProviders(),
@@ -84,7 +97,7 @@ export default async function SignUpPage({
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{' '}
         <Link
-          href={next ? `/sign-in?next=${encodeURIComponent(redirectTo)}` : '/sign-in'}
+          href={redirectTo ? `/sign-in?next=${encodeURIComponent(redirectTo)}` : '/sign-in'}
           className="font-medium text-foreground underline-offset-4 hover:underline"
         >
           Sign in

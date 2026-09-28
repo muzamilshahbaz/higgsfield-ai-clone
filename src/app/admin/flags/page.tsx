@@ -3,6 +3,8 @@ import { AlertTriangle, Power } from 'lucide-react'
 import { AdminPageHeader, AdminPanel } from '@/components/admin/admin-chrome'
 import { ToggleAction } from '@/components/admin/controls'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { FLAG_DEFAULTS, type FlagKey } from '@/lib/flags'
 import { Badge } from '@/components/ui/badge'
 import { cmsList } from '@/services/cms/crud'
@@ -57,7 +59,8 @@ const GROUP_LABELS: Record<string, string> = {
 }
 
 export default async function AdminFlagsPage() {
-  await requireCapability('flags:write', '/admin/flags')
+  const actor = await requireCapability('flags:read', '/admin/flags')
+  const canWrite = can(actor.role, 'flags:write')
 
   const rows = await cmsList('feature_flags', { orderBy: 'sort_order' })
 
@@ -68,7 +71,7 @@ export default async function AdminFlagsPage() {
   const off = rest.filter((row) => !row.enabled)
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="System"
         title="Feature flags"
@@ -192,6 +195,6 @@ export default async function AdminFlagsPage() {
           {off.map((row) => row.label).join(', ')}.
         </p>
       )}
-    </>
+    </AdminWriteScope>
   )
 }

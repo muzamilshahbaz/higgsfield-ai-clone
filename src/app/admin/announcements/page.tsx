@@ -13,6 +13,8 @@ import { DeleteButton, ToggleAction } from '@/components/admin/controls'
 import { toLocalInput, type FieldSpec } from '@/components/admin/form-spec'
 import { RecordDialog } from '@/components/admin/record-form'
 import { requireCapability } from '@/lib/admin/guard'
+import { can } from '@/lib/admin/permissions'
+import { AdminWriteScope } from '@/components/admin/read-only'
 import { getFlags } from '@/lib/flags'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -130,7 +132,8 @@ function liveState(row: AnnouncementRow, flagOn: boolean) {
 }
 
 export default async function AdminAnnouncementsPage() {
-  await requireCapability('content:write', '/admin/announcements')
+  const actor = await requireCapability('content:read', '/admin/announcements')
+  const canWrite = can(actor.role, 'content:write')
 
   const [rows, flags] = await Promise.all([
     cmsList('announcements', { orderBy: 'created_at', ascending: false }),
@@ -140,7 +143,7 @@ export default async function AdminAnnouncementsPage() {
   const live = rows.filter((row) => liveState(row, flags.announcements).label === 'Live').length
 
   return (
-    <>
+    <AdminWriteScope canWrite={canWrite}>
       <AdminPageHeader
         eyebrow="Content"
         title="Announcements"
@@ -274,6 +277,6 @@ export default async function AdminAnnouncementsPage() {
           </AdminTable>
         )}
       </AdminPanel>
-    </>
+    </AdminWriteScope>
   )
 }

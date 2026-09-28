@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { useAdminReadOnly } from '@/components/admin/read-only'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
@@ -102,6 +103,7 @@ export function ToggleAction({
   const [optimistic, setOptimistic] = React.useState(checked)
   const [pending, startTransition] = React.useTransition()
   const router = useRouter()
+  const { readOnly, reason } = useAdminReadOnly()
 
   // The server is the source of truth: if the row re-renders with a different
   // value — another operator, or a refresh — the switch follows it rather than
@@ -113,7 +115,8 @@ export function ToggleAction({
   return (
     <Switch
       checked={optimistic}
-      disabled={disabled || pending}
+      disabled={disabled || pending || readOnly}
+      title={readOnly ? reason : undefined}
       aria-label={label}
       onCheckedChange={(next) => {
         setOptimistic(next)
@@ -171,6 +174,7 @@ export function ActionButton({
   const [pending, startTransition] = React.useTransition()
   const router = useRouter()
   const Icon = icon ? ACTION_ICONS[icon] : null
+  const { readOnly, reason } = useAdminReadOnly()
 
   function run() {
     startTransition(async () => {
@@ -191,7 +195,8 @@ export function ActionButton({
         type="button"
         variant={variant}
         size={size}
-        disabled={disabled || pending}
+        disabled={disabled || pending || readOnly}
+        title={readOnly ? reason : undefined}
         className={className}
         onClick={() => (confirm ? setOpen(true) : run())}
       >
@@ -284,6 +289,7 @@ export function ReorderButtons({
 }) {
   const [pending, startTransition] = React.useTransition()
   const router = useRouter()
+  const { readOnly, reason } = useAdminReadOnly()
 
   const index = ids.indexOf(id)
   const canUp = index > 0
@@ -318,7 +324,8 @@ export function ReorderButtons({
         type="button"
         variant="ghost"
         size="icon-sm"
-        disabled={!canUp || pending}
+        disabled={!canUp || pending || readOnly}
+        title={readOnly ? reason : undefined}
         onClick={() => move(-1)}
       >
         <ChevronUp className="size-4" aria-hidden />
@@ -328,7 +335,8 @@ export function ReorderButtons({
         type="button"
         variant="ghost"
         size="icon-sm"
-        disabled={!canDown || pending}
+        disabled={!canDown || pending || readOnly}
+        title={readOnly ? reason : undefined}
         onClick={() => move(1)}
       >
         <ChevronDown className="size-4" aria-hidden />

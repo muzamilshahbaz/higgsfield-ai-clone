@@ -1,0 +1,33 @@
+-- =====================================================================
+-- 0022 — the read-only admin role
+--
+-- `viewer` opens every screen in the panel and can change nothing. It exists
+-- for the people who need to answer questions — support reading a user's
+-- credit ledger, finance reading the plan matrix, an auditor reading the audit
+-- log — without being handed a Save button they have no business pressing.
+--
+-- The enum value is `viewer` rather than `read_only_admin` because the rest of
+-- this enum is one word per rung and a role name is not the place to spell out
+-- a sentence. Everywhere a person sees it — the sidebar badge, the user menu,
+-- the role picker — it renders as "Read-only admin", from ROLE_LABELS in
+-- src/lib/admin/permissions.ts.
+--
+-- Nothing else changes here. The role carries no grants of its own: what a
+-- viewer may do is the capability matrix in code, and what a viewer may *not*
+-- do is enforced by every Server Action calling `authorize` with a `:write`
+-- capability that the role simply does not hold. There is no read-only flag to
+-- forget to check.
+--
+-- Its rank sits below `editor`, above `user` — see ROLE_RANK. That ordering is
+-- what stops an admin from being demoted by somebody they outrank, and what
+-- stops a viewer from being assigned any role at all (they do not hold
+-- `users:roles`).
+--
+-- Enum additions live alone in their own migration: a value added here cannot
+-- be *used* as data in the same transaction, and scripts/apply-migration.mjs
+-- wraps one file in one transaction. Same reason 0015 exists.
+--
+-- Safe to re-run.
+-- =====================================================================
+
+alter type public.user_role add value if not exists 'viewer';
