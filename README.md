@@ -13,6 +13,11 @@ assets or branding.
 **Live demo — [kineticstudioai.vercel.app](https://kineticstudioai.vercel.app)** — the
 screenshot above links to it.
 
+**See the admin panel** — [sign in](https://kineticstudioai.vercel.app/sign-in) as
+`readonlyadmin@kineticstudio.ai` / `ReadOnly@1234` and you land straight on `/admin`.
+Read-only: it opens all 28 screens and can change nothing. Details under
+[The admin panel](#the-admin-panel).
+
 Signing up grants 200 credits, no card. Generations are real: images and video both
 run on open-weight models — FLUX.1, SDXL, Wan 2.2, LTX-Video, CogVideoX,
 HunyuanVideo — through Hugging Face, fal.ai or Replicate.
@@ -23,8 +28,17 @@ credit is debited, with a sentence naming what to connect — a generation that 
 happen must never look like one that did. A free Hugging Face token is enough for
 FLUX.1 [schnell]; everything else needs a fal.ai or Replicate key.
 
-See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) for which provider serves which model,
-the request shape each one takes, and every error code a job can carry.
+Almost nothing on the marketing site is hardcoded. The landing page, pricing, plans,
+credit rules, provider catalogue, model presentation, FAQ, statistics, navigation,
+branding and theme are database rows edited from a **super admin panel** at `/admin`
+— 28 screens, six roles, an append-only audit trail. Every read falls back to the
+value the app shipped with, so an unseeded or unreachable database renders the site
+exactly as it was built.
+
+See [`docs/ADMIN.md`](docs/ADMIN.md) for the panel: schema, roles, security model and
+the testing report. See [`docs/PROVIDERS.md`](docs/PROVIDERS.md) for which provider
+serves which model, the request shape each one takes, and every error code a job can
+carry.
 
 > Full product analysis, architecture, schema and roadmap: [`docs/PLAN.md`](docs/PLAN.md)
 > — written before the sprint and kept as the original plan, so it describes the
@@ -41,6 +55,7 @@ the request shape each one takes, and every error code a job can carry.
 | Storage | Supabase Storage (`uploads`, `generations`) |
 | Realtime | Supabase Realtime — live job feed, no polling loop |
 | AI | Hugging Face · fal.ai · Replicate, behind one provider abstraction |
+| CMS | Database-backed content, a capability matrix in code, AES-256-GCM sealed vendor keys |
 | Deploy | Vercel |
 
 ## Getting started
@@ -101,6 +116,17 @@ Or paste each file in `supabase/migrations/` into the Supabase SQL editor, in or
 | `0009_billing_country.sql` | Billing country on the subscription |
 | `0010_huggingface_provider.sql` | Adds `huggingface` to the `provider_name` enum |
 | `0011_media_assets.sql` | `media_assets` — reference imagery for the marketing page and preset grid |
+| `0012_usd_billing.sql` | Prices and the ledger in USD minor units |
+| `0013_explore_social.sql` | Likes, comments, favourites and downloads |
+| `0014_explore_categories.sql` | The Explore category vocabulary |
+| `0015_cms_enums.sql` | Enum values only — staff roles and media categories. Alone, because a value added in a transaction cannot be used as data in it |
+| `0016_cms.sql` | The CMS: 19 tables, 3 enums, 3 functions, moderation and account-status columns, RLS |
+| `0017_cms_seed.sql` | Seeds every row from the literal it replaces, so a fresh database renders the shipped site |
+| `0018_site_metrics.sql` | `site_metrics()` — the landing page's counts as scalars, without widening any owner-scoped policy |
+| `0019_configurable_signup_grant.sql` | The signup grant reads `credit_rules` instead of a constant |
+| `0020_explore_category_seed_fix.sql` | Corrects two seeded categories that were not in the allowed set |
+| `0021_function_grants.sql` | **Security fix.** Locks six `SECURITY DEFINER` functions to the service role — see *Architecture rules* |
+| `0022_viewer_role.sql` | Adds `viewer`, the read-only admin |
 
 ### 5. Seed the catalogue
 
@@ -124,7 +150,29 @@ real preview urls straight from `data/presets.json`.
 npm run dev
 ```
 
-### 7. Optional: demo content
+### 7. Make yourself an admin
+
+Nobody is staff by default, including the first account. Sign up through the app,
+then grant yourself the top role:
+
+```bash
+node scripts/grant-role.mjs you@example.com super_admin
+```
+
+`/admin` is then reachable from the account menu, and from the landing page — where
+a signed-in staff member gets an **Admin panel** button instead of **Dashboard**.
+Signing in sends staff straight to `/admin` rather than to the studio.
+
+The script warns if a change would leave the project with no active super admin, and
+is also how you appoint everybody else:
+
+```bash
+node scripts/grant-role.mjs support@example.com viewer      # read-only admin
+node scripts/grant-role.mjs editor@example.com editor
+node scripts/grant-role.mjs nobody@example.com user         # demote
+```
+
+### 8. Optional: demo content
 
 Explore is empty until somebody publishes something, and that is handled: the
 landing page's showcase falls back to reference photography badged **Not app
@@ -141,11 +189,79 @@ avoids, more honestly.
 The quickest way to fill Explore is to generate something and publish it from
 your library.
 
+## The admin panel
+
+`/admin` — 28 screens. The landing page's every band, pricing and plans, credit
+rules, the provider and model catalogue, prompt presets, categories, the media
+library, users, Explore moderation, branding, theme, feature flags, settings, system
+logs, the audit trail and analytics.
+
+Full detail — schema, the 19 tables, the security model, what is deliberately *not*
+editable and the testing report — is in [`docs/ADMIN.md`](docs/ADMIN.md).
+
+### Roles
+
+Six, and the matrix is in code (`src/lib/admin/permissions.ts`) rather than in a
+table, because a permission row is a thing an attacker with one write can edit.
+
+| Role | What it is for |
+|---|---|
+| `user` | No access to the panel. |
+| `viewer` | **Read-only admin.** Opens every screen and changes nothing. |
+| `editor` | Writes the site: copy, media, pricing presentation. No user data, no credentials. |
+| `moderator` | Polices the feed, and the account actions that follow from moderating it. |
+| `admin` | Everything operational, including the vendor key vault. |
+| `super_admin` | Admin, plus authority over other super admins. |
+
+`admin` and `super_admin` hold **identical capabilities**. What separates them is
+rank: an admin cannot appoint, demote, delete, suspend or move credits on a super
+admin. One function decides it — `hasAuthorityOver(actor, subject)`.
+
+A read-only admin keeps navigation, every table, search, filters and pagination —
+investigating is the whole point of the role — and every control that could change
+something is disabled, with a **Read only** badge in the sidebar and a line at the
+top of each page saying so.
+
+That is presentation, not enforcement. A viewer holds only `:read` capabilities and
+all 94 admin Server Actions are guarded by a `:write` one, so `authorize()` refuses
+them before any action reads its arguments. There is no read-only flag inside an
+action to forget to check, and a test reads every action file to prove it.
+
+### Look around the live panel
+
+Sign in at **[kineticstudioai.vercel.app/sign-in](https://kineticstudioai.vercel.app/sign-in)**
+with the read-only account, and you land on `/admin` rather than the studio:
+
+| | |
+|---|---|
+| Email | `readonlyadmin@kineticstudio.ai` |
+| Password | `ReadOnly@1234` |
+| Role | `viewer` — read-only admin |
+
+It opens all 28 screens and can change nothing: every table, search and filter works,
+and every control that would write is disabled. That is not enforced by the greyed
+buttons — the role holds no `:write` capability, so all 94 admin Server Actions
+refuse it server-side before reading their arguments.
+
+Shared on purpose, and the reason the role exists. Treat everything it can see as
+public: it reads account emails, credit balances, the audit trail and the system log.
+Vendor API keys are the exception — those are masked from a stored prefix and last
+four, and nothing in the app can decrypt one back.
+
+Grant roles on your own deployment with `scripts/grant-role.mjs`; the panel's own
+**Users** screen does the same thing with an audit entry attached.
+
 ## Deploying
 
 [`DEPLOYMENT.md`](DEPLOYMENT.md) is the checklist: the Supabase console steps
 that cannot be scripted, the Vercel environment variables, and the
 walkthrough that counts as acceptance.
+
+Migrations `0015`–`0022` must be applied before the first deploy of the admin
+panel. They are additive and every CMS read falls back to the shipped literal, so
+new schema against old code is safe in that direction — old code against missing
+schema simply renders the site as it was built. The reverse is not true: deploy
+the code before the migrations and `/admin` has nothing to read.
 
 Two health checks worth knowing:
 
@@ -174,13 +290,18 @@ Stated rather than discovered later:
   model routes to them. Their settings row says so.
 - **Credit prices are estimates.** `indicativeUsd` in the registry has not been
   reconciled against provider invoices. Check real jobs before charging money.
-- **`media_assets` is not registered in the `Database` type map.** Adding an eleventh
+- **`media_assets` is still not in the main `Database` type map.** Adding an eleventh
   table tips supabase-js's type machinery past an instantiation limit and the whole
-  client generic degrades to `never`, breaking every other table. `media.service.ts`
-  reads that one table through a narrowed client instead — two lines, commented.
-- **The landing page testimonials are written copy**, attributed to roles rather than
-  invented people and labelled as samples on the page. Swap them for real quotes and
-  drop the badge.
+  client generic degrades to `never`, breaking every other table. The CMS work gave it
+  a typed home in a *separate* map (`src/types/cms.ts`) rather than fixing the
+  original; `services/media.service.ts` still reads it through a narrowed client.
+- **Testimonials ship empty.** The table is seeded with nothing on purpose, and the
+  band hides itself rather than presenting invented quotes as real ones. Add rows
+  under **Admin → Testimonials** and it appears.
+- **`system_logs` starts empty and fills slowly.** It records sign-ins and application
+  events from the moment the panel was installed, so an established database shows a
+  history that begins mid-life. The Users screen says so rather than implying the
+  record is complete.
 
 ## Architecture rules
 
@@ -229,6 +350,38 @@ something went wrong first — those say what.
    generation therefore uses the admin client with an explicit `user_id` filter, which
    is doing the scoping a policy would otherwise do.
 
+9. **Every CMS read falls back to the value the app shipped with.** Not to null, not
+   to an empty band — to the exact literal the component used before the row existed,
+   which is what `src/lib/cms/content.ts` and `src/lib/cms/settings.ts` hold. An
+   unreachable database therefore renders the site as built rather than blank. Feature
+   flags do the same and default *on*, so a dropped connection cannot switch Explore
+   off for everybody; `maintenance_mode` defaults off, for the same reason reversed.
+10. **Authorization is a capability, checked on the server, on every action.** The
+    matrix is `src/lib/admin/permissions.ts`; pages call `requireCapability`, Server
+    Actions call `authorize`. A layout guard never runs for a Server Action, which is
+    an HTTP endpoint anyone who can guess its id can reach — so the layout decides who
+    sees the chrome and the action decides who can do anything. Read-only mode in the
+    UI is a courtesy on top; it is not what refuses a write.
+11. **A privileged Postgres function names the roles it locks out.** Supabase grants
+    `EXECUTE` on every new function in `public` to `anon` and `authenticated` by
+    default, so `revoke all on function f(...) from public` — which looks airtight —
+    revokes a grant the function never had and changes nothing. Four `SECURITY
+    DEFINER` functions shipped callable with the public anon key this way, two of them
+    able to move credits. Migration `0021` fixed it and
+    `scripts/checks/function-grants.sql` is the regression guard.
+12. **An auth page may forward a destination the visitor asked for; it may not invent
+    one.** `safeNextPath(next)` defaults to `/dashboard`, and passing that default
+    into the sign-in form's hidden field meant the field was never empty — so the
+    action's own decision about where an account belongs could never apply, and staff
+    signing in landed in the studio instead of the panel. Pages now forward `''` when
+    nobody asked, and `postSignInPath` answers.
+13. **Vendor keys are sealed, and nothing can read one back.** AES-256-GCM before the
+    value reaches Postgres; `app_provider_keys` has RLS forced, no policies and grants
+    revoked. The masked display is built from a stored prefix and last four, never
+    from a decryption, and there is deliberately no reveal endpoint — so confirming a
+    key means testing it against the vendor, which answers the useful question.
+    Database first, environment second: a missing row falls back to the env var.
+
 ## Scripts
 
 | Command | Purpose |
@@ -236,9 +389,21 @@ something went wrong first — those say what.
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
 | `npm run typecheck` | TypeScript, no emit |
-| `npm run test` | Vitest — 411 offline tests: provider drivers, routing, credits, schemas, registry |
+| `npm run test` | Vitest — 535 offline tests: drivers, routing, credits, schemas, registry, the permission matrix, CMS fallbacks |
 | `npm run seed` | Seed the preset catalogue |
 | `npm run seed:media` | Seed `media_assets` and repoint preset previews at it |
 | `npm run seed:demo` | Publish sample shots for one account — refuses while `public/samples/` is missing |
 | `npm run db:push` | Apply migrations via the Supabase CLI |
 | `npm run db:types` | Regenerate `src/types/database.ts` from the live schema |
+
+Verification scripts, none of which are wired into `npm` because each one needs a
+running server or a live database:
+
+| Command | Purpose |
+|---|---|
+| `node scripts/grant-role.mjs <email> <role>` | Appoint or demote staff; warns before removing the last super admin |
+| `node scripts/smoke-routes.mjs` | Walks 45 routes signed in and reports any 5xx |
+| `node scripts/smoke-roles.mjs` | Walks the panel as every role, checks the redirects and the read-only markup, then restores the account it borrowed |
+| `node scripts/db-query.mjs --file scripts/checks/function-grants.sql` | Asserts no privileged function or locked table is reachable by `anon` |
+| `node scripts/db-query.mjs --file scripts/checks/explore-rls.sql` | 34 RLS checks, inside a transaction that rolls back |
+| `node scripts/apply-migration.mjs <file>` | Applies one migration in a transaction, without the Supabase CLI |

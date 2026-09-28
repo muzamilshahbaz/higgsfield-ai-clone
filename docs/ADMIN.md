@@ -26,7 +26,7 @@ renders the site as it shipped.** Not blank, not broken, not off.
 
 ## 2. Database schema
 
-Seven migrations, `0015` through `0021`, all applied.
+Eight migrations, `0015` through `0022`, all applied.
 
 | File | What it does |
 | --- | --- |
@@ -37,6 +37,7 @@ Seven migrations, `0015` through `0021`, all applied.
 | `0019_configurable_signup_grant.sql` | `handle_new_user()` reads the signup grant from `credit_rules`. |
 | `0020_explore_category_seed_fix.sql` | Corrects two seeded Explore categories that were not in the allowed set. |
 | `0021_function_grants.sql` | **Security fix.** Locks six privileged functions to the service role. See §6. |
+| `0022_viewer_role.sql` | Adds `viewer` to `user_role` — the read-only admin. Enum additions live alone, same reason as 0015. |
 
 `0015` is a separate file on purpose: `scripts/apply-migration.mjs` wraps a file
 in one transaction, and a newly added enum value cannot be *used* as data in the
@@ -109,6 +110,7 @@ supabase/migrations/0015_cms_enums.sql … 0021_function_grants.sql   (7)
 scripts/grant-role.mjs              bootstrap/recovery: grant a role by email
 scripts/smoke-routes.mjs            walks 45 routes signed in, reports 5xx
 scripts/checks/function-grants.sql  asserts no privileged function is public
+scripts/smoke-roles.mjs             walks the panel as every role, then restores
 ```
 
 ### Added — types, lib, services (26)
@@ -125,6 +127,7 @@ src/lib/cms/settings.ts             SiteSettings, DEFAULT_SETTINGS, coercion
 src/lib/cms/content.ts              landing shapes and the shipped defaults
 src/lib/flags.ts                    FlagKey, FLAG_DEFAULTS, getFlags, isEnabled
 src/lib/account-status.ts           suspension state, self-lifting on expiry
+src/lib/marketing/staff-visitor.ts  whether the public header offers the panel
 src/lib/supabase/cms.ts             the anon and service-role CMS clients
 src/services/cms/*.ts               settings, content, plans, crud, catalogue,
                                     media, provider-keys, credits            (8)
@@ -142,6 +145,8 @@ src/components/admin/controls.tsx     ToggleAction, ActionButton, DeleteButton,
 src/components/admin/admin-chrome.tsx page header, panel, table, stat tile
 src/components/admin/admin-sidebar.tsx
 src/components/admin/media-upload.tsx the two FormData forms
+src/components/admin/read-only.tsx    read-only mode, its scope and its badge
+src/components/admin/admin-user-menu.tsx  account, role and log out
 src/components/brand/theme-style.tsx  emits only the tokens that differ
 src/components/brand/site-logo.tsx
 src/components/marketing/testimonials.tsx
@@ -195,14 +200,27 @@ All 28 verified 200 as `super_admin` against a production build.
 | Community | `/admin/users` · `/admin/users/[id]` · `/admin/explore` · `/admin/assets` · `/admin/projects` |
 | System | `/admin/branding` · `/admin/theme` · `/admin/flags` · `/admin/settings` · `/admin/logs` · `/admin/audit` |
 
-`/admin` is disallowed in `robots.ts`. Every page calls
-`requireCapability(capability, '/admin/...')` before it reads anything, so an
-under-privileged staff member is redirected rather than shown an empty screen.
+`/admin` is disallowed in `robots.ts`. Protection is three layers, and each one
+exists because the one above it does not cover the case below:
+
+1. **Middleware** — `/admin` is a protected prefix, so a signed-out visitor is
+   turned back at the edge before any admin code runs, and comes back to the
+   page they wanted rather than to the dashboard.
+2. **The layout** — `requireStaff()` sends a signed-in non-staff visitor to the
+   studio rather than to a 403. Telling a stranger that /admin exists and is
+   merely forbidden is more than they need to know.
+3. **Each page** — `requireCapability(capability, '/admin/...')` before it reads
+   anything, so an under-privileged staff member lands on a screen they can open.
+
+None of the three covers a Server Action, which is an HTTP endpoint a layout
+guard never runs for. That is the fourth layer, and the only one that matters
+for writes: `withCapability` on all 94 of them.
 
 ### Bootstrapping
 
 ```bash
 node scripts/grant-role.mjs you@example.com super_admin
+node scripts/grant-role.mjs support@example.com viewer     # read-only admin
 ```
 
 It warns if the change would leave no active super admin.
@@ -211,24 +229,96 @@ It warns if the change would leave no active super admin.
 
 ## 5. Roles and capabilities
 
-21 capabilities across five roles. The matrix is in code
+22 capabilities across six roles. The matrix is in code
 (`src/lib/admin/permissions.ts`), not in the database — a permission table is a
 thing an attacker with one write can edit.
 
-| | editor | moderator | admin | super_admin |
-| --- | --- | --- | --- | --- |
-| content, media | read/write | read | read/write | read/write |
-| billing | read | — | read/write | read/write |
-| users | — | read/write | read/write/credits/roles | all |
-| moderation | — | read/write | read/write | read/write |
-| providers | — | — | read/write | read/write |
-| **secrets** | — | — | — | **read/write** |
-| settings, flags | — | — | write | write |
-| logs, analytics | analytics | both | both | both |
+| | viewer | editor | moderator | admin | super_admin |
+| --- | --- | --- | --- | --- | --- |
+| content, media | read | read/write | read | read/write | read/write |
+| billing | read | read | — | read/write | read/write |
+| users | read | — | read/write | read/write/credits/roles | all |
+| moderation | read | — | read/write | read/write | read/write |
+| providers | read | — | — | read/write | read/write |
+| **secrets** | **read** | — | — | read/write | read/write |
+| settings, flags | read | — | — | read/write | read/write |
+| logs, analytics | both | analytics | both | both | both |
+
+### Read-only admin (`viewer`)
+
+Opens every one of the 28 screens and can change nothing. It holds every read
+capability in the union and no other, which is what makes the refusal
+structural: all 94 admin Server Actions are guarded by a `:write` capability, so
+a viewer is refused by `authorize()` before any of them reads its arguments.
+There is no read-only flag anywhere in an action to forget to check.
+
+The panel reflects that rather than enforcing it.
+`components/admin/read-only.tsx` provides one boolean from the layout, and the
+seven components that can change something — `RecordForm`, `RecordDialog`,
+`ToggleAction`, `ActionButton`, `DeleteButton`, `ReorderButtons` and the two
+media forms — disable themselves from it. Every mutating control in the panel is
+one of those, which is why a single provider is enough and no page has to
+remember to ask.
+
+What stays fully live for a viewer: navigation, every table, search, filters,
+pagination and every link. Investigating is the entire point of the role.
+
+`AdminWriteScope` narrows the same context per screen, for the case the global
+flag gets wrong: a moderator standing on the landing-page editor holds plenty of
+write capabilities, just not `content:write`, and an enabled Save button the
+server then refuses is the interface lying. It only ever tightens.
+
+### Admin vs super admin
+
+They hold **identical capabilities**, including the key vault. What separates
+them is rank, not access:
+
+| | admin | super_admin |
+| --- | --- | --- |
+| appoint a super admin | no | yes |
+| demote a super admin | no | yes |
+| delete, suspend or ban a super admin | no | yes |
+| adjust a super admin's credits | no | yes |
+
+One function decides all of it — `hasAuthorityOver(actor, subject)`, which is
+rank `>=` rank. Equal rank counts, deliberately: two admins administering each
+other is ordinary, and a super admin acting on another is allowed because there
+is no higher rung to appeal to. Reaching *upward* is what never happens.
+
+Opening the key vault to `admin` is a widening from the previous design, where
+it was super-admin-only. The reason: an admin who can configure every provider
+but cannot replace a leaked key is an on-call operator who has to wake somebody
+else up. Nothing on that screen reveals a key — see §6.
 
 Escalation is refused in both directions: you cannot grant a role above your own
 rank, and you cannot modify a subject who outranks you. The last active super
-admin cannot be demoted.
+admin cannot be demoted or deleted.
+
+### Login and landing
+
+| Who | Signing in lands on | The public header offers |
+| --- | --- | --- |
+| any staff role | `/admin` | **Admin panel** → `/admin` |
+| everyone else | `/dashboard` | Dashboard → `/dashboard` |
+| suspended staff | `/dashboard` | Dashboard — the notice lives there |
+
+An explicit `next` always wins, so a sign-in prompted by a link to `/create`
+still ends at `/create`. `postSignInPath` is the single function all three
+callers use: the sign-in action, the OAuth callback, and the middleware's bounce
+off `/sign-in` for somebody already signed in.
+
+The rule that makes it work: **an auth page may forward a destination the
+visitor asked for, and may not invent one.** `safeNextPath(next)` defaults to
+`/dashboard`, and the sign-in page used to call it on the raw query parameter
+and pass the result into the form's hidden field — so the field was never empty,
+the action's decision could never apply, and every staff sign-in landed in the
+studio. The middleware path redirected correctly the whole time, which is
+exactly what made it look finished. The pages now forward `''` when nobody
+asked, and a test asserts they never go back.
+
+The panel has its own account menu in the sidebar footer — the account, its role
+and description, Profile, back to the studio, and Log out, which ends the
+session and returns to `/`.
 
 ---
 
@@ -257,6 +347,10 @@ revoked from `anon` and `authenticated` — the service role is the only reader.
 Every display query names its columns (`DISPLAY_COLUMNS`); `ciphertext` is not
 among them, and no query in the codebase selects it except the one that decrypts
 for a job it has already authorised.
+
+`secrets:read` is held by the read-only admin as well, and that is safe for the
+same reason the reveal button does not exist: the screen has nothing to reveal.
+`secrets:write` — store, rotate, test, remove — is admin and above.
 
 **The spec asked for Show/Hide and Copy on stored keys. Both were deliberately
 not built,** and `/admin/providers/keys` carries a panel explaining why. The
@@ -370,10 +464,10 @@ reason reversed.
 | --- | --- |
 | `npx tsc --noEmit` | clean |
 | `npm run lint` | clean |
-| `npx vitest run` | **510 passed**, 14 skipped, 25 files |
+| `npx vitest run` | **532 passed**, 14 skipped, 25 files |
 | `npm run build` | 55 pages compiled, all 28 admin routes |
 
-73 of those tests are new: 20 on the permission matrix (staff access, secrets
+95 of those tests are new: 42 on the permission matrix (staff access, secrets
 super-admin-only, role boundaries, escalation refusals, matrix completeness,
 write⇒read pairing) and 53 on CMS content (setting coercion, flag default
 *directions*, landing defaults, `statValue`, nav href resolution, the icon
@@ -436,6 +530,44 @@ A deliberately invalid fal.ai key stored through the UI:
 | `explore-rls.sql` | 34 checks pass |
 | `counter-drift.sql` | no drift |
 | `function-grants.sql` | 22 checks pass |
+
+### Roles, live
+
+`node scripts/smoke-roles.mjs` moves the QA account through every role against a
+production build, then puts it back. All checks pass:
+
+| Role | Admin routes served | Where `/sign-in` sends them |
+| --- | --- | --- |
+| super_admin | 27 / 27 | `/admin` |
+| admin | 27 / 27 | `/admin` |
+| **viewer** | **27 / 27** | `/admin` |
+| editor | 14 / 27 | `/admin` |
+| moderator | 17 / 27 | `/admin` |
+| user | **0 / 27** — every one to `/dashboard` | `/dashboard` |
+
+Signed out, `/admin/users` returns `/sign-in?next=%2Fadmin%2Fusers` — turned
+back at the edge, with the destination kept.
+
+The read-only markup was asserted rather than eyeballed, because "is this
+control disabled" is an attribute in the HTML the server sent. As `viewer`: the
+Read only badge present, `<fieldset disabled>` around the theme form, the "Save
+the theme" button `disabled` with a title explaining why, the media upload form
+absent entirely, and the users table still rendering with a live search box. As
+`super_admin` on the same pages: no badge, no disabled fieldset, a live Save
+button, a live upload form. The contrast is the evidence.
+
+### Every action, audited
+
+A structural test reads all seven Server Action modules and asserts three things
+about the 94 exported actions:
+
+- every module guards with `withCapability`
+- no action is guarded by a `:read` capability
+- `can('viewer', capability)` is false for every guard, and
+  `can('super_admin', capability)` is true for every one
+
+That is the read-only guarantee in a form that fails when somebody adds action
+number 95 and forgets the wrapper.
 
 ### Not exercised
 
